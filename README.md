@@ -4,6 +4,8 @@ Open source, non commercial use software for MultiBoxing World of Warcraft withi
 
 ## Installation
 
-Get the binary releases or
+Get Tcl/Tk for windows with twapi
 
-`go get -u github.com/WowOpenBox/WowOpenBox`
+https://www.magicsplat.com/tcl-installer/index.html#downloads
+
+Get this file [wowopenbox.tcl](wowopenbox.tcl), edit and run
