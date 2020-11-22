@@ -24,7 +24,7 @@ set imgObj70 [image create photo -data $img70]
 wm iconphoto . -default $imgObj70
 grid [label .logo -image $imgObj240]
 grid [label .l1  -text "Main Menu"]
-grid [button .b1  -text "Window Layout"]
+grid [button .b1  -text "Window Layout" -command WindowLayout]
 grid [button .b2 -text "Find and rename wow window" -command FindAndRename]
 
 puts [twapi::get_desktop_workarea]
@@ -57,6 +57,10 @@ proc FindAndRename {} {
     }
     RenameResize $w $i
     incr i 1
+}
+
+proc WindowLayout {} {
+    tk_messageBox -type ok -icon info -title "WoW Open Box Message" -message "Not implemented yet!"
 }
 
 # --- main / tweak me ---
