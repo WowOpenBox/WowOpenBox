@@ -1,3 +1,8 @@
+#  WowOpenBox by MooreaTV moorea@ymail.com (c) 2020 All rights reserved
+#  Licensed under LGPLv3 - No Warranty
+#  (contact the author if you need a different license)
+#
+#  Releases detail/changes are on https://github.com/WowOpenBox/WowOpenBox/releases
 package require twapi
 
 # https://twapi.magicsplat.com/v4.4/ui.html
