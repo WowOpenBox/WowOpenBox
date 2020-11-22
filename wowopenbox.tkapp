@@ -14,7 +14,7 @@ package require TclCurl
 
 # https://twapi.magicsplat.com/v4.4/ui.html
 
-set vers "0.0.1-dev"
+set vers "0.1.0"
 wm title . "WoW Open Box - Open Source Multiboxing"
 # Get logo
 curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
@@ -22,14 +22,19 @@ curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox70.png?v=$vers" -bodyv
 set imgObj240 [image create photo -data $img240]
 set imgObj70 [image create photo -data $img70]
 wm iconphoto . -default $imgObj70
-grid [label .logo -image $imgObj240]
-grid [label .l1  -text "Main Menu"]
-grid [button .b1  -text "Window Layout" -command WindowLayout]
-grid [button .b2 -text "Find and rename wow window" -command FindAndRename]
-
+grid [label .logo -image $imgObj240] -columnspan 2
+# grid [label .l1  -text "Main Menu"] -columnspan 2
+grid [button .b1  -text "Edit Window Layout" -state disabled -command WindowLayout]  -columnspan 2
+grid [label .l2 -text "Next Wow is"] [entry .e1 -textvariable i] -sticky e
+set sz "1920 1080"
+grid [label .l3 -text "Resize to "] [entry .e2 -textvariable sz] -sticky e
+set pos "0 0"
+grid [label .l4 -text "Move to "] [entry .e3 -textvariable pos] -sticky e
+grid [button .b2 -text "Find & rename/resize/mode wow window" -command FindAndRename]  -columnspan 2
 puts [twapi::get_desktop_workarea]
 puts [twapi::get_display_monitors -activeonly]
 puts [twapi::get_multiple_display_monitor_info]
+grid [label .lbottom -text "(c) 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
 
 # --- utilities ---
 
@@ -38,16 +43,60 @@ proc FindWow {} {
     return $w
 }
 
+proc GetHeight {} {
+    global sz
+    lindex $sz 1
+}
+proc GetWidth {} {
+    global sz
+    lindex $sz 0
+}
+
+proc GetX {} {
+    global pos
+    lindex $pos 0
+}
+
+proc GetY {} {
+    global pos
+    lindex $pos 1
+}
+
+# Does square first 4 windows
+proc UpdatePos {} {
+    global i pos
+    set x [GetX]
+    set y [GetY]
+    puts "x=$x y=$y"
+    if {$i % 2} {
+        incr y [GetHeight]
+        puts "incr y now $y"
+    } else {
+        set w [GetWidth]
+        if {$i eq 4} {
+            set w -$w
+        }
+        incr x $w
+        puts "incr x now $x"
+    }
+    set pos "$x $y"
+}
+
 proc RenameResize {w i} {
-    twapi::resize_window $w 1920 1080
+    twapi::resize_window $w [GetWidth] [GetHeight]
     twapi::set_window_text $w "WoW $i"
 }
 
 proc Move {w x y} {
+    puts "Moving $w to $x $y"
     twapi::move_window $w $x $y
 }
 
 set i 1
+
+# wow windows handles
+set ww {}
+
 proc FindAndRename {} {
     global i
     set w [FindWow]
@@ -56,7 +105,10 @@ proc FindAndRename {} {
         return
     }
     RenameResize $w $i
+    Move $w [GetX] [GetY]
+    set ww($i) $w
     incr i 1
+    UpdatePos
 }
 
 proc WindowLayout {} {
@@ -71,3 +123,4 @@ proc WindowLayout {} {
 #RenameResize $w 2
 #Move $w -3840 360
 # ... etc...
+puts "WowOpenBox $vers started..."
