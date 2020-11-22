@@ -8,4 +8,4 @@ Get Tcl/Tk for windows with twapi
 
 https://www.magicsplat.com/tcl-installer/index.html#downloads
 
-Get this file [wowopenbox.tcl](wowopenbox.tcl), edit and run
+Get this file [wowopenbox.tkapp](wowopenbox.tkapp), edit and run (double click to launch)

@@ -1,0 +1,69 @@
+#  WowOpenBox by MooreaTV moorea@ymail.com (c) 2020 All rights reserved
+#  Open Source Soaftware licensed under GPLv3 - No Warranty
+#  (contact the author if you need a different license)
+#
+#  The GNU General Public License does not permit incorporating this work
+#  into proprietary programs. 
+#
+#  Releases detail/changes are on https://github.com/WowOpenBox/WowOpenBox/releases
+#
+package require Tk
+package require twapi
+#package require Img
+package require TclCurl
+
+# https://twapi.magicsplat.com/v4.4/ui.html
+
+set vers "0.0.1-dev"
+wm title . "WoW Open Box - Open Source Multiboxing"
+# Get logo
+curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
+curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox70.png?v=$vers" -bodyvar img70
+set imgObj240 [image create photo -data $img240]
+set imgObj70 [image create photo -data $img70]
+wm iconphoto . -default $imgObj70
+grid [label .logo -image $imgObj240]
+grid [label .l1  -text "Main Menu"]
+grid [button .b1  -text "Window Layout"]
+grid [button .b2 -text "Find and rename wow window" -command FindAndRename]
+
+puts [twapi::get_desktop_workarea]
+puts [twapi::get_display_monitors -activeonly]
+puts [twapi::get_multiple_display_monitor_info]
+
+# --- utilities ---
+
+proc FindWow {} {
+    set w [twapi::find_windows -text "World of Warcraft" -visible true -single]
+    return $w
+}
+
+proc RenameResize {w i} {
+    twapi::resize_window $w 1920 1080
+    twapi::set_window_text $w "WoW $i"
+}
+
+proc Move {w x y} {
+    twapi::move_window $w $x $y
+}
+
+set i 1
+proc FindAndRename {} {
+    global i
+    set w [FindWow]
+    if {$w eq ""} {
+        tk_messageBox -type ok -icon error -title "WoW Open Box Error" -message "No World of Warcraft window found"
+        return
+    }
+    RenameResize $w $i
+    incr i 1
+}
+
+# --- main / tweak me ---
+
+#set w [FindWow]
+#RenameResize $w 1
+#Move $w -3840 -720
+#RenameResize $w 2
+#Move $w -3840 360
+# ... etc...
