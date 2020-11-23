@@ -12,37 +12,43 @@ package require twapi
 package require TclCurl
 package require Tk
 
-# https://twapi.magicsplat.com/v4.4/ui.html
+# -- UI
+set vers "0.3.0"
+# globals
 
-set vers "0.2.0"
-wm title . "WoW Open Box - Open Source Multiboxing"
-# Get logo
-#curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
-curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox70.png?v=$vers" -bodyvar img70
-#set imgObj240 [image create photo -data $img240]
-set imgObj70 [image create photo -data $img70]
-wm iconphoto . -default $imgObj70
-grid [label .logo -image $imgObj70] -rowspan 2
-# grid [label .l1  -text "Main Menu"] -columnspan 2
-grid [button .b1  -text "Edit Window Layout" -state disabled -command WindowLayout]  -row 0 -column 1
-grid [button .bc -text Console -command {ConsoleSetup; tkcon show}] -row 1 -column 1
-grid [label .l2 -text "Next Wow is"] [entry .e1 -textvariable i] -sticky e
-set sz "1920 1080"
-grid [label .l3 -text "Resize to "] [entry .e2 -textvariable sz] -sticky e
+# "next" window/slot #
+set i 1
+# position of the next move window
 set pos "0 0"
-grid [label .l4 -text "Move to "] [entry .e3 -textvariable pos] -sticky e
-grid [button .b2 -text "Find & rename/resize/mode wow window" -command FindAndRename]  -columnspan 2
-puts [twapi::get_desktop_workarea]
-puts [twapi::get_display_monitors -activeonly]
-puts [twapi::get_multiple_display_monitor_info]
-grid [label .lbottom -text "(c) 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
+# size to set
+set sz "1920 1080"
+
+proc UISetup {} {
+    global vers pos sz
+    wm title . "WoW Open Box - Open Source Multiboxing"
+    # Get logo
+    #curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
+    curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox70.png?v=$vers" -bodyvar img70
+    #set imgObj240 [image create photo -data $img240]
+    set imgObj70 [image create photo -data $img70]
+    wm iconphoto . -default $imgObj70
+    grid [label .logo -image $imgObj70] -rowspan 2
+    # grid [label .l1  -text "Main Menu"] -columnspan 2
+    grid [button .b1  -text "Edit Window Layout" -state disabled -command WindowLayout]  -row 0 -column 1
+    grid [button .bc -text Console -command {ConsoleSetup; tkcon show}] -row 1 -column 1
+    grid [label .l2 -text "Next Wow is"] [entry .e1 -textvariable i] -sticky e
+    grid [label .l3 -text "Resize to "] [entry .e2 -textvariable sz] -sticky e
+    grid [label .l4 -text "Move to "] [entry .e3 -textvariable pos] -sticky e
+    grid [button .b2 -text "Find & rename/resize/mode wow window" -command FindAndRename]  -columnspan 2
+    grid [label .lbottom -text "(c) 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
+}
+
+# Make it so the code can be reloaded without errors
+if {![winfo exists .logo]} {
+    UISetup
+}
 
 # --- utilities ---
-
-proc FindWow {} {
-    set w [twapi::find_windows -text "World of Warcraft" -visible true -single]
-    return $w
-}
 
 proc GetHeight {} {
     global sz
@@ -83,6 +89,13 @@ proc UpdatePos {} {
     set pos "$x $y"
 }
 
+# --- Windows API: https://twapi.magicsplat.com/v4.4/ui.html
+
+proc FindWow {} {
+    set w [twapi::find_windows -text "World of Warcraft" -visible true -single]
+    return $w
+}
+
 proc RenameResize {w i} {
     twapi::resize_window $w [GetWidth] [GetHeight]
     twapi::set_window_text $w "WoW $i"
@@ -93,7 +106,11 @@ proc Move {w x y} {
     twapi::move_window $w $x $y
 }
 
-set i 1
+puts [twapi::get_desktop_workarea]
+puts [twapi::get_display_monitors -activeonly]
+puts [twapi::get_multiple_display_monitor_info]
+
+# ---
 
 # wow windows handles
 set ww {}
@@ -141,13 +158,7 @@ proc ConsoleSetup {} {
 }
 # --- done with console
 
+
 # --- main / tweak me ---
 
-
-#set w [FindWow]
-#RenameResize $w 1
-#Move $w -3840 -720
-#RenameResize $w 2
-#Move $w -3840 360
-# ... etc...
 puts "WowOpenBox $vers started..."
