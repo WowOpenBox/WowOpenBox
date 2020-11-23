@@ -9,22 +9,37 @@
 #
 package require Tk
 package require twapi
-#package require Img
 package require TclCurl
+package require Tk
+# --- Embed tkcon console
+set bindir [file dirname [info nameofexecutable]]
+set appsDir [file join $bindir "../apps/"]
+puts $appsDir
+source [file join $appsDir "tkcon.tcl"]
+package require tkcon
+set tkcon::PRIV(showOnStartup) 0
+set tkcon::PRIV(root) .console
+set tkcon::PRIV(protocol) {tkcon hide}
+#set tkcon::PRIV(name) "Wow Open Box"
+set tkcon::OPT(exec) ""
+tkcon::Init
+tkcon title "Wow Open Box console"
+# --- done with console
 
 # https://twapi.magicsplat.com/v4.4/ui.html
 
 set vers "0.1.0"
 wm title . "WoW Open Box - Open Source Multiboxing"
 # Get logo
-curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
+#curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
 curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox70.png?v=$vers" -bodyvar img70
-set imgObj240 [image create photo -data $img240]
+#set imgObj240 [image create photo -data $img240]
 set imgObj70 [image create photo -data $img70]
 wm iconphoto . -default $imgObj70
-grid [label .logo -image $imgObj240] -columnspan 2
+grid [label .logo -image $imgObj70] -rowspan 2
 # grid [label .l1  -text "Main Menu"] -columnspan 2
-grid [button .b1  -text "Edit Window Layout" -state disabled -command WindowLayout]  -columnspan 2
+grid [button .b1  -text "Edit Window Layout" -state disabled -command WindowLayout]  -row 0 -column 1
+grid [button .bc -text Console -command {tkcon show}] -row 1 -column 1
 grid [label .l2 -text "Next Wow is"] [entry .e1 -textvariable i] -sticky e
 set sz "1920 1080"
 grid [label .l3 -text "Resize to "] [entry .e2 -textvariable sz] -sticky e
