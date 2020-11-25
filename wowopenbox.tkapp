@@ -13,7 +13,7 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.5.0"
+set vers "0.6.0"
 
 
 # globals
@@ -90,10 +90,11 @@ proc UISetup {} {
     #set imgObj240 [image create photo -data $img240]
     set imgObj70 [image create photo -data $img70]
     wm iconphoto . -default $imgObj70
-    grid [label .logo -image $imgObj70] -rowspan 2
+    grid [label .logo -image $imgObj70] -rowspan 3
     # grid [label .l1  -text "Main Menu"] -columnspan 2
-    grid [button .b1  -text "Edit Window Layout" -state disabled -command WindowLayout]  -row 0 -column 1
-    grid [button .bc -text Console -command {ConsoleSetup; tkcon show}] -row 1 -column 1
+    grid [button .bH -text "Help" -command Help]  -row 0 -column 1
+    grid [button .b1  -text "Edit Window Layout" -state disabled -command WindowLayout]  -row 1 -column 1
+    grid [button .bc -text "Debug Console" -command {ConsoleSetup; tkcon show}] -row 2 -column 1
     grid [label .l2 -text "Next Wow :"] [entry .e1 -textvariable i] -sticky e
     bind .e1 <FocusIn> [list focusIn %W]
     grid [label .l3 -text "Resize to "] [entry .e2 -textvariable windowSize] -sticky e
@@ -116,7 +117,7 @@ proc focusIn {w args} {
 }
 
 proc selectChanged {w args} {
-    global i maxI
+    global i maxI ww
     set sel [$w curselection]
     Debug "got selectChanged $w $args: $sel - i $i max $maxI"
     if {$sel == "" } {
@@ -127,6 +128,7 @@ proc selectChanged {w args} {
         set i [expr {$sel+1}]
         .l2 configure -text "Selected :"
         .b2 configure -text "Update"
+        FocusN $i
     }
 }
 
@@ -219,6 +221,20 @@ proc Update {wh x y w h} {
     Move $wh $x $y
 }
 
+proc Focus {wh} {
+    twapi::set_focus $wh
+}
+
+
+proc Help {} {
+    twapi::shell_execute -path https://www.wowopenbox.org/help?v=$vers
+}
+
+proc Help {} {
+    global vers
+    twapi::shell_execute -path https://www.wowopenbox.org/help?v=$vers
+}
+
 Debug "desktop workarea [twapi::get_desktop_workarea]"
 Debug "display monitors [twapi::get_display_monitors -activeonly]"
 Debug "display info [twapi::get_multiple_display_monitor_info]"
@@ -227,6 +243,17 @@ Debug "display info [twapi::get_multiple_display_monitor_info]"
 
 # wow windows handles
 array set ww {}
+
+proc FocusN {n} {
+    global ww
+    Debug "FocusN $n called"
+    if {[info exists ww($n)]} {
+       Debug "FocusN $n called, found window"
+       Focus $ww($n)
+    } else {
+       Debug "FocusN $n called but no such window"
+    }
+}
 
 proc Capture {} {
     global i maxI settings
