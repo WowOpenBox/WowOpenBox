@@ -13,20 +13,23 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.3.0"
+set vers "0.5.0"
 
 
 # globals
-
-# position of the next move window
-set pos "0 0"
-# size to set
-set windowSize "1920 1080"
-
-# Settings
-# -- App utils - save settings
-
-set settings(DEBUG) 0
+if {![info exists pos]} {
+    # position of the next move window
+    set pos "0 0"
+    # size to set
+    set windowSize "1920 1080"
+    # debug on/off
+    set settings(DEBUG) 0
+    # start from slot 1
+    # "next" window/slot #
+    set i 1
+    # max ever set in list box
+    set maxI 1
+}
 
 proc Debug {msg} {
     global settings
@@ -35,6 +38,8 @@ proc Debug {msg} {
     }
 }
 
+# Settings
+# -- App utils - save settings
 set SETTINGS_FILE "~/.wowopenbox.tcl"
 
 trace add variable settings write SaveSettings
@@ -74,10 +79,7 @@ proc updateIndex {args} {
     }
 }
 
-# start from slot 1
-
-# "next" window/slot #
-set i 1
+updateIndex
 
 proc UISetup {} {
     global vers pos windowSize settings
@@ -92,11 +94,33 @@ proc UISetup {} {
     # grid [label .l1  -text "Main Menu"] -columnspan 2
     grid [button .b1  -text "Edit Window Layout" -state disabled -command WindowLayout]  -row 0 -column 1
     grid [button .bc -text Console -command {ConsoleSetup; tkcon show}] -row 1 -column 1
-    grid [label .l2 -text "Next Wow is"] [entry .e1 -textvariable i] -sticky e
+    grid [label .l2 -text "Next Wow :"] [entry .e1 -textvariable i] -sticky e
+    bind .e1 <FocusIn> [list focusIn %W]
     grid [label .l3 -text "Resize to "] [entry .e2 -textvariable windowSize] -sticky e
     grid [label .l4 -text "Move to "] [entry .e3 -textvariable pos] -sticky e
     grid [button .b2 -text "Find & rename/resize/mode wow window" -command FindAndRename]  -columnspan 2
+    grid [listbox .lbw -height 6] -columnspan 2
+    bind .lbw <<ListboxSelect>> [list selectChanged %W]
     grid [label .l_bottom -text "(c) 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
+}
+
+proc focusIn {w args} {
+    Debug "got focusIn $w $args"
+    .lbw selection clear 0 end
+    selectChanged .lbw "from focus $w"
+}
+
+proc selectChanged {w args} {
+    global i maxI
+    set sel [$w curselection]
+    Debug "got selectChanged $w $args: $sel - i $i max $maxI"
+    if {$sel == "" } {
+        set i $maxI
+        .l2 configure -text "Next Wow :"
+    } else {
+        set i [expr {$sel+1}]
+        .l2 configure -text "Selected :"
+    }
 }
 
 # Make it so the code can be reloaded without errors
@@ -153,9 +177,9 @@ proc FindWow {} {
     return $w
 }
 
-proc RenameResize {w i} {
+proc RenameResize {w name} {
     twapi::resize_window $w [GetWidth] [GetHeight]
-    twapi::set_window_text $w "WoW $i"
+    twapi::set_window_text $w $name
 }
 
 proc Move {w x y} {
@@ -173,20 +197,35 @@ Debug "display info [twapi::get_multiple_display_monitor_info]"
 set ww {}
 
 proc FindAndRename {} {
-    global i settings
+    global i maxI settings
     set w [FindWow]
     if {$w eq ""} {
         tk_messageBox -type ok -icon error -title "WoW Open Box Error" -message "No World of Warcraft window found"
         return
     }
-    RenameResize $w $i
+    set n "WoW $i"
+    RenameResize $w $n
     set x [GetX]
     set y [GetY]
     Move $w $x $y
     set settings($i,posXY) "$x $y"
     set settings($i,size) "[GetWidth] [GetHeight]"
     set ww($i) $w
+    # 0 based index
+    set i0 [expr {$i-1}]
+    Debug "i is $i maxI is $maxI"
+    if {$i<$maxI} {
+        .lbw see $i0
+        return
+    }
+    # jump by more than 1
+    for {set j $maxI} {$j < $i} {incr j} {
+        .lbw insert end "WoW $j*"
+    }
+    .lbw insert $i0 $n
     incr i 1
+    set maxI $i
+    return
 }
 
 proc WindowLayout {} {
