@@ -21,7 +21,7 @@ set vers "0.3.0"
 # position of the next move window
 set pos "0 0"
 # size to set
-set settings(windowSize) "1920 1080"
+set windowSize "1920 1080"
 
 # Settings
 # -- App utils - save settings
@@ -64,10 +64,10 @@ LoadSettings
 trace add variable i write updateIndex
 
 proc updateIndex {args} {
-    global i pos settings
+    global i pos windowSize settings
     Debug "i is $i - args $args"
     if [info exists settings($i,size)] {
-        set settings(size) $settings($i,size)
+        set windowSize $settings($i,size)
         set pos $settings($i,posXY)
     } else {
         UpdatePos
@@ -80,7 +80,7 @@ proc updateIndex {args} {
 set i 1
 
 proc UISetup {} {
-    global vers pos settings
+    global vers pos windowSize settings
     wm title . "WoW Open Box - Open Source Multiboxing"
     # Get logo
     #curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
@@ -93,7 +93,7 @@ proc UISetup {} {
     grid [button .b1  -text "Edit Window Layout" -state disabled -command WindowLayout]  -row 0 -column 1
     grid [button .bc -text Console -command {ConsoleSetup; tkcon show}] -row 1 -column 1
     grid [label .l2 -text "Next Wow is"] [entry .e1 -textvariable i] -sticky e
-    grid [label .l3 -text "Resize to "] [entry .e2 -textvariable settings(windowSize)] -sticky e
+    grid [label .l3 -text "Resize to "] [entry .e2 -textvariable windowSize] -sticky e
     grid [label .l4 -text "Move to "] [entry .e3 -textvariable pos] -sticky e
     grid [button .b2 -text "Find & rename/resize/mode wow window" -command FindAndRename]  -columnspan 2
     grid [label .l_bottom -text "(c) 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
@@ -107,12 +107,12 @@ if {![winfo exists .logo]} {
 # --- utilities ---
 
 proc GetHeight {} {
-    global settings
-    lindex $settings(windowSize) 1
+    global windowSize
+    lindex $windowSize 1
 }
 proc GetWidth {} {
-    global settings
-    lindex $settings(windowSize) 0
+    global windowSize
+    lindex $windowSize 0
 }
 
 proc GetX {} {
