@@ -30,6 +30,21 @@ if {![info exists pos]} {
     # max ever set in list box
     set maxI 1
 }
+# default hotkeys (change in you ~/.wowopenbox.tcl)
+array set settings {
+    hk1,focus "Ctrl-f1"
+    hk2,focus "Ctrl-f2"
+    hk3,focus "Ctrl-f3"
+    hk4,focus "Ctrl-f4"
+    hk5,focus "Ctrl-f5"
+    hk6,focus "Ctrl-f6"
+    hk7,focus "Ctrl-f7"
+    hk8,focus "Ctrl-f8"
+    hk9,focus "Ctrl-f9"
+    hk10,focus "Ctrl-f10"
+    hk11,focus "Ctrl-f11"
+    hk12,focus "Ctrl-f12"
+}
 
 proc Debug {msg} {
     global settings
@@ -128,7 +143,8 @@ proc selectChanged {w args} {
         set i [expr {$sel+1}]
         .l2 configure -text "Selected :"
         .b2 configure -text "Update"
-        FocusN $i
+        # Not foreground, just focus
+        FocusN $i false
     }
 }
 
@@ -225,6 +241,9 @@ proc Focus {wh} {
     twapi::set_focus $wh
 }
 
+proc Foreground {wh} {
+    twapi::set_foreground_window $wh
+}
 
 proc Help {} {
     twapi::shell_execute -path https://www.wowopenbox.org/help?v=$vers
@@ -244,12 +263,16 @@ Debug "display info [twapi::get_multiple_display_monitor_info]"
 # wow windows handles
 array set ww {}
 
-proc FocusN {n} {
+proc FocusN {n fg} {
     global ww
     Debug "FocusN $n called"
     if {[info exists ww($n)]} {
        Debug "FocusN $n called, found window"
        Focus $ww($n)
+       if {$fg} {
+           Debug "Also making $n foreground"
+           Foreground $ww($n)
+       }
     } else {
        Debug "FocusN $n called but no such window"
     }
@@ -273,8 +296,14 @@ proc Capture {} {
 }
 
 proc updateListBox {n w wname} {
-    global ww i maxI
+    global ww i maxI settings
     set ww($n) $w
+    if {[info exists settings(hk$n,focus)]} {
+        Debug "Setting focus hotkey for $n / $wname: $settings(hk$n,focus)"
+        twapi::register_hotkey $settings(hk$n,focus) [list FocusN $n true]
+    } else {
+        Debug "No focus hotkey found or set for $n / $wname"
+    }
     # 0 based index
     set i0 [expr {$n-1}]
     Debug "n is $n i is $i maxI is $maxI"
