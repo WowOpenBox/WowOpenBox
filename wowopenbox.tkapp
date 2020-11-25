@@ -98,7 +98,7 @@ proc UISetup {} {
     bind .e1 <FocusIn> [list focusIn %W]
     grid [label .l3 -text "Resize to "] [entry .e2 -textvariable windowSize] -sticky e
     grid [label .l4 -text "Move to "] [entry .e3 -textvariable pos] -sticky e
-    grid [button .b2 -text "Find & rename/resize/mode wow window" -command FindAndRename]  -columnspan 2
+    grid [button .b2 -text "Capture" -command CaptureOrUpdate] -pady 5 -columnspan 2
     grid [listbox .lbw -height 6] -columnspan 2
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
     grid [label .l_bottom -text "(c) 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
@@ -106,6 +106,11 @@ proc UISetup {} {
 
 proc focusIn {w args} {
     Debug "got focusIn $w $args"
+    if {[.lbw curselection]==""} {
+        # only reset if there was a selection otherwise changing windows
+        # top window clears it
+        return
+    }
     .lbw selection clear 0 end
     selectChanged .lbw "from focus $w"
 }
@@ -117,9 +122,11 @@ proc selectChanged {w args} {
     if {$sel == "" } {
         set i $maxI
         .l2 configure -text "Next Wow :"
+        .b2 configure -text "Capture"
     } else {
         set i [expr {$sel+1}]
         .l2 configure -text "Selected :"
+        .b2 configure -text "Update"
     }
 }
 
@@ -177,14 +184,39 @@ proc FindWow {} {
     return $w
 }
 
+proc Resize {w width height} {
+    twapi::resize_window $w $width $height
+}
+
 proc RenameResize {w name} {
-    twapi::resize_window $w [GetWidth] [GetHeight]
+    Resize $w [GetWidth] [GetHeight]
     twapi::set_window_text $w $name
 }
 
 proc Move {w x y} {
     Debug "Moving $w to $x $y"
     twapi::move_window $w $x $y
+}
+
+proc FindExisting {} {
+    global i ww
+    set n 1
+    while {1} {
+        set wname "Wow $n"
+        set w [twapi::find_windows -match regexp -text "^$wname\$" -visible true -single]
+        if {$w eq ""} {
+            Debug "wow $n not found, stopping"
+            return
+        }
+        Debug "found Wow $n!"
+        updateListBox $n $w $wname
+        incr n 1
+    }
+}
+
+proc Update {wh x y w h} {
+    Resize $wh [GetWidth] [GetHeight]
+    Move $wh $x $y
 }
 
 Debug "desktop workarea [twapi::get_desktop_workarea]"
@@ -194,39 +226,53 @@ Debug "display info [twapi::get_multiple_display_monitor_info]"
 # ---
 
 # wow windows handles
-set ww {}
+array set ww {}
 
-proc FindAndRename {} {
+proc Capture {} {
     global i maxI settings
     set w [FindWow]
     if {$w eq ""} {
         tk_messageBox -type ok -icon error -title "WoW Open Box Error" -message "No World of Warcraft window found"
         return
     }
-    set n "WoW $i"
-    RenameResize $w $n
+    set wname "WoW $i"
+    RenameResize $w $wname
     set x [GetX]
     set y [GetY]
     Move $w $x $y
     set settings($i,posXY) "$x $y"
     set settings($i,size) "[GetWidth] [GetHeight]"
-    set ww($i) $w
+    updateListBox $i $w $wname
+}
+
+proc updateListBox {n w wname} {
+    global ww i maxI
+    set ww($n) $w
     # 0 based index
-    set i0 [expr {$i-1}]
-    Debug "i is $i maxI is $maxI"
-    if {$i<$maxI} {
+    set i0 [expr {$n-1}]
+    Debug "n is $n i is $i maxI is $maxI"
+    if {$n<$maxI} {
         .lbw see $i0
         return
     }
     # jump by more than 1
-    for {set j $maxI} {$j < $i} {incr j} {
+    for {set j $maxI} {$j < $n} {incr j} {
         .lbw insert end "WoW $j*"
     }
-    .lbw insert $i0 $n
-    incr i 1
+    .lbw insert $i0 $wname
+    set i [expr {$n+1}]
     set maxI $i
-    return
 }
+
+proc CaptureOrUpdate {} {
+    global i ww
+    if {![info exists ww($i)]} {
+        Capture
+    } else {
+        Update $ww($i) [GetX] [GetY] [GetWidth] [GetHeight]
+    }
+}
+
 
 proc WindowLayout {} {
     tk_messageBox -type ok -icon info -title "WoW Open Box Message" -message "Not implemented yet!"
@@ -262,3 +308,4 @@ proc ConsoleSetup {} {
 
 # --- main / tweak me ---
 puts "WowOpenBox $vers started..."
+FindExisting
