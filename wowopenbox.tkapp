@@ -15,10 +15,9 @@ package require Tk
 # -- UI
 set vers "0.3.0"
 
+
 # globals
 
-# "next" window/slot #
-set i 1
 # position of the next move window
 set pos "0 0"
 # size to set
@@ -61,6 +60,25 @@ proc LoadSettings {} {
 
 LoadSettings
 
+# -- get/save sequence
+trace add variable i write updateIndex
+
+proc updateIndex {args} {
+    global i pos settings
+    Debug "i is $i - args $args"
+    if [info exists settings($i,size)] {
+        set settings(size) $settings($i,size)
+        set pos $settings($i,posXY)
+    } else {
+        UpdatePos
+    }
+}
+
+# start from slot 1
+
+# "next" window/slot #
+set i 1
+
 proc UISetup {} {
     global vers pos settings
     wm title . "WoW Open Box - Open Source Multiboxing"
@@ -78,7 +96,7 @@ proc UISetup {} {
     grid [label .l3 -text "Resize to "] [entry .e2 -textvariable settings(windowSize)] -sticky e
     grid [label .l4 -text "Move to "] [entry .e3 -textvariable pos] -sticky e
     grid [button .b2 -text "Find & rename/resize/mode wow window" -command FindAndRename]  -columnspan 2
-    grid [label .lbottom -text "(c) 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
+    grid [label .l_bottom -text "(c) 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
 }
 
 # Make it so the code can be reloaded without errors
@@ -155,25 +173,30 @@ Debug "display info [twapi::get_multiple_display_monitor_info]"
 set ww {}
 
 proc FindAndRename {} {
-    global i
+    global i settings
     set w [FindWow]
     if {$w eq ""} {
         tk_messageBox -type ok -icon error -title "WoW Open Box Error" -message "No World of Warcraft window found"
         return
     }
     RenameResize $w $i
-    Move $w [GetX] [GetY]
+    set x [GetX]
+    set y [GetY]
+    Move $w $x $y
+    set settings($i,posXY) "$x $y"
+    set settings($i,size) "[GetWidth] [GetHeight]"
     set ww($i) $w
     incr i 1
-    UpdatePos
 }
 
 proc WindowLayout {} {
     tk_messageBox -type ok -icon info -title "WoW Open Box Message" -message "Not implemented yet!"
 }
 
-set consoleSetup false
 # --- Embed tkcon console
+
+set consoleSetup false
+
 proc ConsoleSetup {} {
     global consoleSetup appsDir
     if {$consoleSetup} {
