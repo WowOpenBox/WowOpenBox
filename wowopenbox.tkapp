@@ -14,6 +14,7 @@ package require Tk
 
 # -- UI
 set vers "0.3.0"
+
 # globals
 
 # "next" window/slot #
@@ -21,10 +22,47 @@ set i 1
 # position of the next move window
 set pos "0 0"
 # size to set
-set sz "1920 1080"
+set settings(windowSize) "1920 1080"
+
+# Settings
+# -- App utils - save settings
+
+set settings(DEBUG) 0
+
+proc Debug {msg} {
+    global settings
+    if {$settings(DEBUG)} {
+        puts "DEBUG $msg"
+    }
+}
+
+set SETTINGS_FILE "~/.wowopenbox.tcl"
+
+trace add variable settings write SaveSettings
+
+proc SaveSettings {args} {
+    global SETTINGS_FILE settings
+    Debug "Saving settings to $SETTINGS_FILE (from cb $args)"
+    set f [open $SETTINGS_FILE w+]
+    foreach i [lsort [array names settings]] {
+        Debug "set settings($i) \"$settings($i)\""
+        puts $f "set settings($i) \"$settings($i)\""
+    }
+    close $f
+}
+
+proc LoadSettings {} {
+    global SETTINGS_FILE settings
+    if {[catch {source $SETTINGS_FILE} err]} {
+        puts stderr "Could not source $SETTINGS_FILE\n$err"
+        return
+    }
+}
+
+LoadSettings
 
 proc UISetup {} {
-    global vers pos sz
+    global vers pos settings
     wm title . "WoW Open Box - Open Source Multiboxing"
     # Get logo
     #curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
@@ -37,7 +75,7 @@ proc UISetup {} {
     grid [button .b1  -text "Edit Window Layout" -state disabled -command WindowLayout]  -row 0 -column 1
     grid [button .bc -text Console -command {ConsoleSetup; tkcon show}] -row 1 -column 1
     grid [label .l2 -text "Next Wow is"] [entry .e1 -textvariable i] -sticky e
-    grid [label .l3 -text "Resize to "] [entry .e2 -textvariable sz] -sticky e
+    grid [label .l3 -text "Resize to "] [entry .e2 -textvariable settings(windowSize)] -sticky e
     grid [label .l4 -text "Move to "] [entry .e3 -textvariable pos] -sticky e
     grid [button .b2 -text "Find & rename/resize/mode wow window" -command FindAndRename]  -columnspan 2
     grid [label .lbottom -text "(c) 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
@@ -51,12 +89,12 @@ if {![winfo exists .logo]} {
 # --- utilities ---
 
 proc GetHeight {} {
-    global sz
-    lindex $sz 1
+    global settings
+    lindex $settings(windowSize) 1
 }
 proc GetWidth {} {
-    global sz
-    lindex $sz 0
+    global settings
+    lindex $settings(windowSize) 0
 }
 
 proc GetX {} {
@@ -74,20 +112,21 @@ proc UpdatePos {} {
     global i pos
     set x [GetX]
     set y [GetY]
-    puts "x=$x y=$y"
+    Debug "x=$x y=$y"
     if {$i % 2} {
         incr y [GetHeight]
-        puts "incr y now $y"
+        Debug "incr y now $y"
     } else {
         set w [GetWidth]
         if {$i eq 4} {
             set w -$w
         }
         incr x $w
-        puts "incr x now $x"
+        Debug "incr x now $x"
     }
     set pos "$x $y"
 }
+
 
 # --- Windows API: https://twapi.magicsplat.com/v4.4/ui.html
 
@@ -102,13 +141,13 @@ proc RenameResize {w i} {
 }
 
 proc Move {w x y} {
-    puts "Moving $w to $x $y"
+    Debug "Moving $w to $x $y"
     twapi::move_window $w $x $y
 }
 
-puts [twapi::get_desktop_workarea]
-puts [twapi::get_display_monitors -activeonly]
-puts [twapi::get_multiple_display_monitor_info]
+Debug "desktop workarea [twapi::get_desktop_workarea]"
+Debug "display monitors [twapi::get_display_monitors -activeonly]"
+Debug "display info [twapi::get_multiple_display_monitor_info]"
 
 # ---
 
@@ -142,7 +181,7 @@ proc ConsoleSetup {} {
     }
     set bindir [file dirname [info nameofexecutable]]
     set appsDir [file join $bindir "../apps/"]
-    puts "Apps dir is $appsDir"
+    Debug "Apps dir is $appsDir"
     uplevel #0 {
         source [file join $appsDir "tkcon.tcl"]
         package require tkcon
@@ -160,5 +199,4 @@ proc ConsoleSetup {} {
 
 
 # --- main / tweak me ---
-
 puts "WowOpenBox $vers started..."
