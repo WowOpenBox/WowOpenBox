@@ -69,7 +69,7 @@ proc updateIndex {args} {
     if [info exists settings($i,size)] {
         set windowSize $settings($i,size)
         set pos $settings($i,posXY)
-    } else {
+    } elseif {$i>1} {
         UpdatePos
     }
 }
