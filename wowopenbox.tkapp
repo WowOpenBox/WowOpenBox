@@ -13,7 +13,7 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.8.0"
+set vers "0.9.0"
 
 proc Debug {msg} {
     global settings
@@ -51,6 +51,7 @@ proc LoadSettings {} {
         return
     }
     twapi::register_hotkey $settings(hk,capture) CaptureOrUpdate
+    twapi::register_hotkey $settings(hk,mouseTrack) StartStopMouseTrack
     # Set mouse control to current values
     global mouseFollow mouseRaise mouseDelay
     set mouseDelay [GetMouseDelay]
@@ -79,7 +80,7 @@ proc updateIndex {args} {
 }
 
 proc UISetup {} {
-    global vers pos windowSize settings mouseFollow mouseRaise mouseDelay
+    global vers pos windowSize settings mouseFollow mouseRaise mouseDelay mouseCoords
     wm title . "WoW Open Box - Open Source Multiboxing"
     # Get logo
     #curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
@@ -104,7 +105,31 @@ proc UISetup {} {
     grid [checkbutton .mr -text "Mouse auto raises windows" -variable mouseRaise -command UpdateMouseRaise] -columnspan 2 -sticky w
     grid [label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay] -sticky w
     bind .emd <Return> UpdateMouseDelay
+    grid [button .bml -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords] -sticky w
     grid [label .l_bottom -text "(c) 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
+}
+
+
+proc mouseTrack {} {
+    global mouseTrackOn mouseCoords
+    set mouseCoords [twapi::get_mouse_location]
+    set mouseTrackOn [after 100 mouseTrack]
+}
+
+proc StartStopMouseTrack {} {
+    global mouseTrackOn
+    if {$mouseTrackOn != ""} {
+        Debug "Stopping mouse tracking"
+        . configure -cursor arrow
+        after cancel $mouseTrackOn
+        set mouseTrackOn ""
+        .bml configure -text "Track mouse"
+    } else {
+        Debug "Starting mouse tracking"
+        . configure -cursor crosshair
+        mouseTrack
+        .bml configure -text "Stop tracking"
+    }
 }
 
 proc focusIn {w args} {
@@ -433,6 +458,7 @@ for {set n 1} {$n<=12} {incr n} {
 }
 
 set settings(hk,capture) "Ctrl-Shift-C"
+set settings(hk,mouseTrack) "Ctrl-Shift-M"
 
 LoadSettings
 
@@ -447,8 +473,9 @@ Debug "display info [twapi::get_multiple_display_monitor_info]"
 # Make it so the code can be reloaded without errors
 if {![winfo exists .logo]} {
     UISetup
+    set mouseTrackOn ""
     updateIndex
-    # Save them once
+    # Save settings once
     SaveSettings
 }
 
