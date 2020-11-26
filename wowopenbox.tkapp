@@ -13,8 +13,7 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.7.0"
-
+set vers "0.8.0-pre"
 
 # globals
 if {![info exists pos]} {
@@ -353,6 +352,32 @@ proc CaptureOrUpdate {} {
 
 proc WindowLayout {} {
     tk_messageBox -type ok -icon info -title "WoW Open Box Message" -message "Not implemented yet!"
+}
+
+# --- Mouse follow focus and raise control
+
+proc GetMouseDelay {} {
+    twapi::get_system_parameters_info SPI_GETACTIVEWNDTRKTIMEOUT
+}
+
+proc SetMouseDelay {v} {
+    twapi::set_system_parameters_info SPI_SETACTIVEWNDTRKTIMEOUT $v
+}
+
+proc GetFocusFollowMouse {} {
+    twapi::get_system_parameters_info SPI_GETACTIVEWINDOWTRACKING
+}
+
+proc SetFocusFollowMouse {v} {
+    twapi::set_system_parameters_info SPI_SETACTIVEWINDOWTRACKING $v
+}
+
+proc GetMouseRaise {} {
+    twapi::get_system_parameters_info SPI_GETACTIVEWNDTRKZORDER
+}
+
+proc SetMouseRaise {v} {
+    twapi::set_system_parameters_info SPI_SETACTIVEWNDTRKZORDER $v
 }
 
 # --- Embed tkcon console
