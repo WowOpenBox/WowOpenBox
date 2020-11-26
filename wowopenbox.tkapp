@@ -13,7 +13,7 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.6.0"
+set vers "0.7.0"
 
 
 # globals
@@ -31,20 +31,10 @@ if {![info exists pos]} {
     set maxI 1
 }
 # default hotkeys (change in you ~/.wowopenbox.tcl)
-array set settings {
-    hk1,focus "Ctrl-f1"
-    hk2,focus "Ctrl-f2"
-    hk3,focus "Ctrl-f3"
-    hk4,focus "Ctrl-f4"
-    hk5,focus "Ctrl-f5"
-    hk6,focus "Ctrl-f6"
-    hk7,focus "Ctrl-f7"
-    hk8,focus "Ctrl-f8"
-    hk9,focus "Ctrl-f9"
-    hk10,focus "Ctrl-f10"
-    hk11,focus "Ctrl-f11"
-    hk12,focus "Ctrl-f12"
-}
+for {set n 1} {$n<=12} {incr n} {
+    set settings(hk$n,focus) "Ctrl-f$n"
+    set settings(hk$n,swap) "Ctrl-Shift-f$n"
+ }
 
 proc Debug {msg} {
     global settings
@@ -84,7 +74,7 @@ LoadSettings
 trace add variable i write updateIndex
 
 proc updateIndex {args} {
-    global i pos windowSize settings
+    global i maxI pos windowSize settings
     Debug "i is $i - args $args"
     if [info exists settings($i,size)] {
         set windowSize $settings($i,size)
@@ -92,9 +82,14 @@ proc updateIndex {args} {
     } elseif {$i>1} {
         UpdatePos
     }
+    if {$i<$maxI} {
+        .l2 configure -text "Selected :"
+        .b2 configure -text "Update"
+    } else {
+        .l2 configure -text "Next Wow :"
+        .b2 configure -text "Capture"
+    }
 }
-
-updateIndex
 
 proc UISetup {} {
     global vers pos windowSize settings
@@ -137,12 +132,8 @@ proc selectChanged {w args} {
     Debug "got selectChanged $w $args: $sel - i $i max $maxI"
     if {$sel == "" } {
         set i $maxI
-        .l2 configure -text "Next Wow :"
-        .b2 configure -text "Capture"
     } else {
         set i [expr {$sel+1}]
-        .l2 configure -text "Selected :"
-        .b2 configure -text "Update"
         # Not foreground, just focus
         FocusN $i false
     }
@@ -151,6 +142,7 @@ proc selectChanged {w args} {
 # Make it so the code can be reloaded without errors
 if {![winfo exists .logo]} {
     UISetup
+    updateIndex
 }
 
 # --- utilities ---
@@ -203,6 +195,7 @@ proc FindWow {} {
 }
 
 proc Resize {w width height} {
+    Debug "Resizing $w to $width x $height"
     twapi::resize_window $w $width $height
 }
 
@@ -212,7 +205,7 @@ proc RenameResize {w name} {
 }
 
 proc Move {w x y} {
-    Debug "Moving $w to $x $y"
+    Debug "Moving $w to $x , $y"
     twapi::move_window $w $x $y
 }
 
@@ -233,7 +226,7 @@ proc FindExisting {} {
 }
 
 proc Update {wh x y w h} {
-    Resize $wh [GetWidth] [GetHeight]
+    Resize $wh $w $h
     Move $wh $x $y
 }
 
@@ -265,17 +258,40 @@ array set ww {}
 
 proc FocusN {n fg} {
     global ww
-    Debug "FocusN $n called"
-    if {[info exists ww($n)]} {
-       Debug "FocusN $n called, found window"
-       Focus $ww($n)
-       if {$fg} {
-           Debug "Also making $n foreground"
-           Foreground $ww($n)
-       }
-    } else {
+    if {![info exists ww($n)]} {
        Debug "FocusN $n called but no such window"
     }
+    Debug "FocusN $n called, found window"
+    Focus $ww($n)
+    if {$fg} {
+        Debug "Also making $n foreground"
+        Foreground $ww($n)
+    }
+}
+
+proc UpdateN {n} {
+    global ww settings
+    if {![info exists ww($n)]} {
+        Debug "Can't update non existent window $n"
+        return
+    }
+    if {![info exists settings($n,posXY)]} {
+        Debug "Can't update window $n without settings"
+        return
+    }
+    set pos $settings($n,posXY)
+    set size $settings($n,size)
+    Update $ww($n) [lindex $pos 0] [lindex $pos 1] [lindex $size 0] [lindex $size 1]
+}
+
+proc Swap {n1 n2} {
+    global ww settings
+    Debug "Swap $n1<->$n2 called"
+    set tmp $ww($n2)
+    set ww($n2) $ww($n1)
+    set ww($n1) $tmp
+    UpdateN $n1
+    UpdateN $n2
 }
 
 proc Capture {} {
@@ -287,11 +303,7 @@ proc Capture {} {
     }
     set wname "WoW $i"
     RenameResize $w $wname
-    set x [GetX]
-    set y [GetY]
-    Move $w $x $y
-    set settings($i,posXY) "$x $y"
-    set settings($i,size) "[GetWidth] [GetHeight]"
+    Move $w [GetX] [GetY]
     updateListBox $i $w $wname
 }
 
@@ -301,6 +313,12 @@ proc updateListBox {n w wname} {
     if {[info exists settings(hk$n,focus)]} {
         Debug "Setting focus hotkey for $n / $wname: $settings(hk$n,focus)"
         twapi::register_hotkey $settings(hk$n,focus) [list FocusN $n true]
+    } else {
+        Debug "No focus hotkey found or set for $n / $wname"
+    }
+    if {[info exists settings(hk$n,swap)]} {
+        Debug "Setting swap hotkey for $n / $wname: $settings(hk$n,swap)"
+        twapi::register_hotkey $settings(hk$n,swap) [list Swap 1 $n]
     } else {
         Debug "No focus hotkey found or set for $n / $wname"
     }
@@ -321,11 +339,14 @@ proc updateListBox {n w wname} {
 }
 
 proc CaptureOrUpdate {} {
-    global i ww
+    global i ww settings
+    Debug "Capturing/updating $i"
+    set settings($i,posXY) "[GetX] [GetY]"
+    set settings($i,size) "[GetWidth] [GetHeight]"
     if {![info exists ww($i)]} {
         Capture
     } else {
-        Update $ww($i) [GetX] [GetY] [GetWidth] [GetHeight]
+        UpdateN $i
     }
 }
 
