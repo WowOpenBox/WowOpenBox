@@ -13,7 +13,7 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.9.0"
+set vers "0.9.1"
 
 proc Debug {msg} {
     global settings
@@ -133,6 +133,7 @@ proc StartStopMouseTrack {} {
 }
 
 proc focusIn {w args} {
+    global i maxI
     Debug "got focusIn $w $args"
     if {[.lbw curselection]==""} {
         # only reset if there was a selection otherwise changing windows
@@ -141,15 +142,14 @@ proc focusIn {w args} {
     }
     .lbw selection clear 0 end
     selectChanged .lbw "from focus $w"
+    set i $maxI
 }
 
 proc selectChanged {w args} {
     global i maxI ww
     set sel [$w curselection]
     Debug "got selectChanged $w $args: $sel - i $i max $maxI"
-    if {$sel == "" } {
-        set i $maxI
-    } else {
+    if {$sel != "" } {
         set i [expr {$sel+1}]
         # Not foreground, just focus
         FocusN $i false
@@ -451,10 +451,10 @@ if {![info exists pos]} {
     # max ever set in list box
     set maxI 1
 }
-# default hotkeys (change in you ~/.wowopenbox.tcl)
-for {set n 1} {$n<=12} {incr n} {
-    set settings(hk$n,focus) "Ctrl-f$n"
-    set settings(hk$n,swap) "Ctrl-Shift-f$n"
+# default hotkeys (change/add more in you wowopenboxSettings.tcl)
+for {set n 1} {$n<=9} {incr n} {
+    set settings(hk$n,focus) "Ctrl-F$n"
+    set settings(hk$n,swap) "Ctrl-Shift-F$n"
 }
 
 set settings(hk,capture) "Ctrl-Shift-C"
