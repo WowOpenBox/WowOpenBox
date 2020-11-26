@@ -13,7 +13,7 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.8.0-pre2"
+set vers "0.8.0"
 
 proc Debug {msg} {
     global settings
@@ -51,6 +51,11 @@ proc LoadSettings {} {
         return
     }
     twapi::register_hotkey $settings(hk,capture) CaptureOrUpdate
+    # Set mouse control to current values
+    global mouseFollow mouseRaise mouseDelay
+    set mouseDelay [GetMouseDelay]
+    set mouseFollow [GetFocusFollowMouse]
+    set mouseRaise [GetMouseRaise]
     Debug "Settings (re)Loaded."
 }
 
@@ -74,7 +79,7 @@ proc updateIndex {args} {
 }
 
 proc UISetup {} {
-    global vers pos windowSize settings
+    global vers pos windowSize settings mouseFollow mouseRaise mouseDelay
     wm title . "WoW Open Box - Open Source Multiboxing"
     # Get logo
     #curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
@@ -94,6 +99,11 @@ proc UISetup {} {
     grid [button .b2 -text "Capture" -command CaptureOrUpdate] -pady 5 -columnspan 2
     grid [listbox .lbw -height 6] -columnspan 2
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
+    grid [label .l6 -text "Mouse settings:"] -columnspan 2 -sticky w
+    grid [checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -columnspan 2 -sticky w
+    grid [checkbutton .mr -text "Mouse auto raises windows" -variable mouseRaise -command UpdateMouseRaise] -columnspan 2 -sticky w
+    grid [label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay] -sticky w
+    bind .emd <Return> UpdateMouseDelay
     grid [label .l_bottom -text "(c) 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
 }
 
@@ -357,6 +367,22 @@ proc SetMouseRaise {v} {
     twapi::set_system_parameters_info SPI_SETACTIVEWNDTRKZORDER $v
 }
 
+# -- sync with widget values
+
+proc UpdateMouseFollow {} {
+    global mouseFollow
+    SetFocusFollowMouse $mouseFollow
+}
+
+proc UpdateMouseRaise {} {
+    global mouseRaise
+    SetMouseRaise $mouseRaise
+}
+
+proc UpdateMouseDelay {} {
+    global mouseDelay
+    SetMouseDelay $mouseDelay
+}
 # --- Embed tkcon console
 
 set consoleSetup false
