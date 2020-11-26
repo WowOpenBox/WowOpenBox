@@ -13,7 +13,7 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.9.1"
+set vers "0.10.0"
 
 proc Debug {msg} {
     global settings
@@ -62,11 +62,14 @@ proc LoadSettings {} {
 
 
 proc updateIndex {args} {
-    global i maxI pos windowSize settings
+    global i maxI pos windowSize stayOnTop settings
     Debug "i is $i - args $args"
     if {[info exists settings($i,size)]} {
         set windowSize $settings($i,size)
         set pos $settings($i,posXY)
+        if {[info exists settings($i,stayOnTop)]} {
+            set stayOnTop $settings($i,stayOnTop)
+        }
     } elseif {$i>1} {
         UpdatePos
     }
@@ -80,7 +83,7 @@ proc updateIndex {args} {
 }
 
 proc UISetup {} {
-    global vers pos windowSize settings mouseFollow mouseRaise mouseDelay mouseCoords
+    global vers stayOnTop pos windowSize settings mouseFollow mouseRaise mouseDelay mouseCoords
     wm title . "WoW Open Box - Open Source Multiboxing"
     # Get logo
     #curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
@@ -97,6 +100,7 @@ proc UISetup {} {
     bind .e1 <FocusIn> [list focusIn %W]
     grid [label .l3 -text "Resize to "] [entry .e2 -textvariable windowSize] -sticky e
     grid [label .l4 -text "Move to "] [entry .e3 -textvariable pos] -sticky e
+    grid [checkbutton .csop -text "Stay on top" -variable stayOnTop] -columnspan 2
     grid [button .b2 -text "Capture" -command CaptureOrUpdate] -pady 5 -columnspan 2
     grid [listbox .lbw -height 6] -columnspan 2
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
@@ -210,8 +214,7 @@ proc Resize {w width height} {
     twapi::resize_window $w $width $height
 }
 
-proc RenameResize {w name} {
-    Resize $w [GetWidth] [GetHeight]
+proc Rename {w name} {
     twapi::set_window_text $w $name
 }
 
@@ -236,9 +239,14 @@ proc FindExisting {} {
     }
 }
 
-proc Update {wh x y w h} {
+proc Update {wh x y w h top} {
     Resize $wh $w $h
     Move $wh $x $y
+    if {$top} {
+        twapi::set_window_zorder $wh toplayer
+    } else {
+        twapi::set_window_zorder $wh bottomlayer
+    }
 }
 
 proc Focus {wh} {
@@ -289,9 +297,14 @@ proc UpdateN {n} {
         Debug "Can't update window $n without settings"
         return
     }
-    set pos $settings($n,posXY)
-    set size $settings($n,size)
-    Update $ww($n) [lindex $pos 0] [lindex $pos 1] [lindex $size 0] [lindex $size 1]
+    # local/temp only
+    set lpos $settings($n,posXY)
+    set lsize $settings($n,size)
+    set lstayOnTop 0
+    if {[info exists settings($n,stayOnTop)]} {
+        set lstayOnTop $settings($n,stayOnTop)
+    }
+    Update $ww($n) [lindex $lpos 0] [lindex $lpos 1] [lindex $lsize 0] [lindex $lsize 1] $lstayOnTop
 }
 
 proc Swap {n1 n2} {
@@ -305,15 +318,15 @@ proc Swap {n1 n2} {
 }
 
 proc Capture {} {
-    global i maxI settings
+    global i maxI settings stayOnTop
     set w [FindWow]
     if {$w eq ""} {
         tk_messageBox -type ok -icon error -title "WoW Open Box Error" -message "No World of Warcraft window found"
         return
     }
     set wname "WoW $i"
-    RenameResize $w $wname
-    Move $w [GetX] [GetY]
+    Rename $w $wname
+    Update $w [GetX] [GetY] [GetWidth] [GetHeight] $stayOnTop
     updateListBox $i $w $wname
 }
 
@@ -349,10 +362,11 @@ proc updateListBox {n w wname} {
 }
 
 proc CaptureOrUpdate {} {
-    global i ww settings
+    global i ww settings stayOnTop
     Debug "Capturing/updating $i"
     set settings($i,posXY) "[GetX] [GetY]"
     set settings($i,size) "[GetWidth] [GetHeight]"
+    set settings($i,stayOnTop) $stayOnTop
     if {![info exists ww($i)]} {
         Capture
     } else {
@@ -443,6 +457,8 @@ if {![info exists pos]} {
     set pos "0 0"
     # size to set
     set windowSize "1920 1080"
+    # stay on top
+    set stayOnTop 0
     # debug on/off
     set settings(DEBUG) 0
     # start from slot 1
