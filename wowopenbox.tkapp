@@ -13,27 +13,7 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.8.0-pre"
-
-# globals
-if {![info exists pos]} {
-    # position of the next move window
-    set pos "0 0"
-    # size to set
-    set windowSize "1920 1080"
-    # debug on/off
-    set settings(DEBUG) 0
-    # start from slot 1
-    # "next" window/slot #
-    set i 1
-    # max ever set in list box
-    set maxI 1
-}
-# default hotkeys (change in you ~/.wowopenbox.tcl)
-for {set n 1} {$n<=12} {incr n} {
-    set settings(hk$n,focus) "Ctrl-f$n"
-    set settings(hk$n,swap) "Ctrl-Shift-f$n"
- }
+set vers "0.8.0-pre2"
 
 proc Debug {msg} {
     global settings
@@ -44,38 +24,41 @@ proc Debug {msg} {
 
 # Settings
 # -- App utils - save settings
-set SETTINGS_FILE "~/.wowopenbox.tcl"
+set app_dir [file dirname [file normalize [info script]]]
 
-trace add variable settings write SaveSettings
+set SETTINGS_FILE [file join $app_dir "wowopenboxSettings.tcl"]
 
 proc SaveSettings {args} {
     global SETTINGS_FILE settings
     Debug "Saving settings to $SETTINGS_FILE (from cb $args)"
     set f [open $SETTINGS_FILE w+]
+    puts $f "array set settings {"
     foreach i [lsort [array names settings]] {
-        Debug "set settings($i) \"$settings($i)\""
-        puts $f "set settings($i) \"$settings($i)\""
+        #  Debug "saving $i \"$settings($i)\""
+        puts $f "\t$i\t\"$settings($i)\""
     }
+    puts $f "}"
     close $f
 }
 
 proc LoadSettings {} {
     global SETTINGS_FILE settings
+    if {[winfo exists .b1]} {
+        .b1 configure -text "Edit Settings" -command EditSettings
+    }
     if {[catch {source $SETTINGS_FILE} err]} {
         puts stderr "Could not source $SETTINGS_FILE\n$err"
         return
     }
+    twapi::register_hotkey $settings(hk,capture) CaptureOrUpdate
+    Debug "Settings (re)Loaded."
 }
 
-LoadSettings
-
-# -- get/save sequence
-trace add variable i write updateIndex
 
 proc updateIndex {args} {
     global i maxI pos windowSize settings
     Debug "i is $i - args $args"
-    if [info exists settings($i,size)] {
+    if {[info exists settings($i,size)]} {
         set windowSize $settings($i,size)
         set pos $settings($i,posXY)
     } elseif {$i>1} {
@@ -102,7 +85,7 @@ proc UISetup {} {
     grid [label .logo -image $imgObj70] -rowspan 3
     # grid [label .l1  -text "Main Menu"] -columnspan 2
     grid [button .bH -text "Help" -command Help]  -row 0 -column 1
-    grid [button .b1  -text "Edit Window Layout" -state disabled -command WindowLayout]  -row 1 -column 1
+    grid [button .b1  -text "Edit Settings" -command EditSettings]  -row 1 -column 1
     grid [button .bc -text "Debug Console" -command {ConsoleSetup; tkcon show}] -row 2 -column 1
     grid [label .l2 -text "Next Wow :"] [entry .e1 -textvariable i] -sticky e
     bind .e1 <FocusIn> [list focusIn %W]
@@ -136,12 +119,6 @@ proc selectChanged {w args} {
         # Not foreground, just focus
         FocusN $i false
     }
-}
-
-# Make it so the code can be reloaded without errors
-if {![winfo exists .logo]} {
-    UISetup
-    updateIndex
 }
 
 # --- utilities ---
@@ -238,17 +215,16 @@ proc Foreground {wh} {
 }
 
 proc Help {} {
-    twapi::shell_execute -path https://www.wowopenbox.org/help?v=$vers
-}
-
-proc Help {} {
     global vers
     twapi::shell_execute -path https://www.wowopenbox.org/help?v=$vers
 }
 
-Debug "desktop workarea [twapi::get_desktop_workarea]"
-Debug "display monitors [twapi::get_display_monitors -activeonly]"
-Debug "display info [twapi::get_multiple_display_monitor_info]"
+proc EditSettings {} {
+    global SETTINGS_FILE
+    Debug "Edit settings requested"
+    twapi::shell_execute -path notepad.exe -params $SETTINGS_FILE
+    .b1 configure -text "Reload Settings" -command LoadSettings
+}
 
 # ---
 
@@ -347,6 +323,7 @@ proc CaptureOrUpdate {} {
     } else {
         UpdateN $i
     }
+    SaveSettings
 }
 
 
@@ -407,6 +384,47 @@ proc ConsoleSetup {} {
 }
 # --- done with console
 
+
+#---- settings and initial setup
+# globals
+if {![info exists pos]} {
+    # position of the next move window
+    set pos "0 0"
+    # size to set
+    set windowSize "1920 1080"
+    # debug on/off
+    set settings(DEBUG) 0
+    # start from slot 1
+    # "next" window/slot #
+    set i 1
+    # max ever set in list box
+    set maxI 1
+}
+# default hotkeys (change in you ~/.wowopenbox.tcl)
+for {set n 1} {$n<=12} {incr n} {
+    set settings(hk$n,focus) "Ctrl-f$n"
+    set settings(hk$n,swap) "Ctrl-Shift-f$n"
+}
+
+set settings(hk,capture) "Ctrl-Shift-C"
+
+LoadSettings
+
+# -- get/save sequence
+trace add variable i write updateIndex
+
+# wip for layouts
+Debug "desktop workarea [twapi::get_desktop_workarea]"
+Debug "display monitors [twapi::get_display_monitors -activeonly]"
+Debug "display info [twapi::get_multiple_display_monitor_info]"
+
+# Make it so the code can be reloaded without errors
+if {![winfo exists .logo]} {
+    UISetup
+    updateIndex
+    # Save them once
+    SaveSettings
+}
 
 # --- main / tweak me ---
 puts "WowOpenBox $vers started..."
