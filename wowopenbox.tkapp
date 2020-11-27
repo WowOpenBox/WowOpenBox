@@ -285,6 +285,7 @@ proc FindOtherCopy {} {
     global ourTitle
     set w [twapi::find_windows -match regexp -text "^$ourTitle\$" -visible true -single]
     if {$w!=""} {
+        wm state . withdrawn
         catch {twapi::flash_window $w -count 3} err
         puts "Found another window of ours. Flashed it. $err"
         tk_messageBox -type ok -icon error -title "WoW Open Box duplicate error" \
@@ -459,7 +460,7 @@ proc WindowLayout {} {
     Debug "$minX,$minY - $maxX,$maxY - $width x $height"
 }
 
-proc ChangeNumWindows {} {
+proc ChangeNumWindows {n} {
     
 }
 
