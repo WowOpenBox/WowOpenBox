@@ -50,8 +50,8 @@ proc LoadSettings {} {
         puts stderr "Could not source $SETTINGS_FILE\n$err"
         return
     }
-    twapi::register_hotkey $settings(hk,capture) CaptureOrUpdate
-    twapi::register_hotkey $settings(hk,mouseTrack) StartStopMouseTrack
+    RegisterHotkey "Capture" hk,capture CaptureOrUpdate
+    RegisterHotkey "Start/Stop mouse tracking" hk,mouseTrack StartStopMouseTrack
     # Set mouse control to current values
     global mouseFollow mouseRaise mouseDelay
     set mouseDelay [GetMouseDelay]
@@ -82,9 +82,10 @@ proc updateIndex {args} {
     }
 }
 
+set ourTitle "WoW Open Box - Open Source Multiboxing"
 proc UISetup {} {
-    global vers stayOnTop pos windowSize settings mouseFollow mouseRaise mouseDelay mouseCoords
-    wm title . "WoW Open Box - Open Source Multiboxing"
+    global vers stayOnTop pos windowSize settings mouseFollow mouseRaise mouseDelay mouseCoords ourTitle
+    wm title . $ourTitle
     # Get logo
     #curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
     curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox70.png?v=$vers" -bodyvar img70
@@ -269,6 +270,30 @@ proc EditSettings {} {
     .b1 configure -text "Reload Settings" -command LoadSettings
 }
 
+# Hotkeys
+proc RegisterHotkey {msg var callback} {
+    global settings
+    set hk $settings($var)
+    if {[catch {twapi::register_hotkey $hk $callback} err]} {
+        puts "hotkey error $hk for $msg: $err"
+         tk_messageBox -type ok -icon error -title "WoW Open Box HotKey error" \
+         -message "Conflict for hotkey for $msg, change $var in settings to use something different than $hk"
+    }
+}
+
+proc FindOtherCopy {} {
+    global ourTitle
+    set w [twapi::find_windows -match regexp -text "^$ourTitle\$" -visible true -single]
+    if {$w!=""} {
+        catch {twapi::flash_window $w -count 3} err
+        puts "Found another window of ours. Flashed it. $err"
+        tk_messageBox -type ok -icon error -title "WoW Open Box duplicate error" \
+          -message "Another copy of WowOpenBox is running, please exit it before starting a new one (or hotkeys will conflict)."
+        catch {Foreground $w; Focus $w; twapi::flash_window $w -count 3} err
+        puts "Bring other window in focus. $err"
+        exit 1
+    }
+}
 # ---
 
 # wow windows handles
@@ -335,13 +360,13 @@ proc updateListBox {n w wname} {
     set ww($n) $w
     if {[info exists settings(hk$n,focus)]} {
         Debug "Setting focus hotkey for $n / $wname: $settings(hk$n,focus)"
-        twapi::register_hotkey $settings(hk$n,focus) [list FocusN $n true]
+        RegisterHotkey "Focus window $n" hk$n,focus [list FocusN $n true]
     } else {
         Debug "No focus hotkey found or set for $n / $wname"
     }
     if {[info exists settings(hk$n,swap)]} {
         Debug "Setting swap hotkey for $n / $wname: $settings(hk$n,swap)"
-        twapi::register_hotkey $settings(hk$n,swap) [list Swap 1 $n]
+        RegisterHotkey "Swap window $n" hk$n,swap [list Swap 1 $n]
     } else {
         Debug "No focus hotkey found or set for $n / $wname"
     }
@@ -480,6 +505,7 @@ proc UpdateMouseDelay {} {
 #---- settings and initial setup
 # globals
 if {![info exists pos]} {
+    FindOtherCopy
     # position of the next move window
     set pos "0 0"
     # size to set
