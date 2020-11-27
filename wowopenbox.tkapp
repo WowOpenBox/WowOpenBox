@@ -13,7 +13,7 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.11.0-pre"
+set vers "0.11.0"
 
 proc Debug {msg} {
     global settings
@@ -409,11 +409,11 @@ proc WindowLayout {} {
         return
     }
     toplevel $tw
-    wm title $tw "WOB Window Layout"
+    wm title $tw "WOB Window Layout - WORK IN PROGRESS"
     set sw [scale $tw.s -variable settings(numWindows) -orien horizontal -from 1 -to 11 -command ChangeNumWindows]
     grid [label $tw.l1 -text "How many windows:"] $sw -sticky s
     grid [canvas $tw.c -relief ridge -bd 2] -columnspan 2 -padx 5 -pady 5
-    grid [button $tw.bsave -text "Save" -command SaveSettings] -pady 10 -columnspan 2
+    grid [button $tw.bsave -text "Save \[Work in progress... Stay tuned\]" -command SaveSettings -state disabled] -pady 10 -columnspan 2
     #tk_messageBox -type ok -icon info -title "WoW Open Box Message" -message "Not implemented yet!"
     set displayInfo [twapi::get_multiple_display_monitor_info]
     Debug "displayInfo = $displayInfo"
@@ -443,16 +443,20 @@ proc WindowLayout {} {
     Debug "bbox 2 [$tw.c bbox all]"
     set width [expr $maxX-$minX]
     set height [expr $maxY-$minY]
-    $tw.c configure -width [expr {$width*$scale+8}] -height [expr {$height*$scale+8}]
-    set scrollX [expr {round($minX*-$scale)}]
-    set scrollY [expr {round($minY*-$scale)}]
-    set x [expr round(-1.5 * $minX * $scale)]
-    set y [expr round(2.5 * ($minY+$maxY) / [winfo height $tw.c])]
-    $tw.c xview scroll $x units
-
+    $tw.c configure -width [expr {$width*$scale+8}] -height [expr {$height*$scale+8}] \
+        -scrollregion [list [expr {$minX*$scale-4}] [expr {$minY*$scale-4}] [expr {$maxX*$scale}] [expr {$maxY*$scale}]]
+    Debug "xview [$tw.c xview]"
+    Debug "yview [$tw.c xview]"
+    #$tw.c xview moveto 0
+    #$tw.c yview moveto 0
+#    set scrollX [expr {round($minX*-$scale)}]
+#    set scrollY [expr {round($minY*-$scale)}]
+#    set x [expr round(-1.5 * $minX * $scale)]
+#    set y [expr round(2.5 * ($minY+$maxY) / [winfo height $tw.c])]
+#    $tw.c xview scroll $x units
     bind $tw.c <ButtonPress-1> {%W scan mark   %x %y; Debug "mark %x %y"}
     bind $tw.c <B1-Motion>     {%W scan dragto %x %y 1; Debug "drag to %x %y"}
-    Debug "$minX,$minY - $maxX,$maxY - $width x $height- scroll $scrollX,$scrollY   x $x y $y"
+    Debug "$minX,$minY - $maxX,$maxY - $width x $height"
 }
 
 proc ChangeNumWindows {} {
