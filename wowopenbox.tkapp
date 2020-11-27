@@ -13,7 +13,7 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.10.0"
+set vers "0.11.0-pre"
 
 proc Debug {msg} {
     global settings
@@ -75,10 +75,10 @@ proc updateIndex {args} {
     }
     if {$i<$maxI} {
         .l2 configure -text "Selected :"
-        .b2 configure -text "Update"
+        .b2 configure -text " Update "
     } else {
         .l2 configure -text "Next Wow :"
-        .b2 configure -text "Capture"
+        .b2 configure -text " Capture "
     }
 }
 
@@ -95,13 +95,13 @@ proc UISetup {} {
     # grid [label .l1  -text "Main Menu"] -columnspan 2
     grid [button .bH -text "Help" -command Help]  -row 0 -column 1
     grid [button .b1  -text "Edit Settings" -command EditSettings]  -row 1 -column 1
-    grid [button .bc -text "Debug Console" -command {ConsoleSetup; tkcon show}] -row 2 -column 1
+    grid [button .bwl -text "Window Layout" -command WindowLayout] -row 2 -column 1
     grid [label .l2 -text "Next Wow :"] [entry .e1 -textvariable i] -sticky e
     bind .e1 <FocusIn> [list focusIn %W]
     grid [label .l3 -text "Resize to "] [entry .e2 -textvariable windowSize] -sticky e
     grid [label .l4 -text "Move to "] [entry .e3 -textvariable pos] -sticky e
     grid [checkbutton .csop -text "Stay on top" -variable stayOnTop] -columnspan 2
-    grid [button .b2 -text "Capture" -command CaptureOrUpdate] -pady 5 -columnspan 2
+    grid [button .b2 -text " Capture " -command CaptureOrUpdate] -pady 5 -columnspan 2
     grid [listbox .lbw -height 6] -columnspan 2
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
     grid [label .l6 -text "Mouse settings:"] -columnspan 2 -sticky w
@@ -377,7 +377,61 @@ proc CaptureOrUpdate {} {
 
 
 proc WindowLayout {} {
-    tk_messageBox -type ok -icon info -title "WoW Open Box Message" -message "Not implemented yet!"
+    global settings
+    set tw .layout
+    if {[winfo exists $tw]} {
+        $tw show
+        return
+    }
+    toplevel $tw
+    wm title $tw "WOB Window Layout"
+    set sw [scale $tw.s -variable settings(numWindows) -orien horizontal -from 1 -to 11 -command ChangeNumWindows]
+    grid [label $tw.l1 -text "How many windows:"] $sw -sticky s
+    grid [canvas $tw.c -relief ridge -bd 2] -columnspan 2 -padx 5 -pady 5
+    grid [button $tw.bsave -text "Save" -command SaveSettings] -pady 10 -columnspan 2
+    #tk_messageBox -type ok -icon info -title "WoW Open Box Message" -message "Not implemented yet!"
+    set displayInfo [twapi::get_multiple_display_monitor_info]
+    Debug "displayInfo = $displayInfo"
+    set n 0
+    set colors {navyblue purple orange darkgreen black}
+    foreach monitor $displayInfo {
+        array set info $monitor
+        lassign $info(-workarea) x1 y1 x2 y2
+        if {$n==0} {
+            set minX $x1
+            set maxX $x2
+            set minY $y1
+            set maxY $y2
+        } else {
+            set minX [expr min($minX,$x1)]
+            set maxX [expr max($maxX,$x2)]
+            set minY [expr min($minY,$y1)]
+            set maxY [expr max($maxY,$y2)]
+        }
+        $tw.c create rectangle $x1 $y1 $x2 $y2 -fill [lindex $colors $n]
+        incr n 1
+        Debug "Area $x1,$y1 - $x2,$y2"
+    }
+    Debug "bbox 1 [$tw.c bbox all]"
+    set scale [expr {1./8}]
+    $tw.c scale all 0 0 $scale $scale
+    Debug "bbox 2 [$tw.c bbox all]"
+    set width [expr $maxX-$minX]
+    set height [expr $maxY-$minY]
+    $tw.c configure -width [expr {$width*$scale+8}] -height [expr {$height*$scale+8}]
+    set scrollX [expr {round($minX*-$scale)}]
+    set scrollY [expr {round($minY*-$scale)}]
+    set x [expr round(-1.5 * $minX * $scale)]
+    set y [expr round(2.5 * ($minY+$maxY) / [winfo height $tw.c])]
+    $tw.c xview scroll $x units
+
+    bind $tw.c <ButtonPress-1> {%W scan mark   %x %y; Debug "mark %x %y"}
+    bind $tw.c <B1-Motion>     {%W scan dragto %x %y 1; Debug "drag to %x %y"}
+    Debug "$minX,$minY - $maxX,$maxY - $width x $height- scroll $scrollX,$scrollY   x $x y $y"
+}
+
+proc ChangeNumWindows {} {
+    
 }
 
 # --- Mouse follow focus and raise control
@@ -422,33 +476,6 @@ proc UpdateMouseDelay {} {
     global mouseDelay
     SetMouseDelay $mouseDelay
 }
-# --- Embed tkcon console
-
-set consoleSetup false
-
-proc ConsoleSetup {} {
-    global consoleSetup appsDir
-    if {$consoleSetup} {
-        return
-    }
-    set bindir [file dirname [info nameofexecutable]]
-    set appsDir [file join $bindir "../apps/"]
-    Debug "Apps dir is $appsDir"
-    uplevel #0 {
-        source [file join $appsDir "tkcon.tcl"]
-        package require tkcon
-        set ::tkcon::PRIV(showOnStartup) 0
-        set ::tkcon::PRIV(root) .console
-        set ::tkcon::PRIV(protocol) {tkcon hide}
-        #set tkcon::PRIV(name) "Wow Open Box"
-        set ::tkcon::OPT(exec) ""
-        tkcon::Init
-        tkcon title "Wow Open Box console"
-    }
-    set consoleSetup true
-}
-# --- done with console
-
 
 #---- settings and initial setup
 # globals
@@ -461,6 +488,8 @@ if {![info exists pos]} {
     set stayOnTop 0
     # debug on/off
     set settings(DEBUG) 0
+    # numWindows
+    set settings(numWindows) 5
     # start from slot 1
     # "next" window/slot #
     set i 1
@@ -482,9 +511,9 @@ LoadSettings
 trace add variable i write updateIndex
 
 # wip for layouts
-Debug "desktop workarea [twapi::get_desktop_workarea]"
-Debug "display monitors [twapi::get_display_monitors -activeonly]"
-Debug "display info [twapi::get_multiple_display_monitor_info]"
+#Debug "desktop workarea [twapi::get_desktop_workarea]"
+#Debug "display monitors [twapi::get_display_monitors -activeonly]"
+#Debug "display info [twapi::get_multiple_display_monitor_info]"
 
 # Make it so the code can be reloaded without errors
 if {![winfo exists .logo]} {
