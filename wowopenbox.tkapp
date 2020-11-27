@@ -13,7 +13,7 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.11.0"
+set vers "0.12.0"
 
 proc Debug {msg} {
     global settings
@@ -52,6 +52,8 @@ proc LoadSettings {} {
     }
     RegisterHotkey "Capture" hk,capture CaptureOrUpdate
     RegisterHotkey "Start/Stop mouse tracking" hk,mouseTrack StartStopMouseTrack
+    RegisterHotkey "Focus next window" hk,focusNextWindow FocusNextWindow
+    RegisterHotkey "Focus previous window" hk,focusPreviousWindow FocusPreviousWindow
     # Set mouse control to current values
     global mouseFollow mouseRaise mouseDelay
     set mouseDelay [GetMouseDelay]
@@ -301,7 +303,7 @@ proc FindOtherCopy {} {
 array set ww {}
 
 proc FocusN {n fg} {
-    global ww
+    global ww focusWindow
     if {![info exists ww($n)]} {
        Debug "FocusN $n called but no such window"
     }
@@ -311,6 +313,22 @@ proc FocusN {n fg} {
         Debug "Also making $n foreground"
         Foreground $ww($n)
     }
+    set focusWindow $n
+}
+
+proc FocusNextWindow {} {
+    global focusWindow maxI
+    # maxI is one more than number of windows
+    set n [expr {$focusWindow % ($maxI-1) + 1}]
+    Debug "FocusNextWindow: focusWindow $focusWindow maxI $maxI -> $n"
+    FocusN $n true
+}
+
+proc FocusPreviousWindow {} {
+    global focusWindow maxI
+    set n [expr {($focusWindow+$maxI-3) % ($maxI-1) + 1}]
+    Debug "FocusPreviousWindow: focusWindow $focusWindow maxI $maxI -> $n"
+    FocusN $n true
 }
 
 proc UpdateN {n} {
@@ -526,6 +544,8 @@ if {![info exists pos]} {
     set i 1
     # max ever set in list box
     set maxI 1
+    # currently focused windows (at least as far as WOB is concerned)
+    set focusWindow 1
 }
 # default hotkeys (change/add more in you wowopenboxSettings.tcl)
 for {set n 1} {$n<=9} {incr n} {
@@ -535,6 +555,8 @@ for {set n 1} {$n<=9} {incr n} {
 
 set settings(hk,capture) "Ctrl-Shift-C"
 set settings(hk,mouseTrack) "Ctrl-Shift-M"
+set settings(hk,focusNextWindow) "Ctrl-Shift-N"
+set settings(hk,focusPreviousWindow) "Ctrl-Shift-P"
 
 LoadSettings
 
