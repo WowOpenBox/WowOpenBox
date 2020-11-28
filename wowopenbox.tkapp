@@ -13,7 +13,7 @@ package require TclCurl
 package require Tk
 
 # -- UI
-set vers "0.12.0"
+set vers "1.0.0-pre1"
 
 proc Debug {msg} {
     global settings
@@ -64,18 +64,18 @@ proc LoadSettings {} {
 
 
 proc updateIndex {args} {
-    global i maxI pos windowSize stayOnTop settings
-    Debug "i is $i - args $args"
-    if {[info exists settings($i,size)]} {
-        set windowSize $settings($i,size)
-        set pos $settings($i,posXY)
-        if {[info exists settings($i,stayOnTop)]} {
-            set stayOnTop $settings($i,stayOnTop)
+    global nextWindow maxNumW pos windowSize stayOnTop settings
+    Debug "nextWindow is $nextWindow - args $args"
+    if {[info exists settings($nextWindow,size)]} {
+        set windowSize $settings($nextWindow,size)
+        set pos $settings($nextWindow,posXY)
+        if {[info exists settings($nextWindow,stayOnTop)]} {
+            set stayOnTop $settings($nextWindow,stayOnTop)
         }
-    } elseif {$i>1} {
+    } elseif {$nextWindow>1} {
         UpdatePos
     }
-    if {$i<$maxI} {
+    if {$nextWindow<$maxNumW} {
         .l2 configure -text "Selected :"
         .b2 configure -text " Update "
     } else {
@@ -99,7 +99,7 @@ proc UISetup {} {
     grid [button .bH -text "Help" -command Help]  -row 0 -column 1
     grid [button .b1  -text "Edit Settings" -command EditSettings]  -row 1 -column 1
     grid [button .bwl -text "Window Layout" -command WindowLayout] -row 2 -column 1
-    grid [label .l2 -text "Next Wow :"] [entry .e1 -textvariable i] -sticky e
+    grid [label .l2 -text "Next Wow :"] [entry .e1 -textvariable nextWindow] -sticky e
     bind .e1 <FocusIn> [list focusIn %W]
     grid [label .l3 -text "Resize to "] [entry .e2 -textvariable windowSize] -sticky e
     grid [label .l4 -text "Move to "] [entry .e3 -textvariable pos] -sticky e
@@ -140,7 +140,7 @@ proc StartStopMouseTrack {} {
 }
 
 proc focusIn {w args} {
-    global i maxI
+    global nextWindow maxNumW
     Debug "got focusIn $w $args"
     if {[.lbw curselection]==""} {
         # only reset if there was a selection otherwise changing windows
@@ -149,17 +149,17 @@ proc focusIn {w args} {
     }
     .lbw selection clear 0 end
     selectChanged .lbw "from focus $w"
-    set i $maxI
+    set nextWindow $maxNumW
 }
 
 proc selectChanged {w args} {
-    global i maxI ww
+    global nextWindow maxNumW ww
     set sel [$w curselection]
-    Debug "got selectChanged $w $args: $sel - i $i max $maxI"
+    Debug "got selectChanged $w $args: $sel - nextWindow $nextWindow max $maxNumW"
     if {$sel != "" } {
-        set i [expr {$sel+1}]
+        set nextWindow [expr {$sel+1}]
         # Not foreground, just focus
-        FocusN $i false
+        FocusN $nextWindow false
     }
 }
 
@@ -186,16 +186,16 @@ proc GetY {} {
 
 # Does square first 4 windows
 proc UpdatePos {} {
-    global i pos
+    global nextWindow pos
     set x [GetX]
     set y [GetY]
     Debug "x=$x y=$y"
-    if {$i % 2} {
+    if {$nextWindow % 2} {
         incr y [GetHeight]
         Debug "incr y now $y"
     } else {
         set w [GetWidth]
-        if {$i eq 4} {
+        if {$nextWindow eq 4} {
             set w -$w
         }
         incr x $w
@@ -227,7 +227,7 @@ proc Move {w x y} {
 }
 
 proc FindExisting {} {
-    global i ww
+    global nextWindow ww
     set n 1
     while {1} {
         set wname "Wow $n"
@@ -317,17 +317,17 @@ proc FocusN {n fg} {
 }
 
 proc FocusNextWindow {} {
-    global focusWindow maxI
-    # maxI is one more than number of windows
-    set n [expr {$focusWindow % ($maxI-1) + 1}]
-    Debug "FocusNextWindow: focusWindow $focusWindow maxI $maxI -> $n"
+    global focusWindow maxNumW
+    # maxNumW is one more than number of windows
+    set n [expr {$focusWindow % ($maxNumW-1) + 1}]
+    Debug "FocusNextWindow: focusWindow $focusWindow maxNumW $maxNumW -> $n"
     FocusN $n true
 }
 
 proc FocusPreviousWindow {} {
-    global focusWindow maxI
-    set n [expr {($focusWindow+$maxI-3) % ($maxI-1) + 1}]
-    Debug "FocusPreviousWindow: focusWindow $focusWindow maxI $maxI -> $n"
+    global focusWindow maxNumW
+    set n [expr {($focusWindow+$maxNumW-3) % ($maxNumW-1) + 1}]
+    Debug "FocusPreviousWindow: focusWindow $focusWindow maxNumW $maxNumW -> $n"
     FocusN $n true
 }
 
@@ -362,20 +362,20 @@ proc Swap {n1 n2} {
 }
 
 proc Capture {} {
-    global i maxI settings stayOnTop
+    global nextWindow maxNumW settings stayOnTop
     set w [FindWow]
     if {$w eq ""} {
         tk_messageBox -type ok -icon error -title "WoW Open Box Error" -message "No World of Warcraft window found"
         return
     }
-    set wname "WoW $i"
+    set wname "WoW $nextWindow"
     Rename $w $wname
     Update $w [GetX] [GetY] [GetWidth] [GetHeight] $stayOnTop
-    updateListBox $i $w $wname
+    updateListBox $nextWindow $w $wname
 }
 
 proc updateListBox {n w wname} {
-    global ww i maxI settings
+    global ww nextWindow maxNumW settings
     set ww($n) $w
     if {[info exists settings(hk$n,focus)]} {
         Debug "Setting focus hotkey for $n / $wname: $settings(hk$n,focus)"
@@ -390,38 +390,38 @@ proc updateListBox {n w wname} {
         Debug "No focus hotkey found or set for $n / $wname"
     }
     # 0 based index
-    set i0 [expr {$n-1}]
-    Debug "n is $n i is $i maxI is $maxI"
-    if {$n<$maxI} {
-        .lbw see $i0
+    set n0 [expr {$n-1}]
+    Debug "n is $n nextWindow is $nextWindow maxNumW is $maxNumW"
+    if {$n<$maxNumW} {
+        .lbw see $n0
         return
     }
     # jump by more than 1
-    for {set j $maxI} {$j < $n} {incr j} {
-        .lbw insert end "WoW $j*"
+    for {set i $maxNumW} {$i < $n} {incr i} {
+        .lbw insert end "WoW $i*"
     }
-    .lbw insert $i0 $wname
-    set i [expr {$n+1}]
-    set maxI $i
+    .lbw insert $n0 $wname
+    set nextWindow [expr {$n+1}]
+    set maxNumW $nextWindow
 }
 
 proc CaptureOrUpdate {} {
-    global i ww settings stayOnTop
-    Debug "Capturing/updating $i"
-    set settings($i,posXY) "[GetX] [GetY]"
-    set settings($i,size) "[GetWidth] [GetHeight]"
-    set settings($i,stayOnTop) $stayOnTop
-    if {![info exists ww($i)]} {
+    global nextWindow ww settings stayOnTop
+    Debug "Capturing/updating $nextWindow"
+    set settings($nextWindow,posXY) "[GetX] [GetY]"
+    set settings($nextWindow,size) "[GetWidth] [GetHeight]"
+    set settings($nextWindow,stayOnTop) $stayOnTop
+    if {![info exists ww($nextWindow)]} {
         Capture
     } else {
-        UpdateN $i
+        UpdateN $nextWindow
     }
     SaveSettings
 }
 
 
 proc WindowLayout {} {
-    global settings
+    global settings layoutOneSize monitorInfo scale
     set tw .layout
     if {[winfo exists $tw]} {
         $tw show
@@ -429,33 +429,67 @@ proc WindowLayout {} {
     }
     toplevel $tw
     wm title $tw "WOB Window Layout - WORK IN PROGRESS"
-    set sw [scale $tw.s -variable settings(numWindows) -orien horizontal -from 1 -to 11 -command ChangeNumWindows]
-    grid [label $tw.l1 -text "How many windows:"] $sw -sticky s
-    grid [canvas $tw.c -relief ridge -bd 2] -columnspan 2 -padx 5 -pady 5
-    grid [button $tw.bsave -text "Save \[Work in progress... Stay tuned\]" -command SaveSettings -state disabled] -pady 10 -columnspan 2
+    scale $tw.s -variable settings(numWindows) -orien horizontal -from 0 -to 11 -command ChangeLayout
+    set layoutOneSize 1
+    checkbutton $tw.cb1 -variable layoutOneSize -text "Same size for all windows" -command ChangeLayout
+    grid [label $tw.l1 -text "How many windows:"] $tw.s $tw.cb1 -sticky s
+    grid [canvas $tw.c -relief ridge -bd 2] -columnspan 3 -padx 5 -pady 5
+    grid [button $tw.bsave -text "Save \[Work in progress... Stay tuned\]" -command SaveLayout -state disabled] -pady 10 -columnspan 3
     #tk_messageBox -type ok -icon info -title "WoW Open Box Message" -message "Not implemented yet!"
     set displayInfo [twapi::get_multiple_display_monitor_info]
     Debug "displayInfo = $displayInfo"
     set n 0
     set colors {navyblue purple orange darkgreen black}
+    set smallestMonitor 0
+    set biggestMonitor 0
     foreach monitor $displayInfo {
         array set info $monitor
         lassign $info(-workarea) x1 y1 x2 y2
+        set monitorInfo($n,x1) $x1
+        set monitorInfo($n,y1) $y1
+        set monitorInfo($n,x2) $x2
+        set monitorInfo($n,y2) $y2
+        set width [expr {$x2-$x1}]
+        set height  [expr {$y2-$y1}]
+        set monitorInfo($n,width) $width
+        set monitorInfo($n,height) $height
+        set area [expr $width*$height]
+        set monitorInfo($n,area) $area
         if {$n==0} {
             set minX $x1
             set maxX $x2
             set minY $y1
             set maxY $y2
+            set minHeight $height
+            set minWidth $width
+            set smallestArea $area
+            set biggestArea $area
         } else {
+            if {$area<$smallestArea} {
+                set smallestMonitor $n
+                set smallestArea $area
+            } elseif {$area>$biggestArea} {
+                set biggestMonitor $n
+                set biggestArea $area
+            }
             set minX [expr min($minX,$x1)]
             set maxX [expr max($maxX,$x2)]
             set minY [expr min($minY,$y1)]
             set maxY [expr max($maxY,$y2)]
+            set minHeight [expr min($minHeight, $height)]
+            set minWidth [expr min($minWidth, $width)]
         }
         $tw.c create rectangle $x1 $y1 $x2 $y2 -fill [lindex $colors $n]
         incr n 1
+        $tw.c create text $x2 $y2 -fill white -text "Display $n " -anchor se
         Debug "Area $x1,$y1 - $x2,$y2"
     }
+    set monitorInfo(n) $n
+    set monitorInfo(minHeight) $minHeight
+    set monitorInfo(minWidth) $minWidth
+    set monitorInfo(biggest) $biggestMonitor
+    set monitorInfo(smallest) $smallestMonitor
+    parray monitorInfo
     Debug "bbox 1 [$tw.c bbox all]"
     set scale [expr {1./8}]
     $tw.c scale all 0 0 $scale $scale
@@ -473,14 +507,72 @@ proc WindowLayout {} {
 #    set x [expr round(-1.5 * $minX * $scale)]
 #    set y [expr round(2.5 * ($minY+$maxY) / [winfo height $tw.c])]
 #    $tw.c xview scroll $x units
-    bind $tw.c <ButtonPress-1> {%W scan mark   %x %y; Debug "mark %x %y"}
-    bind $tw.c <B1-Motion>     {%W scan dragto %x %y 1; Debug "drag to %x %y"}
+#    bind $tw.c <ButtonPress-1> {%W scan mark   %x %y; Debug "mark %x %y"}
+#    bind $tw.c <B1-Motion>     {%W scan dragto %x %y 1; Debug "drag to %x %y"}
     Debug "$minX,$minY - $maxX,$maxY - $width x $height"
 }
 
-proc ChangeNumWindows {n} {
-    
+proc ChangeLayout {args} {
+    global settings monitorInfo layoutOneSize scale
+    set n $settings(numWindows)
+    set c .layout.c
+    $c delete wow
+    Debug "ChangeLayout $args for $n - onesize $layoutOneSize"
+    if {$n<=$monitorInfo(n)} {
+        Debug "One Wow per monitor"
+        for {set i 0} {$i<$n} {incr i} {
+            set x1 $monitorInfo($i,x1)
+            set y1 $monitorInfo($i,y1)
+            set x2 $monitorInfo($i,x2)
+            set y2 $monitorInfo($i,y2)
+            if {$layoutOneSize} {
+                # prioritize closer to 0,0
+                if {$x1<0} {
+                    set x1 [expr {$x2-$monitorInfo(minWidth)}]
+                } else {
+                    set x2 [expr {$x1+$monitorInfo(minWidth)}]
+                }
+                if {$y1<0} {
+                    set y1 [expr {$y2-$monitorInfo(minHeight)}]
+                } else {
+                    set y2 [expr {$y1+$monitorInfo(minHeight)}]
+                }
+            }
+            set id [expr {$i+1}]
+            set tags [list "wow" "wow$id"]
+            $c create rectangle $x1 $y1 $x2 $y2 -fill gold -tags $tags
+            $c create text $x1 $y1 -text "\n   WoW $id" -anchor "nw" -tags $tags
+            Debug "Window $id $x1,$y1 $x2,$y2"
+        }
+    } elseif {$monitorInfo(n)==1} {
+        # Single monitor
+        LayoutOneMonitor 0 1 $n $layoutOneSize
+    } else {
+        # cut biggest monitor in n-1 - this only works with 2 monitors...
+        LayoutOneMonitorOneSize $monitorInfo(biggest) 2 [expr {$n-1}]
+        LayoutOneMonitor $monitorInfo(smallest) 1 1 $layoutOneSize
+    }
+    $c scale wow 0 0 $scale $scale
 }
+
+proc LayoutOneMonitor {monitor startAt numWindows sameSize} {
+    if {$sameSize} {
+        LayoutOneMonitorOneSize $monitor $startAt $numWindows
+    } else {
+        LayoutOneMonitorVariable $monitor $startAt $numWindows 
+    }
+}
+
+proc LayoutOneMonitorOneSize {monitor startAt numWindows} {
+    global monitorInfo
+    for {set i 0} {$i<=0} {incr i} {
+    }
+}
+
+proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
+
+}
+
 
 # --- Mouse follow focus and raise control
 
@@ -538,19 +630,20 @@ if {![info exists pos]} {
     # debug on/off
     set settings(DEBUG) 0
     # numWindows
-    set settings(numWindows) 5
+    set settings(numWindows) ""
     # start from slot 1
     # "next" window/slot #
-    set i 1
+    set nextWindow 1
     # max ever set in list box
-    set maxI 1
+    set maxNumW 1
     # currently focused windows (at least as far as WOB is concerned)
     set focusWindow 1
 }
+
 # default hotkeys (change/add more in you wowopenboxSettings.tcl)
-for {set n 1} {$n<=9} {incr n} {
-    set settings(hk$n,focus) "Ctrl-F$n"
-    set settings(hk$n,swap) "Ctrl-Shift-F$n"
+for {set i 1} {$i<=9} {incr i} {
+    set settings(hk$i,focus) "Ctrl-F$i"
+    set settings(hk$i,swap) "Ctrl-Shift-F$i"
 }
 
 set settings(hk,capture) "Ctrl-Shift-C"
@@ -561,7 +654,7 @@ set settings(hk,focusPreviousWindow) "Ctrl-Shift-P"
 LoadSettings
 
 # -- get/save sequence
-trace add variable i write updateIndex
+trace add variable nextWindow write updateIndex
 
 # wip for layouts
 #Debug "desktop workarea [twapi::get_desktop_workarea]"
