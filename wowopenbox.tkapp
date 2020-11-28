@@ -95,7 +95,6 @@ proc UISetup {} {
     set imgObj70 [image create photo -data $img70]
     wm iconphoto . -default $imgObj70
     grid [label .logo -image $imgObj70] -rowspan 3
-    # grid [label .l1  -text "Main Menu"] -columnspan 2
     grid [button .bH -text "Help" -command Help]  -row 0 -column 1
     grid [button .b1  -text "Edit Settings" -command EditSettings]  -row 1 -column 1
     grid [button .bwl -text "Window Layout" -command WindowLayout] -row 2 -column 1
@@ -113,7 +112,7 @@ proc UISetup {} {
     grid [label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay] -sticky w
     bind .emd <Return> UpdateMouseDelay
     grid [button .bml -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords] -sticky w
-    grid [label .l_bottom -text "(c) 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
+    grid [label .l_bottom -text "Wow Open Box v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
 }
 
 

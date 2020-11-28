@@ -10,7 +10,7 @@ We will eventually have an all in one installer but for now you need to get Tcl/
 
 https://www.magicsplat.com/tcl-installer/index.html#downloads
 
-Then get this file [wowopenbox.tkapp](wowopenbox.tkapp) (using a [release](https://github.com/WowOpenBox/WowOpenBox/releases) zip for instance) and run (double click to launch)
+Then get this file this application using a [release](https://github.com/WowOpenBox/WowOpenBox/releases) zip, or the [latest zip](https://github.com/WowOpenBox/WowOpenBox/archive/main.zip) and run it: double click `wowopenbox.tkapp` to launch.
 
 Then start your world of warcraft clients (Classic or Shadowlands) using launcher is fine (that way you don't need to keep typing your password) and in "Windowed (Fullscreen)" mode, so they don't have a title or border and can be neatly arranged by WowOpenBox!
 
