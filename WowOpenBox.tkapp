@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.0.0"
+set vers "1.0.1"
 
 proc Debug {msg} {
     global settings
@@ -124,13 +124,13 @@ proc UISetup {} {
     grid [listbox .lbw -height 6] -columnspan 2 -sticky ns
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
     grid [checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
-    grid [label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -ipady 4 -columnspan 2 -sticky sw
-    grid [checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -columnspan 2 -sticky w
-    grid [checkbutton .mr -text "Mouse auto foreground window" -variable mouseRaise -command UpdateMouseRaise] -columnspan 2 -sticky w
-    grid [label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width] -sticky w
+    grid [label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -ipady 4 -columnspan 2 -sticky sw
+    grid [checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
+    grid [checkbutton .mr -text "Mouse auto foreground window" -variable mouseRaise -command UpdateMouseRaise] -padx 4 -columnspan 2 -sticky w
+    grid [label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width]  -padx 4 -sticky w
     bind .emd <Return> UpdateMouseDelay
-    grid [button .bml -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -sticky w
-    grid [label .l_bottom -text "Wow Open Box v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
+    grid [button .bml -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -padx 4 -sticky w
+    grid [label .l_bottom -text "Wow Open Box v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>"] -padx 2 -columnspan 2
     grid rowconfigure    . 8 -weight 1
     #grid columnconfigure . 0 -weight 1
     grid columnconfigure . 1 -weight 1
