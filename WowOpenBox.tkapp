@@ -16,8 +16,11 @@ package require wm_default
 wm_default::setup
 wm_default::addoptions
 
+# start not showing top level for error dialogs
+wm state . withdrawn
+
 # -- UI
-set vers "1.0.0-pre2"
+set vers "1.0.0"
 
 proc Debug {msg} {
     global settings
@@ -50,14 +53,18 @@ proc LoadSettings {} {
     if {[winfo exists .b1]} {
         .b1 configure -text "Edit Settings" -command EditSettings
     }
-    if {[catch {source $SETTINGS_FILE} err]} {
-        puts stderr "Could not source $SETTINGS_FILE\n$err"
-        return
+    if {[file exists $SETTINGS_FILE]} {
+        if {[catch {source $SETTINGS_FILE} err]} {
+            puts stderr "Could not source $SETTINGS_FILE\n$err"
+            tk_messageBox -type ok -icon error -title "WoW Open Box settings error" \
+                -message "Your $SETTINGS_FILE has and error: $err"
+        }
     }
     RegisterHotkey "Capture" hk,capture CaptureOrUpdate
     RegisterHotkey "Start/Stop mouse tracking" hk,mouseTrack StartStopMouseTrack
     RegisterHotkey "Focus next window" hk,focusNextWindow FocusNextWindow
     RegisterHotkey "Focus previous window" hk,focusPreviousWindow FocusPreviousWindow
+    RegisterHotkey "Focus follow mouse toggle" hk,focusFollowMouse FocusFollowMouseToggle
     # Set mouse control to current values
     global mouseFollow mouseRaise mouseDelay
     set mouseDelay [GetMouseDelay]
@@ -66,6 +73,10 @@ proc LoadSettings {} {
     Debug "Settings (re)Loaded."
 }
 
+proc FocusFollowMouseToggle {} {
+    Debug "Follow mouse toggle requested"
+    .mf invoke
+}
 
 proc updateIndex {args} {
     global nextWindow maxNumW pos windowSize stayOnTop settings
@@ -112,9 +123,10 @@ proc UISetup {} {
     grid [button .b2 -text " Capture " -command CaptureOrUpdate] -pady 5 -columnspan 2
     grid [listbox .lbw -height 6] -columnspan 2 -sticky ns
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
+    grid [checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
     grid [label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -ipady 4 -columnspan 2 -sticky sw
     grid [checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -columnspan 2 -sticky w
-    grid [checkbutton .mr -text "Mouse auto raises windows" -variable mouseRaise -command UpdateMouseRaise] -columnspan 2 -sticky w
+    grid [checkbutton .mr -text "Mouse auto foreground window" -variable mouseRaise -command UpdateMouseRaise] -columnspan 2 -sticky w
     grid [label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width] -sticky w
     bind .emd <Return> UpdateMouseDelay
     grid [button .bml -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -sticky w
@@ -283,6 +295,7 @@ proc EditSettings {} {
 # Hotkeys
 proc RegisterHotkey {msg var callback} {
     global settings
+    Debug "RegisterHotkey $msg $var $callback"
     set hk $settings($var)
     if {[catch {twapi::register_hotkey $hk $callback} err]} {
         puts "hotkey error $hk for $msg: $err"
@@ -295,7 +308,6 @@ proc FindOtherCopy {} {
     global ourTitle
     set w [twapi::find_windows -match regexp -text "^$ourTitle\$" -visible true -single]
     if {$w!=""} {
-        wm state . withdrawn
         catch {twapi::flash_window $w -count 3} err
         puts "Found another window of ours. Flashed it. $err"
         tk_messageBox -type ok -icon error -title "WoW Open Box duplicate error" \
@@ -311,13 +323,13 @@ proc FindOtherCopy {} {
 array set ww {}
 
 proc FocusN {n fg} {
-    global ww focusWindow
+    global ww focusWindow settings
     if {![info exists ww($n)]} {
        Debug "FocusN $n called but no such window"
     }
     Debug "FocusN $n called, found window"
     Focus $ww($n)
-    if {$fg} {
+    if {$fg && $settings(focusAlsoFG)} {
         Debug "Also making $n foreground"
         Foreground $ww($n)
     }
@@ -635,12 +647,7 @@ if {![info exists pos]} {
     set windowSize "1920 1080"
     # stay on top
     set stayOnTop 0
-    # debug on/off
-    set settings(DEBUG) 0
-    # numWindows
-    set settings(numWindows) ""
-    # start from slot 1
-    # "next" window/slot #
+    # "next" window/slot #, start from slot 1
     set nextWindow 1
     # max ever set in list box
     set maxNumW 1
@@ -654,10 +661,16 @@ for {set i 1} {$i<=9} {incr i} {
     set settings(hk$i,swap) "Ctrl-Shift-F$i"
 }
 
-set settings(hk,capture) "Ctrl-Shift-C"
-set settings(hk,mouseTrack) "Ctrl-Shift-M"
-set settings(hk,focusNextWindow) "Ctrl-Shift-N"
-set settings(hk,focusPreviousWindow) "Ctrl-Shift-P"
+array set settings {
+    hk,capture "Ctrl-Shift-C"
+    hk,mouseTrack "Ctrl-Shift-M"
+    hk,focusNextWindow "Ctrl-Shift-N"
+    hk,focusPreviousWindow "Ctrl-Shift-P"
+    hk,focusFollowMouse "Ctrl-Shift-F"
+    DEBUG 0
+    focusAlsoFG 1
+    numWindows ""
+}
 
 LoadSettings
 
@@ -681,3 +694,4 @@ if {![winfo exists .logo]} {
 # --- main / tweak me ---
 puts "WowOpenBox $vers started..."
 FindExisting
+wm state . normal
