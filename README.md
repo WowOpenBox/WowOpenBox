@@ -14,7 +14,7 @@ Then get this application using a [release](https://github.com/WowOpenBox/WowOpe
 
 https://github.com/WowOpenBox/WowOpenBox/archive/main.zip 
 
-And run it: double click `wowopenbox.tkapp` to launch.
+Extract all (unzip) to your folder of choice and run it: double click `wowopenbox.tkapp` to launch.
 
 Then start your world of warcraft clients (Classic or Shadowlands) using launcher is fine (that way you don't need to keep typing your password) and in "Windowed (Fullscreen)" mode, so they don't have a title or border and can be neatly arranged by WowOpenBox!
 
