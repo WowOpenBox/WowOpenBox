@@ -10,10 +10,14 @@
 package require Tk
 package require twapi
 package require TclCurl
-package require Tk
+# Try to pick up theme for OS
+package require Tix
+package require wm_default
+wm_default::setup
+wm_default::addoptions
 
 # -- UI
-set vers "1.0.0-pre1"
+set vers "1.0.0-pre2"
 
 proc Debug {msg} {
     global settings
@@ -96,25 +100,27 @@ proc UISetup {} {
     wm iconphoto . -default $imgObj70
     grid [label .logo -image $imgObj70] -rowspan 3
     grid [button .bH -text "Help" -command Help]  -row 0 -column 1
-    grid [button .b1  -text "Edit Settings" -command EditSettings]  -row 1 -column 1
+    grid [button .b1  -text "Edit Settings" -command EditSettings] -row 1 -column 1
     grid [button .bwl -text "Window Layout" -command WindowLayout] -row 2 -column 1
-    grid [label .l2 -text "Next Wow :"] [entry .e1 -textvariable nextWindow] -sticky e
+    # label width - enough to fit "-9999 -9999"
+    set width 10
+    grid [label .l2 -text "Next Wow :" -anchor e] [entry .e1 -textvariable nextWindow -width $width] -padx 4 -sticky ew
     bind .e1 <FocusIn> [list focusIn %W]
-    grid [label .l3 -text "Resize to "] [entry .e2 -textvariable windowSize] -sticky e
-    grid [label .l4 -text "Move to "] [entry .e3 -textvariable pos] -sticky e
+    grid [label .l3 -text "Resize to" -anchor e] [entry .e2 -textvariable windowSize -width $width] -padx 4 -sticky ew
+    grid [label .l4 -text "Move to" -anchor e] [entry .e3 -textvariable pos -width $width] -padx 4 -sticky ew
     grid [checkbutton .csop -text "Stay on top" -variable stayOnTop] -columnspan 2
     grid [button .b2 -text " Capture " -command CaptureOrUpdate] -pady 5 -columnspan 2
     grid [listbox .lbw -height 6] -columnspan 2 -sticky ns
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
-    grid [label .l6 -text "Mouse settings:"] -columnspan 2 -sticky w
+    grid [label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -ipady 4 -columnspan 2 -sticky sw
     grid [checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -columnspan 2 -sticky w
     grid [checkbutton .mr -text "Mouse auto raises windows" -variable mouseRaise -command UpdateMouseRaise] -columnspan 2 -sticky w
-    grid [label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay] -sticky w
+    grid [label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width] -sticky w
     bind .emd <Return> UpdateMouseDelay
-    grid [button .bml -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords] -sticky w
+    grid [button .bml -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -sticky w
     grid [label .l_bottom -text "Wow Open Box v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>"] -columnspan 2
     grid rowconfigure    . 8 -weight 1
-    grid columnconfigure . 0 -weight 1
+    #grid columnconfigure . 0 -weight 1
     grid columnconfigure . 1 -weight 1
 }
 
