@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.0.2"
+set vers "1.0.3"
 
 proc Debug {msg} {
     global settings
@@ -99,17 +99,35 @@ proc updateIndex {args} {
     }
 }
 
+
+proc GetLogo {} {
+    global imgObj70 vers
+    set errMsg ""
+    if {[catch {curl::transfer -followlocation 1 -failonerror 1 -url "https://wowopenbox.org/WoWOpenBox70.png?v=$vers" -errorbuffer errMsg -bodyvar body} err]} {
+        WobMessage -type ok -icon error -title "WoW Open Box network error" \
+         -message "Url fetch error $err -:- $errMsg -:- $body"
+        return $errMsg
+    }
+    if {[catch {set imgObj70 [image create photo -data $body]} err]} {
+        WobMessage -type ok -icon error -title "WoW Open Box logo error" \
+         -message "Logo error $err -:- $body"
+        return "Invalid data $err $body"
+    }
+    return ""
+}
+
 set ourTitle "WoW Open Box - Open Source Multiboxing"
 proc UISetup {} {
-    global vers stayOnTop pos windowSize settings mouseFollow mouseRaise mouseDelay mouseCoords ourTitle
+    global imgObj70 vers stayOnTop pos windowSize settings mouseFollow mouseRaise mouseDelay mouseCoords ourTitle
     wm title . $ourTitle
     # Get logo
-    #curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox240.png?v=$vers" -bodyvar img240
-    curl::transfer -url "https://www.wowopenbox.org/WoWOpenBox70.png?v=$vers" -bodyvar img70
-    #set imgObj240 [image create photo -data $img240]
-    set imgObj70 [image create photo -data $img70]
-    wm iconphoto . -default $imgObj70
-    grid [label .logo -image $imgObj70] -rowspan 3
+    set err [GetLogo]
+    if {$err != ""} {
+        grid [label .logo -text "WoW\nOpenBox\nMultiboxing"] -rowspan 3
+    } else {
+        wm iconphoto . -default $imgObj70
+        grid [label .logo -image $imgObj70] -rowspan 3
+    }
     grid [button .bH -text "Help" -command Help]  -row 0 -column 1
     grid [button .b1  -text "Edit Settings" -command EditSettings] -row 1 -column 1
     grid [button .bwl -text "Window Layout" -command WindowLayout] -row 2 -column 1
