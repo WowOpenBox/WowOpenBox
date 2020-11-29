@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.1.1"
+set vers "1.1.2"
 
 proc Debug {msg} {
     global settings
@@ -143,6 +143,7 @@ proc UISetup {} {
     grid [button .b2 -text " Capture " -command CaptureOrUpdate] -pady 5 -columnspan 2
     grid [listbox .lbw -height 6] -columnspan 2 -sticky ns
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
+    grid [checkbutton .csswapfocus -text "Swap hotkey also focuses" -variable settings(swapAlsoFocus)] -columnspan 2
     grid [checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
     grid [label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -ipady 4 -columnspan 2 -sticky sw
     grid [checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
@@ -337,8 +338,8 @@ proc HandleHotKey {msg cb} {
 
 proc RegisterHotkey {msg var callback} {
     global settings
-    Debug "RegisterHotkey $msg $var $callback"
     set hk $settings($var)
+    Debug "RegisterHotkey $hk $msg $var $callback"
     if {[catch {twapi::register_hotkey $hk [list HandleHotKey $msg $callback]} err]} {
         puts "hotkey error $hk for $msg: $err"
          WobMessage -type ok -icon error -title "WoW Open Box HotKey error" \
@@ -369,7 +370,7 @@ proc FocusN {n fg} {
     if {![info exists ww($n)]} {
        Debug "FocusN $n called but no such window"
     }
-    Debug "FocusN $n called, found window"
+    Debug "FocusN $n called, found window - fg is $fg"
     Focus $ww($n)
     if {$fg && $settings(focusAlsoFG)} {
         Debug "Also making $n foreground"
@@ -427,6 +428,9 @@ proc Swap {n1 n2} {
     set ww($n1) $tmp
     UpdateN $n1
     UpdateN $n2
+    if {$settings(swapAlsoFocus)} {
+        FocusN $n1 true
+    }
 }
 
 proc Capture {} {
@@ -702,6 +706,7 @@ array set settings {
     hk,stayOnTopToggle "Ctrl-Shift-T"
     DEBUG 0
     focusAlsoFG 1
+    swapAlsoFocus 1
     numWindows ""
 }
 
