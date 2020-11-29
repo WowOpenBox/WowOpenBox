@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.0.3"
+set vers "1.0.4"
 
 proc Debug {msg} {
     global settings
@@ -65,6 +65,7 @@ proc LoadSettings {} {
     RegisterHotkey "Focus next window" hk,focusNextWindow FocusNextWindow
     RegisterHotkey "Focus previous window" hk,focusPreviousWindow FocusPreviousWindow
     RegisterHotkey "Focus follow mouse toggle" hk,focusFollowMouse FocusFollowMouseToggle
+    RegisterHotkey "Always on top toggle" hk,stayOnTopToggle StayOnTopToggle
     # Set mouse control to current values
     global mouseFollow mouseRaise mouseDelay
     set mouseDelay [GetMouseDelay]
@@ -90,6 +91,7 @@ proc updateIndex {args} {
     } elseif {$nextWindow>1} {
         UpdatePos
     }
+    .csop configure -text "Wow window $nextWindow always on top"
     if {$nextWindow<$maxNumW} {
         .l2 configure -text "Selected :"
         .b2 configure -text " Update "
@@ -137,7 +139,7 @@ proc UISetup {} {
     bind .e1 <FocusIn> [list focusIn %W]
     grid [label .l3 -text "Resize to" -anchor e] [entry .e2 -textvariable windowSize -width $width] -padx 4 -sticky ew
     grid [label .l4 -text "Move to" -anchor e] [entry .e3 -textvariable pos -width $width] -padx 4 -sticky ew
-    grid [checkbutton .csop -text "Stay on top" -variable stayOnTop] -columnspan 2
+    grid [checkbutton .csop -text "Wow window always on top" -variable stayOnTop] -columnspan 2
     grid [button .b2 -text " Capture " -command CaptureOrUpdate] -pady 5 -columnspan 2
     grid [listbox .lbw -height 6] -columnspan 2 -sticky ns
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
@@ -280,14 +282,18 @@ proc FindExisting {} {
     }
 }
 
-proc Update {wh x y w h top} {
-    Resize $wh $w $h
-    Move $wh $x $y
+proc SetStayOnTop {wh top} {
     if {$top} {
         twapi::set_window_zorder $wh toplayer
     } else {
         twapi::set_window_zorder $wh bottomlayer
     }
+}
+
+proc Update {wh x y w h top} {
+    Resize $wh $w $h
+    Move $wh $x $y
+    SetStayOnTop $wh $top
 }
 
 proc Focus {wh} {
@@ -366,6 +372,12 @@ proc FocusN {n fg} {
         Foreground $ww($n)
     }
     set focusWindow $n
+}
+
+proc StayOnTopToggle {} {
+    global focusWindow settings ww
+    set settings($focusWindow,stayOnTop) [expr {!$settings($focusWindow,stayOnTop)}]
+    SetStayOnTop $ww($focusWindow) $settings($focusWindow,stayOnTop)
 }
 
 proc FocusNextWindow {} {
@@ -683,6 +695,7 @@ array set settings {
     hk,focusNextWindow "Ctrl-Shift-N"
     hk,focusPreviousWindow "Ctrl-Shift-P"
     hk,focusFollowMouse "Ctrl-Shift-F"
+    hk,stayOnTopToggle "Ctrl-Shift-T"
     DEBUG 0
     focusAlsoFG 1
     numWindows ""
