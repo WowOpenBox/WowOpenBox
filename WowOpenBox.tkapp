@@ -300,7 +300,7 @@ proc Foreground {wh} {
 
 proc Help {} {
     global vers
-    twapi::shell_execute -path https://www.wowopenbox.org/help?v=$vers
+    twapi::shell_execute -path https://wowopenbox.org/help?v=$vers
 }
 
 proc EditSettings {} {
