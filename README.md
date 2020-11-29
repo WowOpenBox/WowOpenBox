@@ -2,7 +2,8 @@
 
 Open source, non commercial use software for MultiBoxing World of Warcraft within the rules.
 
-Web home: https://WowOpenBox.org/
+Web home: https://WowOpenBox.org
+
 Github home: https://github.com/WowOpenBox/WowOpenBox
 
 ## Installation
