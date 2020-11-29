@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.1.0"
+set vers "1.1.1"
 
 proc Debug {msg} {
     global settings
@@ -207,20 +207,24 @@ proc selectChanged {w args} {
 
 proc GetHeight {} {
     global windowSize
+    regsub -all {[^-0-9]+} $windowSize " " windowSize
     lindex $windowSize 1
 }
 proc GetWidth {} {
     global windowSize
+    regsub -all {[^-0-9]+} $windowSize " " windowSize
     lindex $windowSize 0
 }
 
 proc GetX {} {
     global pos
+    regsub -all {[^-0-9]+} $pos " " pos
     lindex $pos 0
 }
 
 proc GetY {} {
     global pos
+    regsub -all {[^-0-9]+} $pos " " pos
     lindex $pos 1
 }
 
