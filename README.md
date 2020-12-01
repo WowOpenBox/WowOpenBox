@@ -1,4 +1,5 @@
 # WowOpenBox
+<img src="https://wowopenbox.org/sshot1.png" alt="WOB Screenshot" align="right">
 
 Open source, non commercial use software for MultiBoxing World of Warcraft within the rules.
 
