@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.2.0-pre1"
+set vers "1.2.0"
 
 proc Debug {msg} {
     global settings
@@ -89,7 +89,7 @@ proc updateIndex {args} {
             set stayOnTop $settings($nextWindow,stayOnTop)
         }
     } elseif {$nextWindow>1} {
-        UpdatePos
+        # UpdatePos
     }
     .csop configure -text "Wow window $nextWindow always on top"
     if {$nextWindow<$maxNumW} {
@@ -228,27 +228,6 @@ proc GetY {} {
     regsub -all {[^-0-9]+} $pos " " pos
     lindex $pos 1
 }
-
-# Does square first 4 windows
-proc UpdatePos {} {
-    global nextWindow pos
-    set x [GetX]
-    set y [GetY]
-    Debug "x=$x y=$y"
-    if {$nextWindow % 2} {
-        incr y [GetHeight]
-        Debug "incr y now $y"
-    } else {
-        set w [GetWidth]
-        if {$nextWindow eq 4} {
-            set w -$w
-        }
-        incr x $w
-        Debug "incr x now $x"
-    }
-    set pos "$x $y"
-}
-
 
 # --- Windows API: https://twapi.magicsplat.com/v4.4/ui.html
 
@@ -505,7 +484,7 @@ proc WindowLayout {} {
     scale $tw.s -variable settings(numWindows) -orien horizontal -from 0 -to 11 -command ChangeLayout
     set layoutOneSize 1
     checkbutton $tw.cb1 -variable layoutOneSize -text "Same size for all windows" -command ChangeLayout
-    grid [label $tw.l1 -text "How many windows:"] $tw.s $tw.cb1 -sticky n -columnspan 2
+    grid [label $tw.l1 -text "Auto layout for how many windows:"] $tw.s $tw.cb1 -sticky nwe -columnspan 2
     radiobutton $tw.as0 -value "Any" -text "Any" -variable settings(aspectRatio) -command ChangeLayout
     radiobutton $tw.as1 -value "5/4" -text "5:4" -variable settings(aspectRatio) -command ChangeLayout
     radiobutton $tw.as2 -value "4/3" -text "4:3" -variable settings(aspectRatio) -command ChangeLayout
@@ -592,7 +571,7 @@ proc WindowLayout {} {
 #    bind $tw.c <ButtonPress-1> {%W scan mark   %x %y; Debug "mark %x %y"}
 #    bind $tw.c <B1-Motion>     {%W scan dragto %x %y 1; Debug "drag to %x %y"}
     Debug "$minX,$minY - $maxX,$maxY - $width x $height"
-    ChangeLayout
+    LoadLayout
 }
 
 proc ConstrainWindow {x1 y1 x2 y2 aspectRatio} {
@@ -620,6 +599,32 @@ proc ConstrainWindow {x1 y1 x2 y2 aspectRatio} {
     return [list $x1 $y1 [expr $x1+$wA] $y2]
 }
 
+proc SetWindowOnCanvas {id x1 y1 x2 y2} {
+    set c .layout.c
+    set tag "wow$id"
+    $c delete $tag
+    set tags [list "wowAll" $tag]
+    set w [expr {$x2-$x1}]
+    set h [expr {$y2-$y1}]
+    $c create rectangle $x1 $y1 $x2 $y2 -fill gold -tags $tags
+    $c create text $x1 $y1 -text "\n   WoW $id\n   $w x $h" -anchor "nw" -tags $tags
+    Debug "Window $id $x1,$y1 $x2,$y2"
+}
+
+proc LoadLayout {} {
+    global settings scale
+    set c .layout.c
+    $c delete wowAll
+    foreach k [array names settings "*,posXY"] {
+        set i [lindex [split $k ","] 0]
+        lassign $settings($k) x1 y1
+        lassign $settings($i,size) w h
+        Debug "Found settings for Wow $i $x1 , $y1  $w x $h"
+        SetWindowOnCanvas $i $x1 $y1 [expr {$x1+$w}] [expr {$y1+$h}]
+    }
+    $c scale wowAll 0 0 $scale $scale
+}
+
 proc ChangeLayout {args} {
     global settings monitorInfo layoutOneSize scale aspectRatio
     set aspectRatio 0
@@ -627,7 +632,7 @@ proc ChangeLayout {args} {
     Debug "Aspect ratio $settings(aspectRatio) = $aspectRatio"
     set n $settings(numWindows)
     set c .layout.c
-    $c delete wow
+    $c delete wowAll
     Debug "*** ChangeLayout $args for $n - onesize $layoutOneSize"
     if {$n<=$monitorInfo(n)} {
         Debug "One Wow per monitor"
@@ -651,10 +656,7 @@ proc ChangeLayout {args} {
             }
             lassign [ConstrainWindow $x1 $y1 $x2 $y2 $aspectRatio] x1 y1 x2 y2
             set id [expr {$i+1}]
-            set tags [list "wow" "wow$id"]
-            $c create rectangle $x1 $y1 $x2 $y2 -fill gold -tags $tags
-            $c create text $x1 $y1 -text "\n   WoW $id" -anchor "nw" -tags $tags
-            Debug "Window $id $x1,$y1 $x2,$y2"
+            SetWindowOnCanvas $id $x1 $y1 $x2 $y2
         }
     } elseif {$monitorInfo(n)==1} {
         # Single monitor
@@ -664,7 +666,7 @@ proc ChangeLayout {args} {
         LayoutOneMonitorOneSize $monitorInfo(biggest) 2 [expr {$n-1}]
         LayoutOneMonitor $monitorInfo(smallest) 1 1 $layoutOneSize
     }
-    $c scale wow 0 0 $scale $scale
+    $c scale wowAll 0 0 $scale $scale
 }
 
 proc LayoutOneMonitor {monitor startAt numWindows sameSize} {
@@ -747,7 +749,7 @@ array set settings {
     DEBUG 0
     focusAlsoFG 1
     swapAlsoFocus 1
-    numWindows ""
+    numWindows 0
     aspectRatio "Any"
 }
 
