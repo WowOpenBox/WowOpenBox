@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.1.2"
+set vers "1.2.0-pre1"
 
 proc Debug {msg} {
     global settings
