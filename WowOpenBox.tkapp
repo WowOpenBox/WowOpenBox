@@ -496,7 +496,8 @@ proc WindowLayout {} {
     global settings layoutOneSize monitorInfo scale
     set tw .layout
     if {[winfo exists $tw]} {
-        $tw show
+        wm state $tw normal
+        ChangeLayout
         return
     }
     toplevel $tw
@@ -504,10 +505,19 @@ proc WindowLayout {} {
     scale $tw.s -variable settings(numWindows) -orien horizontal -from 0 -to 11 -command ChangeLayout
     set layoutOneSize 1
     checkbutton $tw.cb1 -variable layoutOneSize -text "Same size for all windows" -command ChangeLayout
-    grid [label $tw.l1 -text "How many windows:"] $tw.s $tw.cb1 -sticky s
-    grid [canvas $tw.c -relief ridge -bd 2] -columnspan 3 -padx 5 -pady 5
-    grid [button $tw.bsave -text "Save \[Work in progress... Stay tuned\]" -command SaveLayout -state disabled] -pady 10 -columnspan 3
-    #WobMessage -type ok -icon info -title "WoW Open Box Message" -message "Not implemented yet!"
+    grid [label $tw.l1 -text "How many windows:"] $tw.s $tw.cb1 -sticky n -columnspan 2
+    radiobutton $tw.as0 -value "Any" -text "Any" -variable settings(aspectRatio) -command ChangeLayout
+    radiobutton $tw.as1 -value "5/4" -text "5:4" -variable settings(aspectRatio) -command ChangeLayout
+    radiobutton $tw.as2 -value "4/3" -text "4:3" -variable settings(aspectRatio) -command ChangeLayout
+    radiobutton $tw.as3 -value "16/10" -text "16:10" -variable settings(aspectRatio) -command ChangeLayout
+    radiobutton $tw.as4 -value "16/9" -text "16:9" -variable settings(aspectRatio) -command ChangeLayout
+    grid [label $tw.l2 -text "Aspect ratio:"] $tw.as0  $tw.as1  $tw.as2  $tw.as3  $tw.as4
+    grid [canvas $tw.c -relief ridge -bd 2] -columnspan 6 -padx 5 -pady 5
+    grid [button $tw.bsave -text "Save \[Work in progress... Stay tuned\]" -command SaveLayout -state disabled] -pady 10 -columnspan 6
+    grid rowconfigure $tw 2 -weight 1
+    for {set i 0} {$i<6} {incr i} {
+        grid columnconfigure $tw $i -weight 1
+    }
     set displayInfo [twapi::get_multiple_display_monitor_info]
     Debug "displayInfo = $displayInfo"
     set n 0
@@ -582,14 +592,43 @@ proc WindowLayout {} {
 #    bind $tw.c <ButtonPress-1> {%W scan mark   %x %y; Debug "mark %x %y"}
 #    bind $tw.c <B1-Motion>     {%W scan dragto %x %y 1; Debug "drag to %x %y"}
     Debug "$minX,$minY - $maxX,$maxY - $width x $height"
+    ChangeLayout
+}
+
+proc ConstrainWindow {x1 y1 x2 y2 aspectRatio} {
+    if {$aspectRatio == 0} {
+        return [list $x1 $y1 $x2 $y2]
+    }
+    set w [expr {$x2-$x1}]
+    set h [expr {$y2-$y1}]
+    set hA [expr {round($w/$aspectRatio)}]
+    set wA [expr {round($h*$aspectRatio)}]
+    Debug "x1 $x1 x2 $x2 y1 $y1 y2 $y2 : $w x $h -> $w x $hA or $wA x $h ($aspectRatio)"
+    if {$h == $hA} {
+        return [list $x1 $y1 $x2 $y2]
+    }
+    if {$h > $hA} {
+        if {$y1 < 0} {
+            return [list $x1 [expr {$y2-$hA}] $x2 $y2]
+        }
+        return [list $x1 $y1 $x2 [expr $y1+$hA]]
+    }
+    # shrink width
+    if {$x1 < 0} {
+        return [list [expr {$x2-$wA}] $y1 $x2 $y2]
+    }
+    return [list $x1 $y1 [expr $x1+$wA] $y2]
 }
 
 proc ChangeLayout {args} {
-    global settings monitorInfo layoutOneSize scale
+    global settings monitorInfo layoutOneSize scale aspectRatio
+    set aspectRatio 0
+    catch {set aspectRatio [expr 1.0*$settings(aspectRatio)]}
+    Debug "Aspect ratio $settings(aspectRatio) = $aspectRatio"
     set n $settings(numWindows)
     set c .layout.c
     $c delete wow
-    Debug "ChangeLayout $args for $n - onesize $layoutOneSize"
+    Debug "*** ChangeLayout $args for $n - onesize $layoutOneSize"
     if {$n<=$monitorInfo(n)} {
         Debug "One Wow per monitor"
         for {set i 0} {$i<$n} {incr i} {
@@ -610,6 +649,7 @@ proc ChangeLayout {args} {
                     set y2 [expr {$y1+$monitorInfo(minHeight)}]
                 }
             }
+            lassign [ConstrainWindow $x1 $y1 $x2 $y2 $aspectRatio] x1 y1 x2 y2
             set id [expr {$i+1}]
             set tags [list "wow" "wow$id"]
             $c create rectangle $x1 $y1 $x2 $y2 -fill gold -tags $tags
@@ -708,6 +748,7 @@ array set settings {
     focusAlsoFG 1
     swapAlsoFocus 1
     numWindows ""
+    aspectRatio "Any"
 }
 
 # globals
