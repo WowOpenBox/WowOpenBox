@@ -23,5 +23,6 @@ Extract all (unzip) to your folder of choice and run it: double click `WowOpenBo
 
 Then start your world of warcraft clients (Classic or Shadowlands) using launcher is fine (that way you don't need to keep typing your password) and in "Windowed (Fullscreen)" mode, so they don't have a title or border and can be neatly arranged by WowOpenBox!
 
+![WOB Window Layout GUI Screenshot](https://wowopenbox.org/sshotWindowLayout.png)
 
 Want to compare MultiBoxing solutions: See the [Analysis Matrix](https://github.com/WowOpenBox/WowOpenBox/wiki/compare) in our Wiki (feedback welcome).
