@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.2.0"
+set vers "1.3.0"
 
 proc Debug {msg} {
     global settings
@@ -480,7 +480,7 @@ proc WindowLayout {} {
         return
     }
     toplevel $tw
-    wm title $tw "WOB Window Layout - WORK IN PROGRESS"
+    wm title $tw "Wow Open Box Window Layout"
     scale $tw.s -variable settings(numWindows) -orien horizontal -from 0 -to 11 -command ChangeLayout
     set layoutOneSize 1
     checkbutton $tw.cb1 -variable layoutOneSize -text "Same size for all windows" -command ChangeLayout
@@ -492,7 +492,7 @@ proc WindowLayout {} {
     radiobutton $tw.as4 -value "16/9" -text "16:9" -variable settings(aspectRatio) -command ChangeLayout
     grid [label $tw.l2 -text "Aspect ratio:"] $tw.as0  $tw.as1  $tw.as2  $tw.as3  $tw.as4
     grid [canvas $tw.c -relief ridge -bd 2] -columnspan 6 -padx 5 -pady 5
-    grid [button $tw.bsave -text "Save \[Work in progress... Stay tuned\]" -command SaveLayout -state disabled] -pady 10 -columnspan 6
+    grid [button $tw.bsave -text "Save and Apply" -command SaveLayout] -pady 10 -columnspan 6
     grid rowconfigure $tw 2 -weight 1
     for {set i 0} {$i<6} {incr i} {
         grid columnconfigure $tw $i -weight 1
@@ -552,7 +552,7 @@ proc WindowLayout {} {
     set monitorInfo(smallest) $smallestMonitor
     parray monitorInfo
     Debug "bbox 1 [$tw.c bbox all]"
-    set scale [expr {1./8}]
+    set scale [expr {1./8.}]
     $tw.c scale all 0 0 $scale $scale
     Debug "bbox 2 [$tw.c bbox all]"
     set width [expr $maxX-$minX]
@@ -575,11 +575,15 @@ proc WindowLayout {} {
 }
 
 proc ConstrainWindow {x1 y1 x2 y2 aspectRatio} {
-    if {$aspectRatio == 0} {
-        return [list $x1 $y1 $x2 $y2]
-    }
     set w [expr {$x2-$x1}]
     set h [expr {$y2-$y1}]
+    if {$aspectRatio == 0} {
+        # 'Any' aspect ratio still means not taller than square, if so use 5:4
+        if {$w>$h} {
+            return [list $x1 $y1 $x2 $y2]
+        }
+        set aspectRatio [expr {5./4.}]
+    }
     set hA [expr {round($w/$aspectRatio)}]
     set wA [expr {round($h*$aspectRatio)}]
     Debug "x1 $x1 x2 $x2 y1 $y1 y2 $y2 : $w x $h -> $w x $hA or $wA x $h ($aspectRatio)"
@@ -625,6 +629,30 @@ proc LoadLayout {} {
     $c scale wowAll 0 0 $scale $scale
 }
 
+proc SaveLayout {} {
+    global settings scale
+    set c .layout.c
+    for {set i 1} {$i<=$settings(numWindows)} {incr i} {
+        set r [lindex [$c find withtag "wow$i"] 0]
+        if {$r == ""} {
+            Debug "$i not found while saving"
+            continue
+        }
+        lassign [$c coords $r] x1 y1 x2 y2
+        set w  [expr {round(($x2-$x1)/$scale)}]
+        set h  [expr {round(($y2-$y1)/$scale)}]
+        set x1 [expr {round($x1/$scale)}]
+        set x2 [expr {round($x2/$scale)}]
+        set y1 [expr {round($y1/$scale)}]
+        set y2 [expr {round($y2/$scale)}]
+        Debug "$i found [$c coords $r] for saving -> $x1, $y1 - $x2, $y2 -> $w x $h"
+        set settings($i,posXY) "$x1 $y1"
+        set settings($i,size) "$w $h"
+        UpdateN $i
+    }
+    SaveSettings
+}
+
 proc ChangeLayout {args} {
     global settings monitorInfo layoutOneSize scale aspectRatio
     set aspectRatio 0
@@ -663,28 +691,89 @@ proc ChangeLayout {args} {
         LayoutOneMonitor 0 1 $n $layoutOneSize
     } else {
         # cut biggest monitor in n-1 - this only works with 2 monitors...
-        LayoutOneMonitorOneSize $monitorInfo(biggest) 2 [expr {$n-1}]
-        LayoutOneMonitor $monitorInfo(smallest) 1 1 $layoutOneSize
+        set s $monitorInfo(smallest)
+        lassign [LayoutOneMonitorOneSize $monitorInfo(biggest) 2 [expr {$n-1}] 0 0 $monitorInfo($s,width) $monitorInfo($s,height)] w h
+        LayoutOneMonitor $s 1 1 $layoutOneSize $w $h 0 0
     }
     $c scale wowAll 0 0 $scale $scale
 }
 
-proc LayoutOneMonitor {monitor startAt numWindows sameSize} {
+proc LayoutOneMonitor {monitor startAt numWindows sameSize w h maxW maxH} {
     if {$sameSize} {
-        LayoutOneMonitorOneSize $monitor $startAt $numWindows
+        LayoutOneMonitorOneSize $monitor $startAt $numWindows $w $h $maxW $maxH
     } else {
-        LayoutOneMonitorVariable $monitor $startAt $numWindows 
+        LayoutOneMonitorVariable $monitor $startAt $numWindows
     }
 }
 
-proc LayoutOneMonitorOneSize {monitor startAt numWindows} {
-    global monitorInfo
-    for {set i 0} {$i<=0} {incr i} {
+proc SplitForN {n} {
+    set sq [expr {sqrt($n)}]
+    set ysplit [expr {int(floor($sq))}]
+    set xsplit [expr {int(ceil($sq))}]
+    Debug "I: $n -> $sq ->   $xsplit x $ysplit"
+    while 1 {
+        set m [expr {$xsplit*$ysplit}]
+        if {$m>=$n} {
+            Debug "F: $n -> $m ->   $xsplit x $ysplit"
+            return [list $xsplit $ysplit]
+        }
+        incr ysplit 1
     }
 }
+
+proc LayoutOneMonitorOneSize {monitor startAt numWindows ww wh maxW maxH} {
+    Debug "LayoutOneMonitorOneSize $ww x $wh for $numWindows starting at $startAt on monitor $monitor"
+    global monitorInfo aspectRatio
+    set w $monitorInfo($monitor,width)
+    set h $monitorInfo($monitor,height)
+    set x1 $monitorInfo($monitor,x1)
+    set y1 $monitorInfo($monitor,y1)
+    set x2 $monitorInfo($monitor,x2)
+    set y2 $monitorInfo($monitor,y2)
+    lassign [SplitForN $numWindows] xdiv ydiv
+    if {$ww == 0} {
+        set ww [expr {int($w/$xdiv)}]
+        if {$maxW>0 && $ww>$maxW} {
+            set ww $maxW
+        }
+    }
+    if {$wh == 0} {
+        set wh [expr {int($h/$ydiv)}]
+        if {$maxH>0 && $wh>$maxH} {
+            set wh $maxH
+        }
+    }
+    lassign [ConstrainWindow 0 0 $ww $wh $aspectRatio] v1 v2 ww wh
+    Debug "Using windows of size $ww x $wh  ($xdiv x $ydiv grid for $numWindows) monitor $monitor: ($x1,$y1) $w x $h"
+    # 2 -> divide in 2 h or w
+    # 3 -> divide in 2 h and w (3 out of 4 square) or divide in 3 h or w
+    # 4 -> divide in 2 h and w
+    for {set x 1} {$x<=$xdiv} {incr x} {
+        for {set y 1} {$y<=$ydiv} {incr y} {
+            if {$x1<0} {
+                set xx [expr {$x2-$x*$ww}]
+            } else {
+                set xx [expr {$x1+($x-1)*$ww}]
+            }
+            if {$y1<0} {
+                set yy [expr {$y2-$y*$wh}]
+            } else {
+                set yy [expr {$y1+($y-1)*$wh}]
+            }
+            SetWindowOnCanvas $startAt $xx $yy [expr {$xx+$ww}] [expr {$yy+$wh}]
+            incr startAt 1
+            incr numWindows -1
+            if {$numWindows == 0} {
+                return [list $ww $wh]
+            }
+        }
+    }
+    return [list $ww $wh]
+}
+
 
 proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
-
+    LayoutOneMonitorOneSize $monitor $startAt $numWindows 0 0 0 0
 }
 
 
