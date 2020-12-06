@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.3.2"
+set vers "1.4.0"
 
 proc Debug {msg} {
     global settings
@@ -811,6 +811,7 @@ proc LayoutOneMonitorOneSize {monitor startAt numWindows ww wh maxW maxH} {
 
 
 proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
+    global monitorInfo aspectRatio
     # B window being a multiple of same size S window:
     #   BBBBS
     #   BBBBS
@@ -825,9 +826,61 @@ proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
     # BB
     # BB
     # SS
-    set c [expr {(1.0*($numWindows-2)/2.)}]
+    if {$numWindows<=2} {
+        LayoutOneMonitorOneSize $monitor $startAt $numWindows 0 0 0 0
+        return
+    }
+    set c [expr {ceil(1.0*($numWindows-2)/2)}]
+    if {$c<2} {
+        set c 2
+    }
     Debug "Will cut in $c to fit $numWindows"
-    LayoutOneMonitorOneSize $monitor $startAt $numWindows 0 0 0 0
+    set x1 $monitorInfo($monitor,x1)
+    set y1 $monitorInfo($monitor,y1)
+    set x2 $monitorInfo($monitor,x2)
+    set y2 $monitorInfo($monitor,y2)
+    set mw $monitorInfo($monitor,width)
+    set mh $monitorInfo($monitor,height)
+    if {$numWindows == 3} {
+        # special case
+        #    BB
+        #    ss
+        # layout for 3 windows
+        set bw $mw
+    } else {
+        set bw [expr {1.0*$mw*$c/($c+1)}]
+    }
+    # will be int after aspect ratio and multiple of small pass
+    set bh [expr {1.0*$mh*$c/($c+1)}]
+    Debug "monitor $mw x $mh -> $bw x $bh"
+    lassign [ConstrainWindow 0 0 $bw $bh $aspectRatio] v1 v2 bw bh
+    # Make sure big size is divisable by sw exactly
+    set sw [expr {int($bw/$c)}]
+    set sh [expr {int($bh/$c)}]
+    set bw [expr {int($sw*$c)}]
+    set bh [expr {int($sh*$c)}]
+    Debug "Using $bw x $bh for big window"
+    set xw1 [expr {$x1+$bw}]
+    SetWindowOnCanvas $startAt $x1 $y1 $xw1 [expr {$y1+$bh}]
+    incr numWindows -1
+    incr startAt 1
+    set xw2 [expr {$xw1+$sw}]
+    for {set i 0} {$xw2<=$x2 && $i<$c} {incr i 1} {
+        set yw1 [expr {$y1+$i*$sh}]
+        set yw2 [expr {$yw1+$sh}]
+        SetWindowOnCanvas $startAt $xw1 $yw1 $xw2 $yw2
+        incr startAt 1
+        incr numWindows -1
+    }
+    set yw1 [expr {$y1+$bh}]
+    set yw2 [expr {$yw1+$sh}]
+    set xw1 $x1
+    for {} {$numWindows>0} {incr numWindows -1} {
+        set xw2 [expr {$xw1+$sw}]
+        SetWindowOnCanvas $startAt $xw1 $yw1 $xw2 $yw2
+        set xw1 $xw2
+        incr startAt 1
+    }
 }
 
 
