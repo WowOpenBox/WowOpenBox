@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.5.0"
+set vers "1.5.1"
 
 proc Debug {msg} {
     global settings
@@ -1019,3 +1019,7 @@ if {![winfo exists .logo]} {
 puts "WowOpenBox $vers started..."
 FindExisting
 wm state . normal
+if {$settings(numWindows)==0} {
+    Debug "No layout setup, opening layout"
+    after 250 {.bwl invoke}
+}
