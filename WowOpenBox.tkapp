@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.4.1"
+set vers "1.5.0"
 
 proc Debug {msg} {
     global settings
