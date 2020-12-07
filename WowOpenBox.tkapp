@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.4.0"
+set vers "1.4.1"
 
 proc Debug {msg} {
     global settings
@@ -512,6 +512,7 @@ proc WindowLayout {} {
         }
         array set info $monitor
         lassign $info(-workarea) x1 y1 x2 y2
+        lassign $info(-extent) xx1 yy1 xx2 yy2
         set monitorInfo($n,x1) $x1
         set monitorInfo($n,y1) $y1
         set monitorInfo($n,x2) $x2
@@ -546,7 +547,7 @@ proc WindowLayout {} {
             set minHeight [expr min($minHeight, $height)]
             set minWidth [expr min($minWidth, $width)]
         }
-        $tw.c create rectangle $x1 $y1 $x2 $y2 -fill [lindex $colors $n]
+        $tw.c create rectangle $xx1 $yy1 $xx2 $yy2 -fill [lindex $colors $n]
         incr n 1
         $tw.c create text $x2 $y2 -fill white -text "Display $i " -anchor se
         Debug "Area $x1,$y1 - $x2,$y2"
