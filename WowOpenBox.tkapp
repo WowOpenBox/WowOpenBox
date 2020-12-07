@@ -470,9 +470,20 @@ proc CaptureOrUpdate {} {
     SaveSettings
 }
 
+proc UpdateExcluded {} {
+    global skipMonitorText settings
+    set v $settings(ignoreMonitorIdx)
+    if {$v==0} {
+        set txt "None"
+    } else {
+        set txt "Display $v"
+    }
+    set skipMonitorText "Excluding monitor: $txt"
+    SetUpMonitors
+}
 
 proc WindowLayout {} {
-    global settings layoutOneSize monitorInfo scale
+    global settings layoutOneSize monitorInfo scale skipMonitorText
     set tw .layout
     if {[winfo exists $tw]} {
         wm state $tw normal
@@ -492,11 +503,23 @@ proc WindowLayout {} {
     radiobutton $tw.as4 -value "16/9" -text "16:9" -variable settings(aspectRatio) -command ChangeLayout
     grid [label $tw.l2 -text "Aspect ratio:"] $tw.as0  $tw.as1  $tw.as2  $tw.as3  $tw.as4
     grid [canvas $tw.c -relief ridge -bd 2] -columnspan 6 -padx 5 -pady 5
-    grid [button $tw.bsave -text "Save and Apply" -command SaveLayout] -pady 10 -columnspan 6
+    menubutton $tw.monIdx -text "\u25BC" -menu $tw.monIdx.menu -relief raised -bd 2 -anchor w
+    menu $tw.monIdx.menu -tearoff 0
+    UpdateExcluded
+    grid [label $tw.lex2 -textvariable skipMonitorText -anchor e] $tw.monIdx \
+            [button $tw.bsave -text "Save and Apply" -command SaveLayout] - - - -pady 10
     grid rowconfigure $tw 2 -weight 1
     for {set i 0} {$i<6} {incr i} {
         grid columnconfigure $tw $i -weight 1
     }
+    SetUpMonitors
+}
+
+proc SetUpMonitors {} {
+    global settings layoutOneSize monitorInfo scale skipMonitorText
+    set tw .layout
+    destroy $tw.c
+    grid [canvas $tw.c -relief ridge -bd 2] -row 2 -columnspan 6 -padx 5 -pady 5
     set displayInfo [twapi::get_multiple_display_monitor_info]
     Debug "displayInfo = $displayInfo"
     set n 0
@@ -504,8 +527,11 @@ proc WindowLayout {} {
     set colors {navyblue purple orange darkgreen black}
     set smallestMonitor 0
     set biggestMonitor 0
+    $tw.monIdx.menu delete 0 99
+    $tw.monIdx.menu add command -label "None" -command "set settings(ignoreMonitorIdx) 0; UpdateExcluded"
     foreach monitor $displayInfo {
         incr i 1
+        $tw.monIdx.menu add command -label "Display $i"  -command "set settings(ignoreMonitorIdx) $i; UpdateExcluded"
         if {$settings(ignoreMonitorIdx) == $i} {
             Debug "Ignoring monitor $i"
             continue
