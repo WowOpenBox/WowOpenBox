@@ -691,6 +691,7 @@ proc SaveLayout {} {
         UpdateN $i
     }
     SaveSettings
+    updateIndex
 }
 
 proc ChangeLayout {args} {
