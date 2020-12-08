@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.5.2"
+set vers "1.5.3"
 
 proc Debug {msg} {
     global settings
@@ -891,6 +891,14 @@ proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
         #    ss
         # layout for 3 windows
         set bw $mw
+    } elseif {$numWindows == 4} {
+        # another special case
+        #    BBB
+        #    BBB
+        #    BBB
+        #    sss
+        set bw $mw
+        set c 3
     } else {
         set bw [expr {1.0*$mw*$c/($c+1)}]
     }
