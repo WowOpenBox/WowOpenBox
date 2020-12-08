@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.5.1"
+set vers "1.5.2"
 
 proc Debug {msg} {
     global settings
@@ -480,21 +480,22 @@ proc UpdateExcluded {} {
     }
     set skipMonitorText "Excluding monitor: $txt"
     SetUpMonitors
+    ChangeLayout
 }
 
 proc WindowLayout {} {
-    global settings layoutOneSize monitorInfo scale skipMonitorText
+    global settings monitorInfo scale skipMonitorText
     set tw .layout
     if {[winfo exists $tw]} {
         wm state $tw normal
         ChangeLayout
         return
     }
+    UpdateExcluded
     toplevel $tw
     wm title $tw "Wow Open Box Window Layout"
     scale $tw.s -variable settings(numWindows) -orien horizontal -from 0 -to 16 -command ChangeLayout
-    set layoutOneSize 1
-    checkbutton $tw.cb1 -variable layoutOneSize -text "Same size for all windows" -command ChangeLayout
+    checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size for all windows" -command ChangeLayout
     grid [label $tw.l1 -text "Auto layout for how many windows:"] $tw.s $tw.cb1 -sticky nwe -columnspan 2
     radiobutton $tw.as0 -value "Any" -text "Any" -variable settings(aspectRatio) -command ChangeLayout
     radiobutton $tw.as1 -value "5/4" -text "5:4" -variable settings(aspectRatio) -command ChangeLayout
@@ -505,9 +506,9 @@ proc WindowLayout {} {
     grid [canvas $tw.c -relief ridge -bd 2] -columnspan 6 -padx 5 -pady 5
     menubutton $tw.monIdx -text "\u25BC" -menu $tw.monIdx.menu -relief raised -bd 2 -anchor w
     menu $tw.monIdx.menu -tearoff 0
-    UpdateExcluded
     grid [label $tw.lex2 -textvariable skipMonitorText -anchor e] $tw.monIdx \
-            [button $tw.bsave -text "Save and Apply" -command SaveLayout] - - - -pady 10
+        [checkbutton $tw.ctaskbar -text "Avoid taskbar area" -variable settings(avoidTaskbar) -command UpdateExcluded] \
+        [button $tw.bsave -text "Save and Apply" -command SaveLayout]  - - -pady 10
     grid rowconfigure $tw 2 -weight 1
     for {set i 0} {$i<6} {incr i} {
         grid columnconfigure $tw $i -weight 1
@@ -516,8 +517,11 @@ proc WindowLayout {} {
 }
 
 proc SetUpMonitors {} {
-    global settings layoutOneSize monitorInfo scale skipMonitorText
+    global settings monitorInfo scale skipMonitorText
     set tw .layout
+    if {![winfo exists $tw.c]} {
+        return
+    }
     destroy $tw.c
     grid [canvas $tw.c -relief ridge -bd 2] -row 2 -columnspan 6 -padx 5 -pady 5
     set displayInfo [twapi::get_multiple_display_monitor_info]
@@ -539,21 +543,29 @@ proc SetUpMonitors {} {
         array set info $monitor
         lassign $info(-workarea) x1 y1 x2 y2
         lassign $info(-extent) xx1 yy1 xx2 yy2
+        Debug "Workarea $x1,$y1  - $x2,$y2"
+        Debug "Extent   $xx1,$yy1  - $xx2,$yy2"
+        if {!$settings(avoidTaskbar)} {
+            set x1 $xx1
+            set y1 $yy1
+            set x2 $xx2
+            set y2 $yy2
+        }
         set monitorInfo($n,x1) $x1
         set monitorInfo($n,y1) $y1
         set monitorInfo($n,x2) $x2
         set monitorInfo($n,y2) $y2
-        set width [expr {$x2-$x1}]
-        set height  [expr {$y2-$y1}]
+        set width [expr {$x2-$xx1}]
+        set height  [expr {$y2-$yy1}]
         set monitorInfo($n,width) $width
         set monitorInfo($n,height) $height
         set area [expr $width*$height]
         set monitorInfo($n,area) $area
         if {$n==0} {
-            set minX $x1
-            set maxX $x2
-            set minY $y1
-            set maxY $y2
+            set minX $xx1
+            set maxX $xx2
+            set minY $yy1
+            set maxY $yy2
             set minHeight $height
             set minWidth $width
             set smallestArea $area
@@ -566,16 +578,16 @@ proc SetUpMonitors {} {
                 set biggestMonitor $n
                 set biggestArea $area
             }
-            set minX [expr min($minX,$x1)]
-            set maxX [expr max($maxX,$x2)]
-            set minY [expr min($minY,$y1)]
-            set maxY [expr max($maxY,$y2)]
+            set minX [expr min($minX,$xx1)]
+            set maxX [expr max($maxX,$xx2)]
+            set minY [expr min($minY,$yy1)]
+            set maxY [expr max($maxY,$yy2)]
             set minHeight [expr min($minHeight, $height)]
             set minWidth [expr min($minWidth, $width)]
         }
         $tw.c create rectangle $xx1 $yy1 $xx2 $yy2 -fill [lindex $colors $n]
         incr n 1
-        $tw.c create text $x2 $y2 -fill white -text "Display $i " -anchor se
+        $tw.c create text $xx2 $yy2 -fill white -text "Display $i " -anchor se
         Debug "Area $x1,$y1 - $x2,$y2"
     }
     set monitorInfo(n) $n
@@ -585,7 +597,7 @@ proc SetUpMonitors {} {
     set monitorInfo(smallest) $smallestMonitor
     parray monitorInfo
     Debug "bbox 1 [$tw.c bbox all]"
-    set scale [expr {1./8.}]
+    set scale [expr {1./6.}]
     $tw.c scale all 0 0 $scale $scale
     Debug "bbox 2 [$tw.c bbox all]"
     set width [expr $maxX-$minX]
@@ -695,12 +707,16 @@ proc SaveLayout {} {
 }
 
 proc ChangeLayout {args} {
-    global settings monitorInfo layoutOneSize scale aspectRatio
+    global settings monitorInfo scale aspectRatio
+    set layoutOneSize $settings(layoutOneSize)
     set aspectRatio 0
     catch {set aspectRatio [expr 1.0*$settings(aspectRatio)]}
     Debug "Aspect ratio $settings(aspectRatio) = $aspectRatio"
     set n $settings(numWindows)
     set c .layout.c
+    if {![winfo exists $c]} {
+        return
+    }
     $c delete wowAll
     Debug "*** ChangeLayout $args for $n - onesize $layoutOneSize"
     if {$n<=$monitorInfo(n)} {
@@ -976,6 +992,8 @@ array set settings {
     numWindows 0
     aspectRatio "Any"
     ignoreMonitorIdx 0
+    avoidTaskbar 1
+    layoutOneSize 1
 }
 
 # globals
