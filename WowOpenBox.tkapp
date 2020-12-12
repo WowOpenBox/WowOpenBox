@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.6.0"
+set vers "1.7.0-pre1"
 
 proc Debug {msg} {
     global settings
@@ -536,7 +536,7 @@ proc SetUpMonitors {} {
     foreach monitor $displayInfo {
         incr i 1
         $tw.monIdx.menu add command -label "Display $i"  -command "set settings(ignoreMonitorIdx) $i; UpdateExcluded"
-        if {$settings(ignoreMonitorIdx) == $i} {
+        if {[lsearch -exact [split $settings(ignoreMonitorIdx) ","] $i] != -1} {
             Debug "Ignoring monitor $i"
             continue
         }
@@ -585,12 +585,18 @@ proc SetUpMonitors {} {
             set minHeight [expr min($minHeight, $height)]
             set minWidth [expr min($minWidth, $width)]
         }
-        $tw.c create rectangle $xx1 $yy1 $xx2 $yy2 -fill [lindex $colors $n]
+        $tw.c create rectangle $xx1 $yy1 $xx2 $yy2 -fill [lindex $colors $n] -tag display
         incr n 1
-        $tw.c create text $xx2 $yy2 -fill white -text "Display $i " -anchor se
+        $tw.c create text $xx2 $yy2 -fill white -text "Display $i " -anchor se -tag display
         Debug "Area $x1,$y1 - $x2,$y2"
     }
     set monitorInfo(n) $n
+    # in case all monitors have been skipped
+    if {$n == 0} {
+        WobMessage -type ok -icon error -title "WoW Open Box settings error" \
+                -message "All your monitors are ignored, you need to leave at least 1."
+        return
+    }
     set monitorInfo(minHeight) $minHeight
     set monitorInfo(minWidth) $minWidth
     set monitorInfo(biggest) $biggestMonitor
@@ -971,12 +977,43 @@ proc SetupMove {} {
         set aty %y
     }
     $c bind wowWindow||wowText <B1-Motion> {
+        %W delete wowResize
+        set lastResize ""
         set changed_x [expr %x - $atx]
         set changed_y [expr %y - $aty]
         Debug "moving $selectedWindow $changed_x $changed_y"
         %W move $selectedTag $changed_x $changed_y
         set atx %x
         set aty %y
+    }
+    global lastResize
+    set lastResize ""
+    $c bind wowWindow||wowText||wowResize <Enter> {
+        set selectedWindow [%W find withtag current]
+        set selectedTag [lindex [%W gettags $selectedWindow] 0]
+        Debug "Entered %W $selectedWindow $selectedTag - last $lastResize"
+        if {$lastResize == $selectedTag} {
+            return
+        }
+        %W delete wowResize
+        set lastResize $selectedTag
+        set selectedRectWindow [%W find withtag "$selectedTag&&wowWindow"]
+        lassign [%W coords $selectedTag] x1 y1 x2 y2
+        Debug "coords for small resize $x2 $y2"
+        set x2 [expr {round($x2)}]
+        set y2 [expr {round($y2)}]
+        %W create rectangle [expr {$x2-18}] [expr {$y2-18}] [expr {$x2-2}] [expr {$y2-2}] -tags [list  $selectedTag "wowAll" "wowResize"]
+        %W create rectangle [expr {$x2-14}] [expr {$y2-14}] [expr {$x2-2}] [expr {$y2-2}] -tags [list  $selectedTag "wowAll" "wowResize"]
+    }
+    $c bind display <Enter> {
+        if {$lastResize == ""} {
+            return
+        }
+        set lastResize ""
+        %W delete wowResize
+    }
+    bind $c <Leave> {
+        %W delete wowResize
     }
     bind $c <MouseWheel> {
         global aspectRatio
