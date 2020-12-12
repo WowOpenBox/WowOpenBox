@@ -1018,14 +1018,14 @@ proc SetupMove {} {
     $c bind wowWindow||wowText||wowResize <B1-Motion> {
         set changed_x [expr %x - $atx]
         set changed_y [expr %y - $aty]
-        set atx %x
-        set aty %y
         if {$dragMode=="move"} {
             Debug "moving $selectedWindow $changed_x $changed_y"
             %W move $selectedTag $changed_x $changed_y
+            set atx %x
+            set aty %y
         } else {
             # resize
-            Debug "Resizing $selectedWindow $changed_x $changed_y"
+            Debug "Resizing $selectedWindow $changed_x $changed_y $aspectRatio"
             set selectedRectWindow [%W find withtag "$selectedTag&&wowWindow"]
             lassign [%W coords $selectedTag] x1 y1 x2 y2
             set w [expr {$x2-$x1}]
@@ -1042,6 +1042,8 @@ proc SetupMove {} {
             Debug "Resize $selectedTag $selectedWindow $selectedRectWindow $x1 $y1 $w $h"
             set nx2 [expr {$x1+$w*$scale}]
             set ny2 [expr {$y1+$h*$scale}]
+            set atx [expr {$atx+$nx2-$x2}]
+            set aty [expr {$aty+$ny2-$y2}]
             %W coords $selectedRectWindow $x1 $y1 $nx2 $ny2
             %W coords $selectedTag&&wowR1 [expr {$nx2-18}] [expr {$ny2-18}] [expr {$nx2-2}] [expr {$ny2-2}]
             %W coords $selectedTag&&wowR2 [expr {$nx2-14}] [expr {$ny2-14}] [expr {$nx2-2}] [expr {$ny2-2}]
