@@ -479,8 +479,9 @@ proc UpdateExcluded {} {
         set txt "Display $v"
     }
     set skipMonitorText "Excluding monitor: $txt"
-    SetUpMonitors
-    ChangeLayout
+    if {[SetUpMonitors]} {
+        ChangeLayout
+    }
 }
 
 proc WindowLayout {} {
@@ -542,7 +543,7 @@ proc SetUpMonitors {} {
     global settings monitorInfo scale skipMonitorText ignoreMonitorIdx
     set tw .layout
     if {![winfo exists $tw.c]} {
-        return
+        return 0
     }
     destroy $tw.c
     grid [canvas $tw.c -relief ridge -bd 2] -row 2 -columnspan 6 -padx 5 -pady 5
@@ -619,9 +620,8 @@ proc SetUpMonitors {} {
     set monitorInfo(n) $n
     # in case all monitors have been skipped
     if {$n == 0} {
-        WobMessage -type ok -icon error -title "WoW Open Box settings error" \
-                -message "All your monitors are ignored, you need to leave at least 1."
-        return
+        $tw.c create text 0 0 -text "\n   All your monitors are excluded,\n   you need to leave at least 1." -tag wowAll -anchor nw
+        return 0
     }
     set monitorInfo(minHeight) $minHeight
     set monitorInfo(minWidth) $minWidth
@@ -649,6 +649,7 @@ proc SetUpMonitors {} {
 #    bind $tw.c <B1-Motion>     {%W scan dragto %x %y 1; Debug "drag to %x %y"}
     Debug "$minX,$minY - $maxX,$maxY - $width x $height"
     LoadLayout
+    return $n
 }
 
 proc ConstrainWindow {x1 y1 x2 y2 aspectRatio} {
