@@ -516,6 +516,30 @@ proc WindowLayout {} {
     SetUpMonitors
 }
 
+proc AddRemoveExcluded {i} {
+    global settings
+    Debug "updating exclude for $i : $settings(ignoreMonitorIdx)"
+    if {$settings(ignoreMonitorIdx) == "0"} {
+        set settings(ignoreMonitorIdx) $i
+    } elseif {$settings(ignoreMonitorIdx) == "$i"} {
+        set settings(ignoreMonitorIdx) 0
+    } else {
+        set l [split $settings(ignoreMonitorIdx) ,]
+        set idx [lsearch -exact $l $i]
+        Debug "updating exclude for $i : $l : $idx"
+        if {$idx == -1} {
+            lappend l $i
+        } else {
+            set l [lreplace $l $idx $idx]
+            Debug "l is now $l"
+        }
+        set settings(ignoreMonitorIdx) [join $l ,]
+        Debug "res $settings(ignoreMonitorIdx)"
+    }
+    UpdateExcluded
+}
+
+
 proc SetUpMonitors {} {
     global settings monitorInfo scale skipMonitorText
     set tw .layout
@@ -535,7 +559,7 @@ proc SetUpMonitors {} {
     $tw.monIdx.menu add command -label "None" -command "set settings(ignoreMonitorIdx) 0; UpdateExcluded"
     foreach monitor $displayInfo {
         incr i 1
-        $tw.monIdx.menu add command -label "Display $i"  -command "set settings(ignoreMonitorIdx) $i; UpdateExcluded"
+        $tw.monIdx.menu add command -label "Display $i"  -command [list AddRemoveExcluded $i]
         if {[lsearch -exact [split $settings(ignoreMonitorIdx) ","] $i] != -1} {
             Debug "Ignoring monitor $i"
             continue
