@@ -526,22 +526,20 @@ proc AddRemoveExcluded {i} {
     } else {
         set l [split $settings(ignoreMonitorIdx) ,]
         set idx [lsearch -exact $l $i]
-        Debug "updating exclude for $i : $l : $idx"
         if {$idx == -1} {
             lappend l $i
         } else {
             set l [lreplace $l $idx $idx]
-            Debug "l is now $l"
         }
-        set settings(ignoreMonitorIdx) [join $l ,]
-        Debug "res $settings(ignoreMonitorIdx)"
+        set settings(ignoreMonitorIdx) [join [lsort -integer $l] ,]
+        Debug "updating exclude res $settings(ignoreMonitorIdx)"
     }
     UpdateExcluded
 }
 
 
 proc SetUpMonitors {} {
-    global settings monitorInfo scale skipMonitorText
+    global settings monitorInfo scale skipMonitorText ignoreMonitorIdx
     set tw .layout
     if {![winfo exists $tw.c]} {
         return
@@ -556,14 +554,18 @@ proc SetUpMonitors {} {
     set smallestMonitor 0
     set biggestMonitor 0
     $tw.monIdx.menu delete 0 99
-    $tw.monIdx.menu add command -label "None" -command "set settings(ignoreMonitorIdx) 0; UpdateExcluded"
+    $tw.monIdx.menu add checkbutton -label "None" -command "set settings(ignoreMonitorIdx) 0; UpdateExcluded" -variable ignoreMonitorIdx(0)
+    set ignoreMonitorIdx(0) 1
     foreach monitor $displayInfo {
         incr i 1
-        $tw.monIdx.menu add command -label "Display $i"  -command [list AddRemoveExcluded $i]
+        $tw.monIdx.menu add checkbutton -label "Display $i"  -command [list AddRemoveExcluded $i] -variable ignoreMonitorIdx($i)
         if {[lsearch -exact [split $settings(ignoreMonitorIdx) ","] $i] != -1} {
+            set ignoreMonitorIdx($i) 1
+            set ignoreMonitorIdx(0) 0
             Debug "Ignoring monitor $i"
             continue
         }
+        set ignoreMonitorIdx($i) 0
         array set info $monitor
         lassign $info(-workarea) x1 y1 x2 y2
         lassign $info(-extent) xx1 yy1 xx2 yy2
