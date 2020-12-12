@@ -20,7 +20,7 @@ wm_default::addoptions
 wm state . withdrawn
 
 # -- UI
-set vers "1.5.3"
+set vers "1.6.0"
 
 proc Debug {msg} {
     global settings
@@ -597,7 +597,7 @@ proc SetUpMonitors {} {
     set monitorInfo(smallest) $smallestMonitor
     parray monitorInfo
     Debug "bbox 1 [$tw.c bbox all]"
-    set scale [expr {1./6.}]
+    set scale [expr {1./4.}]
     $tw.c scale all 0 0 $scale $scale
     Debug "bbox 2 [$tw.c bbox all]"
     set width [expr $maxX-$minX]
@@ -652,12 +652,22 @@ proc SetWindowOnCanvas {id x1 y1 x2 y2} {
     set c .layout.c
     set tag "wow$id"
     $c delete $tag
-    set tags [list "wowAll" $tag]
+    set tags [list $tag "wowAll"]
+    set txtTags $tags
+    lappend txtTags "wowText"
+    lappend tags "wowWindow"
     set w [expr {$x2-$x1}]
     set h [expr {$y2-$y1}]
     $c create rectangle $x1 $y1 $x2 $y2 -fill gold -tags $tags
-    $c create text $x1 $y1 -text "\n   WoW $id\n   $w x $h" -anchor "nw" -tags $tags
-    Debug "Window $id $x1,$y1 $x2,$y2"
+    $c create text $x1 $y1 -text "\n   WoW $id\n   $w x $h" -anchor "nw" -tags $txtTags
+    Debug "Window $id $x1,$y1 $x2,$y2 ($tags)"
+}
+
+proc UpdateWindowText {tag w h} {
+    set c .layout.c
+    set t [$c find withtag "$tag&&wowText"]
+    regsub {^wow} $tag {} id
+    $c itemconfigure $t -text "\n   WoW $id\n   $w x $h"
 }
 
 proc LoadLayout {} {
@@ -679,25 +689,38 @@ proc LoadLayout {} {
         SetWindowOnCanvas $i $x1 $y1 [expr {$x1+$w}] [expr {$y1+$h}]
     }
     $c scale wowAll 0 0 $scale $scale
+    SetupMove
+}
+
+proc SizeOfWindow {tag} {
+    global scale
+    set c .layout.c
+    set r [lindex [$c find withtag $tag] 0]
+    if {$r == ""} {
+        Debug "$tag not found"
+        return {}
+    }
+    lassign [$c coords $r] x1 y1 x2 y2
+    set w  [expr {round(($x2-$x1)/$scale)}]
+    set h  [expr {round(($y2-$y1)/$scale)}]
+    set x1 [expr {round($x1/$scale)}]
+    set x2 [expr {round($x2/$scale)}]
+    set y1 [expr {round($y1/$scale)}]
+    set y2 [expr {round($y2/$scale)}]
+    Debug "$tag found [$c coords $r] for saving -> $x1, $y1 - $x2, $y2 -> $w x $h"
+    return [list $x1 $y1 $w $h]
 }
 
 proc SaveLayout {} {
     global settings scale
     set c .layout.c
     for {set i 1} {$i<=$settings(numWindows)} {incr i} {
-        set r [lindex [$c find withtag "wow$i"] 0]
-        if {$r == ""} {
+        set coords [SizeOfWindow "wow$i"]
+        if {$coords == ""} {
             Debug "$i not found while saving"
             continue
         }
-        lassign [$c coords $r] x1 y1 x2 y2
-        set w  [expr {round(($x2-$x1)/$scale)}]
-        set h  [expr {round(($y2-$y1)/$scale)}]
-        set x1 [expr {round($x1/$scale)}]
-        set x2 [expr {round($x2/$scale)}]
-        set y1 [expr {round($y1/$scale)}]
-        set y2 [expr {round($y2/$scale)}]
-        Debug "$i found [$c coords $r] for saving -> $x1, $y1 - $x2, $y2 -> $w x $h"
+        lassign $coords x1 y1 w h
         set settings($i,posXY) "$x1 $y1"
         set settings($i,size) "$w $h"
         UpdateN $i
@@ -772,6 +795,7 @@ proc ChangeLayout {args} {
         }
     }
     $c scale wowAll 0 0 $scale $scale
+    SetupMove
 }
 
 proc LayoutOneMonitor {monitor startAt numWindows sameSize w h maxW maxH} {
@@ -932,6 +956,54 @@ proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
         SetWindowOnCanvas $startAt $xw1 $yw1 $xw2 $yw2
         set xw1 $xw2
         incr startAt 1
+    }
+}
+
+
+# -- move/resize windows in layout
+proc SetupMove {} {
+    set c .layout.c
+    $c bind wowWindow||wowText <Button-1> {
+        set selectedWindow [%W find withtag current]
+        set selectedTag [lindex [%W gettags $selectedWindow] 0]
+        Debug "clicked on %W $selectedWindow $selectedTag"
+        set atx %x
+        set aty %y
+    }
+    $c bind wowWindow||wowText <B1-Motion> {
+        set changed_x [expr %x - $atx]
+        set changed_y [expr %y - $aty]
+        Debug "moving $selectedWindow $changed_x $changed_y"
+        %W move $selectedTag $changed_x $changed_y
+        set atx %x
+        set aty %y
+    }
+    bind $c <MouseWheel> {
+        global aspectRatio
+        set delta [expr {%D/60.}]
+        set selectedWindow [%W find withtag current]
+        set selectedTag [lindex [%W gettags $selectedWindow] 0]
+        if {![regexp {^wow[0-9]+$} $selectedTag]} {
+            Debug "Zoom $delta over $selectedTag not wow window, skipping"
+            return
+        }
+        set selectedRectWindow [%W find withtag "$selectedTag&&wowWindow"]
+        lassign [%W coords $selectedTag] x1 y1 x2 y2
+        set w [expr {$x2-$x1}]
+        set h [expr {$y2-$y1}]
+        set nw [expr {$w+$delta}]
+        if {$nw < 356*$scale} {
+            set nw [expr {356*$scale}]
+        }
+        set nh [expr {$h+$delta}]
+        if {$nh < 200*$scale} {
+            set nh [expr {200*$scale}]
+        }
+        lassign [ConstrainWindow 0 0 $nw $nh $aspectRatio] v1 v2 w h
+        Debug "MouseWheel $selectedTag $selectedWindow $selectedRectWindow $delta $x1 $y1 $w $h"
+        %W coords $selectedRectWindow $x1 $y1 [expr {$x1+$w}] [expr {$y1+$h}]
+        lassign [SizeOfWindow $selectedTag] x1 y1 w h
+        UpdateWindowText $selectedTag $w $h
     }
 }
 
