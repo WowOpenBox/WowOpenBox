@@ -485,7 +485,7 @@ proc UpdateExcluded {} {
 }
 
 proc WindowLayout {} {
-    global settings monitorInfo scale skipMonitorText
+    global settings monitorInfo scale skipMonitorText layoutinfo
     set tw .layout
     if {[winfo exists $tw]} {
         wm state $tw normal
@@ -507,9 +507,11 @@ proc WindowLayout {} {
     grid [canvas $tw.c -relief ridge -bd 2] -columnspan 6 -padx 5 -pady 5
     menubutton $tw.monIdx -text "\u25BC" -menu $tw.monIdx.menu -relief raised -bd 2 -anchor w
     menu $tw.monIdx.menu -tearoff 0
+    grid [label $tw.linfo -textvariable layoutinfo] -columnspan 6
     grid [label $tw.lex2 -textvariable skipMonitorText -anchor e] $tw.monIdx \
         [checkbutton $tw.ctaskbar -text "Avoid taskbar area" -variable settings(avoidTaskbar) -command UpdateExcluded] \
-        [button $tw.bsave -text "Save and Apply" -command SaveLayout]  - - -pady 10
+        [checkbutton $tw.cstayontop -text "Default to Stay on top" -variable stayOnTop] \
+        [button $tw.bsave -text ">> Save and Apply <<" -command SaveLayout] - -padx 4
     grid rowconfigure $tw 2 -weight 1
     for {set i 0} {$i<6} {incr i} {
         grid columnconfigure $tw $i -weight 1
@@ -639,15 +641,6 @@ proc SetUpMonitors {} {
         -scrollregion [list [expr {$minX*$scale-4}] [expr {$minY*$scale-4}] [expr {$maxX*$scale}] [expr {$maxY*$scale}]]
     Debug "xview [$tw.c xview]"
     Debug "yview [$tw.c xview]"
-    #$tw.c xview moveto 0
-    #$tw.c yview moveto 0
-#    set scrollX [expr {round($minX*-$scale)}]
-#    set scrollY [expr {round($minY*-$scale)}]
-#    set x [expr round(-1.5 * $minX * $scale)]
-#    set y [expr round(2.5 * ($minY+$maxY) / [winfo height $tw.c])]
-#    $tw.c xview scroll $x units
-#    bind $tw.c <ButtonPress-1> {%W scan mark   %x %y; Debug "mark %x %y"}
-#    bind $tw.c <B1-Motion>     {%W scan dragto %x %y 1; Debug "drag to %x %y"}
     Debug "$minX,$minY - $maxX,$maxY - $width x $height"
     LoadLayout
     return $n
@@ -1023,11 +1016,21 @@ proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
     }
 }
 
+proc UpdateLayoutInfo {tag} {
+    global layoutinfo sot
+    lassign [SizeOfWindow $tag] x1 y1 w h
+    regsub {^wow} $tag {} id
+    set x ""
+    if {$sot($id)} {
+        set x ", On top"
+    }
+    set layoutinfo "WoW $id: Top Left ($x1 , $y1) Size $w x $h$x"
+}
 
 # -- move/resize windows in layout
 proc SetupMove {} {
     set c .layout.c
-    $c bind wowText <Shift-Button-1> {
+    $c bind wowText <Button-1> {
         set selectedWindow [%W find withtag current]
         set allTags [%W gettags $selectedWindow]
         set selectedTag [lindex $allTags 0]
@@ -1041,6 +1044,8 @@ proc SetupMove {} {
         set selectedWindow [%W find withtag current]
         set allTags [%W gettags $selectedWindow]
         set selectedTag [lindex $allTags 0]
+        lassign [SizeOfWindow $selectedTag] x1 y1 w h
+        UpdateLayoutInfo $selectedTag
         set dragMode move
         if {[lsearch -exact $allTags wowResize]!=-1} {
             set dragMode resize
@@ -1050,41 +1055,45 @@ proc SetupMove {} {
         set aty %y
     }
 
-    $c bind wowWindow||wowText||wowResize <B1-Motion> {
+    $c bind wowWindow <B1-Motion> {
         set changed_x [expr %x - $atx]
         set changed_y [expr %y - $aty]
-        if {$dragMode=="move"} {
-            Debug "moving $selectedWindow $changed_x $changed_y"
-            %W move $selectedTag $changed_x $changed_y
-            set atx %x
-            set aty %y
-        } else {
-            # resize
-            Debug "Resizing $selectedWindow $changed_x $changed_y $aspectRatio"
-            set selectedRectWindow [%W find withtag "$selectedTag&&wowWindow"]
-            lassign [%W coords $selectedTag] x1 y1 x2 y2
-            set w [expr {$x2-$x1}]
-            set h [expr {$y2-$y1}]
-            set nw [expr {$w+$changed_x}]
-            if {$nw < 356*$scale} {
-                set nw [expr {356*$scale}]
-            }
-            set nh [expr {$h+$changed_y}]
-            if {$nh < 200*$scale} {
-                set nh [expr {200*$scale}]
-            }
-            lassign [ConstrainWindow 0 0 [expr {$nw/$scale}] [expr {$nh/$scale}] $aspectRatio] v1 v2 w h
-            Debug "Resize $selectedTag $selectedWindow $selectedRectWindow $x1 $y1 $w $h"
-            set nx2 [expr {$x1+$w*$scale}]
-            set ny2 [expr {$y1+$h*$scale}]
-            set atx [expr {$atx+$nx2-$x2}]
-            set aty [expr {$aty+$ny2-$y2}]
-            %W coords $selectedRectWindow $x1 $y1 $nx2 $ny2
-            %W coords $selectedTag&&wowR1 [expr {$nx2-18}] [expr {$ny2-18}] [expr {$nx2-2}] [expr {$ny2-2}]
-            %W coords $selectedTag&&wowR2 [expr {$nx2-14}] [expr {$ny2-14}] [expr {$nx2-2}] [expr {$ny2-2}]
-            lassign [SizeOfWindow $selectedTag] x1 y1 w h
-            UpdateWindowText $selectedTag $w $h
+        Debug "moving $selectedWindow $changed_x $changed_y"
+        %W move $selectedTag $changed_x $changed_y
+        set atx %x
+        set aty %y
+        UpdateLayoutInfo $selectedTag
+    }
+    $c bind wowResize <B1-Motion> {
+        global layoutinfo
+        set changed_x [expr %x - $atx]
+        set changed_y [expr %y - $aty]
+        # resize
+        Debug "Resizing $selectedWindow $changed_x $changed_y $aspectRatio"
+        set selectedRectWindow [%W find withtag "$selectedTag&&wowWindow"]
+        lassign [%W coords $selectedTag] x1 y1 x2 y2
+        set w [expr {$x2-$x1}]
+        set h [expr {$y2-$y1}]
+        set nw [expr {$w+$changed_x}]
+        if {$nw < 356*$scale} {
+            set nw [expr {356*$scale}]
         }
+        set nh [expr {$h+$changed_y}]
+        if {$nh < 200*$scale} {
+            set nh [expr {200*$scale}]
+        }
+        lassign [ConstrainWindow 0 0 [expr {$nw/$scale}] [expr {$nh/$scale}] $aspectRatio] v1 v2 w h
+        Debug "Resize $selectedTag $selectedWindow $selectedRectWindow $x1 $y1 $w $h"
+        set nx2 [expr {$x1+$w*$scale}]
+        set ny2 [expr {$y1+$h*$scale}]
+        set atx [expr {$atx+$nx2-$x2}]
+        set aty [expr {$aty+$ny2-$y2}]
+        %W coords $selectedRectWindow $x1 $y1 $nx2 $ny2
+        %W coords $selectedTag&&wowR1 [expr {$nx2-18}] [expr {$ny2-18}] [expr {$nx2-2}] [expr {$ny2-2}]
+        %W coords $selectedTag&&wowR2 [expr {$nx2-14}] [expr {$ny2-14}] [expr {$nx2-2}] [expr {$ny2-2}]
+        lassign [SizeOfWindow $selectedTag] x1 y1 w h
+        UpdateWindowText $selectedTag $w $h
+        UpdateLayoutInfo $selectedTag
     }
     global lastResize
     set lastResize ""
@@ -1097,6 +1106,7 @@ proc SetupMove {} {
         }
         %W delete wowResize
         set lastResize $selectedTag
+        set layoutinfo ""
         set selectedRectWindow [%W find withtag "$selectedTag&&wowWindow"]
         lassign [%W coords $selectedTag] x1 y1 x2 y2
         Debug "coords for small resize $x2 $y2"
@@ -1106,6 +1116,7 @@ proc SetupMove {} {
         %W create rectangle [expr {$x2-14}] [expr {$y2-14}] [expr {$x2-2}] [expr {$y2-2}] -fill darkorange -tags [list  $selectedTag "wowAll" "wowResize" "wowR2"]
     }
     $c bind display <Enter> {
+        set layoutinfo ""
         if {$lastResize == ""} {
             return
         }
@@ -1115,6 +1126,7 @@ proc SetupMove {} {
     bind $c <Leave> {
         set lastResize ""
         %W delete wowResize
+        set layoutinfo ""
     }
 }
 
