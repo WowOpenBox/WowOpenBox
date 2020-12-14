@@ -486,8 +486,19 @@ proc UpdateExcluded {} {
     }
 }
 
+proc ChangeNumWindow {v} {
+    global settings
+    set n [expr round($v)]
+    if {$n == $settings(numWindows)} {
+        return
+    }
+    set settings(numWindows) $n
+    set layoutNumWindowsText "Auto layout for $n windows"
+    ChangeLayout
+}
+
 proc WindowLayout {} {
-    global settings monitorInfo scale skipMonitorText layoutinfo layoutNumWindowsText scaleText
+    global settings monitorInfo scale skipMonitorText layoutinfo layoutNumWindowsText scaleText snapMenuText numWindowsFloat
     set tw .layout
     if {[winfo exists $tw]} {
         wm state $tw normal
@@ -497,7 +508,8 @@ proc WindowLayout {} {
     UpdateExcluded
     toplevel $tw
     wm title $tw "Wow Open Box Window Layout"
-    ttk::scale $tw.s -variable settings(numWindows) -orien horizontal -from 0 -to 16 -command ChangeLayout
+    set numWindowsFloat $settings(numWindows)
+    ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to 16 -command ChangeNumWindow
     ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size for all windows" -command ChangeLayout
     set layoutNumWindowsText "Auto layout for 99 windows"
     set width [expr {2+[string length $layoutNumWindowsText]}]
@@ -510,6 +522,7 @@ proc WindowLayout {} {
     ttk::radiobutton $tw.as4 -value "16/9" -text "16:9" -variable settings(aspectRatio) -command ChangeLayout
     grid [ttk::label $tw.l2 -text "Aspect ratio:"] $tw.as0  $tw.as1  $tw.as2  $tw.as3  $tw.as4
     grid [canvas $tw.c -relief ridge -bd 2] -columnspan 6 -padx 5 -pady 5
+    grid [ttk::label $tw.linfo -textvariable layoutinfo] -columnspan 6
     ttk::menubutton $tw.monIdx -textvariable skipMonitorText -menu $tw.monIdx.menu
     menu $tw.monIdx.menu -tearoff 0
     set scaleText "Scale: $settings(layoutScale)"
@@ -518,11 +531,24 @@ proc WindowLayout {} {
     foreach scaleLabel {1/16 1/10 1/8 1/6 1/5 1/4 1/3 1/2} {
         $tw.scaleMenu.menu add radiobutton -variable settings(layoutScale) -label $scaleLabel -value $scaleLabel -command UpdateExcluded
     }
-    grid [ttk::label $tw.linfo -textvariable layoutinfo] -columnspan 6
+    set snapMenuText "Snap to: None"
+    ttk::menubutton $tw.snapMenu -textvariable snapMenuText -width [string length $snapMenuText] -menu $tw.snapMenu.menu
+    if {$settings(layoutSnap) != 1} {
+        set snapMenuText "Snap to: $settings(layoutSnap)"
+    }
+    menu $tw.snapMenu.menu -tearoff 0
+    foreach snapLabel {None 2 4 5 8 10 16 20 24 32 50 64 100} {
+        set v $snapLabel
+        if {$snapLabel == "None"} {
+            set v 1
+        }
+        $tw.snapMenu.menu add radiobutton -variable settings(layoutSnap) -label $snapLabel -value $v -command [list set snapMenuText "Snap to: $snapLabel"]
+    }
     grid $tw.monIdx $tw.scaleMenu \
         [ttk::checkbutton $tw.ctaskbar -text "Avoid taskbar area" -variable settings(avoidTaskbar) -command UpdateExcluded] \
         [ttk::checkbutton $tw.cstayontop -text "Default to Stay on top" -variable stayOnTop] \
-        [ttk::button $tw.bsave -text ">> Save and Apply <<" -command SaveLayout] - -padx 4 -pady 4
+        $tw.snapMenu \
+        [ttk::button $tw.bsave -text ">> Save and Apply <<" -command SaveLayout] -padx 4 -pady 4
     grid rowconfigure $tw 2 -weight 1
     for {set i 0} {$i<6} {incr i} {
         grid columnconfigure $tw $i -weight 1
@@ -1060,7 +1086,7 @@ proc SetupMove {} {
         lassign [SizeOfWindow $selectedTag] x1 y1 w h
         UpdateWindowText $selectedTag $w $h
     }
-    $c bind wowWindow||wowText||wowResize <Button-1> {
+    $c bind wowWindow||wowText||wowResize <ButtonPress-1> {
         set selectedWindow [%W find withtag current]
         set allTags [%W gettags $selectedWindow]
         set selectedTag [lindex $allTags 0]
@@ -1074,7 +1100,19 @@ proc SetupMove {} {
         set atx %x
         set aty %y
     }
-
+    $c bind wowWindow <ButtonRelease-1> {
+        set snap $settings(layoutSnap)
+        Debug "Released: $snap"
+        if {$snap < 2} {
+            return
+        }
+        lassign [%W coords $selectedRectWindow] x1 y1 x2 y2
+        set nx1 [expr {$snap*round(1.0*$x1/$snap)}]
+        set ny1 [expr {$snap*round(1.0*$y1/$snap)}]
+        Debug "snap to $nx1 $ny1 (from $x1 $y1)"
+        %W move $selectedTag [expr {$nx1-$x1}] [expr {$ny1-$y1}]
+        UpdateLayoutInfo $selectedTag
+    }
     $c bind wowWindow <B1-Motion> {
         set changed_x [expr %x - $atx]
         set changed_y [expr %y - $aty]
@@ -1091,7 +1129,7 @@ proc SetupMove {} {
         # resize
         Debug "Resizing $selectedWindow $changed_x $changed_y $aspectRatio"
         set selectedRectWindow [%W find withtag "$selectedTag&&wowWindow"]
-        lassign [%W coords $selectedTag] x1 y1 x2 y2
+        lassign [%W coords $selectedRectWindow] x1 y1 x2 y2
         set w [expr {$x2-$x1}]
         set h [expr {$y2-$y1}]
         set nw [expr {$w+$changed_x}]
@@ -1103,7 +1141,7 @@ proc SetupMove {} {
             set nh [expr {200*$scale}]
         }
         lassign [ConstrainWindow 0 0 [expr {$nw/$scale}] [expr {$nh/$scale}] $aspectRatio] v1 v2 w h
-        Debug "Resize $selectedTag $selectedWindow $selectedRectWindow $x1 $y1 $w $h"
+        Debug "Resize $selectedTag : $selectedWindow : $selectedRectWindow | $x1 , $y1 ; $w x $h"
         set nx2 [expr {$x1+$w*$scale}]
         set ny2 [expr {$y1+$h*$scale}]
         set atx [expr {$atx+$nx2-$x2}]
@@ -1137,16 +1175,54 @@ proc SetupMove {} {
     }
     $c bind display <Enter> {
         set layoutinfo ""
+        set selectedTag ""
         if {$lastResize == ""} {
             return
         }
         set lastResize ""
         %W delete wowResize
     }
+    bind $c <Enter> {
+        Debug "entering canvas %W"
+        focus %W
+    }
     bind $c <Leave> {
         set lastResize ""
+        set selectedTag ""
         %W delete wowResize
         set layoutinfo ""
+    }
+    bind $c <Left> {
+        Debug "Left for $selectedTag"
+        if {$selectedTag == ""} {
+            return
+        }
+        %W move $selectedTag -$scale 0
+        UpdateLayoutInfo $selectedTag
+    }
+    bind $c <Right> {
+        Debug "Right for $selectedTag"
+        if {$selectedTag == ""} {
+            return
+        }
+        %W move $selectedTag $scale 0
+        UpdateLayoutInfo $selectedTag
+    }
+    bind $c <Up> {
+        Debug "Up for $selectedTag"
+        if {$selectedTag == ""} {
+            return
+        }
+        %W move $selectedTag 0 -$scale
+        UpdateLayoutInfo $selectedTag
+    }
+    bind $c <Down> {
+        Debug "Down for $selectedTag"
+        if {$selectedTag == ""} {
+            return
+        }
+        %W move $selectedTag 0 $scale
+        UpdateLayoutInfo $selectedTag
     }
 }
 
@@ -1218,6 +1294,7 @@ array set settings {
     avoidTaskbar 1
     layoutOneSize 1
     layoutScale "1/8"
+    layoutSnap 4
 }
 
 # globals
