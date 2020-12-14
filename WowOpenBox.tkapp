@@ -15,12 +15,14 @@ package require Tix
 package require wm_default
 wm_default::setup
 wm_default::addoptions
+# tkk native
+ttk::style theme use winnative
 
 # start not showing top level for error dialogs
 wm state . withdrawn
 
 # -- UI
-set vers "1.8.0"
+set vers "1.9.0"
 
 proc Debug {msg} {
     global settings
@@ -125,33 +127,33 @@ proc UISetup {} {
     # Get logo
     set err [GetLogo]
     if {$err != ""} {
-        grid [label .logo -text "WoW\nOpenBox\nMultiboxing"] -rowspan 3
+        grid [ttk::label .logo -text "WoW\nOpenBox\nMultiboxing"] -rowspan 3
     } else {
         wm iconphoto . -default $imgObj70
-        grid [label .logo -image $imgObj70] -rowspan 3
+        grid [ttk::label .logo -image $imgObj70] -rowspan 3
     }
-    grid [button .bH -text "Help" -command Help]  -row 0 -column 1
-    grid [button .b1  -text "Edit Settings" -command EditSettings] -row 1 -column 1
-    grid [button .bwl -text "Window Layout" -command WindowLayout] -row 2 -column 1
+    grid [ttk::button .bH -text "Help" -command Help]  -row 0 -column 1
+    grid [ttk::button .b1  -text "Edit Settings" -command EditSettings] -row 1 -column 1
+    grid [ttk::button .bwl -text "Window Layout" -command WindowLayout] -row 2 -column 1
     # label width - enough to fit "-9999 -9999"
     set width 10
-    grid [label .l2 -text "Next Wow :" -anchor e] [entry .e1 -textvariable nextWindow -width $width] -padx 4 -sticky ew
+    grid [ttk::label .l2 -text "Next Wow :" -anchor e] [entry .e1 -textvariable nextWindow -width $width] -padx 4 -sticky ew
     bind .e1 <FocusIn> [list focusIn %W]
-    grid [label .l3 -text "Resize to" -anchor e] [entry .e2 -textvariable windowSize -width $width] -padx 4 -sticky ew
-    grid [label .l4 -text "Move to" -anchor e] [entry .e3 -textvariable pos -width $width] -padx 4 -sticky ew
-    grid [checkbutton .csop -text "Wow window always on top" -variable stayOnTop] -columnspan 2
-    grid [button .b2 -text " Capture " -command CaptureOrUpdate] -pady 5 -columnspan 2
+    grid [ttk::label .l3 -text "Resize to" -anchor e] [entry .e2 -textvariable windowSize -width $width] -padx 4 -sticky ew
+    grid [ttk::label .l4 -text "Move to" -anchor e] [entry .e3 -textvariable pos -width $width] -padx 4 -sticky ew
+    grid [ttk::checkbutton .csop -text "Wow window always on top" -variable stayOnTop] -columnspan 2
+    grid [ttk::button .b2 -text " Capture " -command CaptureOrUpdate] -pady 5 -columnspan 2
     grid [listbox .lbw -height 6] -columnspan 2 -sticky ns
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
-    grid [checkbutton .csswapfocus -text "Swap hotkey also focuses" -variable settings(swapAlsoFocus)] -columnspan 2
-    grid [checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
-    grid [label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -ipady 4 -columnspan 2 -sticky sw
-    grid [checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
-    grid [checkbutton .mr -text "Mouse auto foreground window" -variable mouseRaise -command UpdateMouseRaise] -padx 4 -columnspan 2 -sticky w
-    grid [label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width]  -padx 4 -sticky w
+    grid [ttk::checkbutton .csswapfocus -text "Swap hotkey also focuses" -variable settings(swapAlsoFocus)] -columnspan 2
+    grid [ttk::checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
+    grid [ttk::label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -ipady 4 -columnspan 2 -sticky sw
+    grid [ttk::checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
+    grid [ttk::checkbutton .mr -text "Mouse auto foreground window" -variable mouseRaise -command UpdateMouseRaise] -padx 4 -columnspan 2 -sticky w
+    grid [ttk::label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width]  -padx 4 -sticky w
     bind .emd <Return> UpdateMouseDelay
-    grid [button .bml -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -padx 4 -sticky w
-    grid [label .l_bottom -text "Wow Open Box v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>"] -padx 2 -columnspan 2
+    grid [ttk::button .bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -padx 4 -sticky w
+    grid [ttk::label .l_bottom -text "Wow Open Box v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>" -justify center -anchor c] -padx 2 -columnspan 2
     grid rowconfigure    . 8 -weight 1
     #grid columnconfigure . 0 -weight 1
     grid columnconfigure . 1 -weight 1
@@ -485,7 +487,7 @@ proc UpdateExcluded {} {
 }
 
 proc WindowLayout {} {
-    global settings monitorInfo scale skipMonitorText layoutinfo
+    global settings monitorInfo scale skipMonitorText layoutinfo layoutNumWindowsText scaleText
     set tw .layout
     if {[winfo exists $tw]} {
         wm state $tw normal
@@ -495,23 +497,32 @@ proc WindowLayout {} {
     UpdateExcluded
     toplevel $tw
     wm title $tw "Wow Open Box Window Layout"
-    scale $tw.s -variable settings(numWindows) -orien horizontal -from 0 -to 16 -command ChangeLayout
-    checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size for all windows" -command ChangeLayout
-    grid [label $tw.l1 -text "Auto layout for how many windows:"] $tw.s $tw.cb1 -sticky nwe -columnspan 2
-    radiobutton $tw.as0 -value "Any" -text "Any" -variable settings(aspectRatio) -command ChangeLayout
-    radiobutton $tw.as1 -value "5/4" -text "5:4" -variable settings(aspectRatio) -command ChangeLayout
-    radiobutton $tw.as2 -value "4/3" -text "4:3" -variable settings(aspectRatio) -command ChangeLayout
-    radiobutton $tw.as3 -value "16/10" -text "16:10" -variable settings(aspectRatio) -command ChangeLayout
-    radiobutton $tw.as4 -value "16/9" -text "16:9" -variable settings(aspectRatio) -command ChangeLayout
-    grid [label $tw.l2 -text "Aspect ratio:"] $tw.as0  $tw.as1  $tw.as2  $tw.as3  $tw.as4
+    ttk::scale $tw.s -variable settings(numWindows) -orien horizontal -from 0 -to 16 -command ChangeLayout
+    ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size for all windows" -command ChangeLayout
+    set layoutNumWindowsText "Auto layout for 99 windows"
+    set width [expr {2+[string length $layoutNumWindowsText]}]
+    set layoutNumWindowsText "Auto layout for $settings(numWindows) windows"
+    grid [ttk::label $tw.l1 -textvariable layoutNumWindowsText -width $width -anchor c -justify center] $tw.s - - - $tw.cb1 -sticky we -pady 4 -padx 4
+    ttk::radiobutton $tw.as0 -value "Any" -text "Any" -variable settings(aspectRatio) -command ChangeLayout
+    ttk::radiobutton $tw.as1 -value "5/4" -text "5:4" -variable settings(aspectRatio) -command ChangeLayout
+    ttk::radiobutton $tw.as2 -value "4/3" -text "4:3" -variable settings(aspectRatio) -command ChangeLayout
+    ttk::radiobutton $tw.as3 -value "16/10" -text "16:10" -variable settings(aspectRatio) -command ChangeLayout
+    ttk::radiobutton $tw.as4 -value "16/9" -text "16:9" -variable settings(aspectRatio) -command ChangeLayout
+    grid [ttk::label $tw.l2 -text "Aspect ratio:"] $tw.as0  $tw.as1  $tw.as2  $tw.as3  $tw.as4
     grid [canvas $tw.c -relief ridge -bd 2] -columnspan 6 -padx 5 -pady 5
-    menubutton $tw.monIdx -text "\u25BC" -menu $tw.monIdx.menu -relief raised -bd 2 -anchor w
+    ttk::menubutton $tw.monIdx -textvariable skipMonitorText -menu $tw.monIdx.menu
     menu $tw.monIdx.menu -tearoff 0
-    grid [label $tw.linfo -textvariable layoutinfo] -columnspan 6
-    grid [label $tw.lex2 -textvariable skipMonitorText -anchor e] $tw.monIdx \
-        [checkbutton $tw.ctaskbar -text "Avoid taskbar area" -variable settings(avoidTaskbar) -command UpdateExcluded] \
-        [checkbutton $tw.cstayontop -text "Default to Stay on top" -variable stayOnTop] \
-        [button $tw.bsave -text ">> Save and Apply <<" -command SaveLayout] - -padx 4
+    set scaleText "Scale: $settings(layoutScale)"
+    ttk::menubutton $tw.scaleMenu -textvariable scaleText -menu $tw.scaleMenu.menu
+    menu $tw.scaleMenu.menu -tearoff 0
+    foreach scaleLabel {1/16 1/10 1/8 1/6 1/5 1/4 1/3 1/2} {
+        $tw.scaleMenu.menu add radiobutton -variable settings(layoutScale) -label $scaleLabel -value $scaleLabel -command UpdateExcluded
+    }
+    grid [ttk::label $tw.linfo -textvariable layoutinfo] -columnspan 6
+    grid $tw.monIdx $tw.scaleMenu \
+        [ttk::checkbutton $tw.ctaskbar -text "Avoid taskbar area" -variable settings(avoidTaskbar) -command UpdateExcluded] \
+        [ttk::checkbutton $tw.cstayontop -text "Default to Stay on top" -variable stayOnTop] \
+        [ttk::button $tw.bsave -text ">> Save and Apply <<" -command SaveLayout] - -padx 4 -pady 4
     grid rowconfigure $tw 2 -weight 1
     for {set i 0} {$i<6} {incr i} {
         grid columnconfigure $tw $i -weight 1
@@ -542,7 +553,7 @@ proc AddRemoveExcluded {i} {
 
 
 proc SetUpMonitors {} {
-    global settings monitorInfo scale skipMonitorText ignoreMonitorIdx
+    global settings monitorInfo scale skipMonitorText ignoreMonitorIdx scaleText
     set tw .layout
     InitAspectRatio
     if {![winfo exists $tw.c]} {
@@ -554,7 +565,7 @@ proc SetUpMonitors {} {
     Debug "displayInfo = $displayInfo"
     set n 0
     set i 0
-    set colors {navyblue purple brown darkgreen grey black}
+    set colors {navyblue purple darkgreen grey brown black}
     set smallestMonitor 0
     set biggestMonitor 0
     $tw.monIdx.menu delete 0 99
@@ -632,7 +643,14 @@ proc SetUpMonitors {} {
     set monitorInfo(smallest) $smallestMonitor
     parray monitorInfo
     Debug "bbox 1 [$tw.c bbox all]"
-    set scale [expr {1./4.}]
+    set scale [expr "1.0*$settings(layoutScale)"]
+    if {$scale > 0.5} {
+        set scale 0.5
+    } elseif {$scale < 1./32.} {
+        set scale 1./32.
+    }
+    set scaleText "Scale: $settings(layoutScale)"
+    Debug "scale $settings(layoutScale) -> $scale"
     $tw.c scale all 0 0 $scale $scale
     Debug "bbox 2 [$tw.c bbox all]"
     set width [expr $maxX-$minX]
@@ -789,10 +807,12 @@ proc InitAspectRatio {} {
 }
 
 proc ChangeLayout {args} {
-    global settings monitorInfo scale aspectRatio sot stayOnTop
+    global settings monitorInfo scale aspectRatio sot stayOnTop layoutNumWindowsText
     InitAspectRatio
     set layoutOneSize $settings(layoutOneSize)
-    set n $settings(numWindows)
+    set n [expr round($settings(numWindows))]
+    set settings(numWindows) $n
+    set layoutNumWindowsText "Auto layout for $n windows"
     set c .layout.c
     if {![winfo exists $c]} {
         return
@@ -1197,6 +1217,7 @@ array set settings {
     ignoreMonitorIdx 0
     avoidTaskbar 1
     layoutOneSize 1
+    layoutScale "1/8"
 }
 
 # globals
