@@ -22,7 +22,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.9.0"
+set vers "1.10.0"
 
 proc Debug {msg} {
     global settings
@@ -66,6 +66,7 @@ proc LoadSettings {} {
     RegisterHotkey "Start/Stop mouse tracking" hk,mouseTrack StartStopMouseTrack
     RegisterHotkey "Focus next window" hk,focusNextWindow FocusNextWindow
     RegisterHotkey "Focus previous window" hk,focusPreviousWindow FocusPreviousWindow
+    RegisterHotkey "Swap previous window" hk,swapPreviousWindow SwapPreviousWindow
     RegisterHotkey "Focus follow mouse toggle" hk,focusFollowMouse FocusFollowMouseToggle
     RegisterHotkey "Always on top toggle" hk,stayOnTopToggle StayOnTopToggle
     # Set mouse control to current values
@@ -366,6 +367,25 @@ proc StayOnTopToggle {} {
     SetStayOnTop $ww($focusWindow) $settings($focusWindow,stayOnTop)
 }
 
+proc SwapNextWindow {} {
+    global swappedWindow maxNumW
+    # maxNumW is one more than number of windows
+    # we want   2,3,4,...N cycle
+    set n [expr {($swappedWindow-1) % ($maxNumW-2) + 2}]
+    Debug "SwapNextWindow: swappedWindow $swappedWindow maxNumW $maxNumW -> $n"
+    set swappedWindow $n
+    Swap 1 $n
+}
+
+proc SwapPreviousWindow {} {
+    global swappedWindow maxNumW
+    # maxNumW is one more than number of windows
+    set n [expr {($swappedWindow+$maxNumW-2) % ($maxNumW-2) + 2}]
+    Debug "SwapNextWindow: swappedWindow $swappedWindow maxNumW $maxNumW -> $n"
+    set swappedWindow $n
+    Swap 1 $n
+}
+
 proc FocusNextWindow {} {
     global focusWindow maxNumW
     # maxNumW is one more than number of windows
@@ -438,7 +458,11 @@ proc updateListBox {n w wname} {
     }
     if {[info exists settings(hk$n,swap)]} {
         Debug "Setting swap hotkey for $n / $wname: $settings(hk$n,swap)"
-        RegisterHotkey "Swap window $n" hk$n,swap [list Swap 1 $n]
+        if {$n==1} {
+            RegisterHotkey "Swap next window" hk$n,swap SwapNextWindow
+        } else {
+            RegisterHotkey "Swap window $n" hk$n,swap [list Swap 1 $n]
+        }
     } else {
         Debug "No focus hotkey found or set for $n / $wname"
     }
@@ -1283,6 +1307,8 @@ array set settings {
     hk,mouseTrack "Ctrl-Shift-M"
     hk,focusNextWindow "Ctrl-Shift-N"
     hk,focusPreviousWindow "Ctrl-Shift-P"
+    hk,swapPreviousWindow "Ctrl-Shift-0xC0"
+    hk,swapNextWindow "Binding for next window swap is set on 'hk1,swap'"
     hk,focusFollowMouse "Ctrl-Shift-F"
     hk,stayOnTopToggle "Ctrl-Shift-T"
     DEBUG 0
@@ -1312,6 +1338,8 @@ if {![info exists pos]} {
     set maxNumW 1
     # currently focused windows (at least as far as WOB is concerned)
     set focusWindow 1
+    # last swapped window
+    set swappedWindow 1
     # hotkey ok
     set hotkeyOk 1
 }
