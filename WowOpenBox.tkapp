@@ -615,7 +615,7 @@ proc SetUpMonitors {} {
             if {$area<$smallestArea} {
                 set smallestMonitor $n
                 set smallestArea $area
-            } elseif {$area>$biggestArea} {
+            } elseif {$area>=$biggestArea} {
                 set biggestMonitor $n
                 set biggestArea $area
             }
