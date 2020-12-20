@@ -10,11 +10,6 @@
 package require Tk
 package require twapi
 package require TclCurl
-# Try to pick up theme for OS
-package require Tix
-package require wm_default
-wm_default::setup
-wm_default::addoptions
 # tkk native
 ttk::style theme use winnative
 
@@ -22,7 +17,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.10.0"
+set vers "1.11.0"
 
 proc Debug {msg} {
     global settings
@@ -83,7 +78,7 @@ proc FocusFollowMouseToggle {} {
 }
 
 proc updateIndex {args} {
-    global nextWindow maxNumW pos windowSize stayOnTop settings
+    global nextWindow maxNumW pos windowSize stayOnTop settings ww
     Debug "nextWindow is $nextWindow - args $args"
     if {[info exists settings($nextWindow,size)]} {
         set windowSize $settings($nextWindow,size)
@@ -91,15 +86,16 @@ proc updateIndex {args} {
         if {[info exists settings($nextWindow,stayOnTop)]} {
             set stayOnTop $settings($nextWindow,stayOnTop)
         }
-    } elseif {$nextWindow>1} {
-        # UpdatePos
     }
     .csop configure -text "Wow window $nextWindow always on top"
     if {$nextWindow<$maxNumW} {
         .l2 configure -text "Selected :"
-        .b2 configure -text " Update "
     } else {
         .l2 configure -text "Next Wow :"
+    }
+    if {[info exists ww($nextWindow)]} {
+        .b2 configure -text " Update "
+    } else {
         .b2 configure -text " Capture "
     }
 }
@@ -131,14 +127,16 @@ proc UISetup {} {
         grid [ttk::label .logo -text "WoW\nOpenBox\nMultiboxing"] -rowspan 3
     } else {
         wm iconphoto . -default $imgObj70
-        grid [ttk::label .logo -image $imgObj70] -rowspan 3
+        grid [ttk::label .logo -image $imgObj70] -rowspan 3 -pady 4
     }
-    grid [ttk::button .bH -text "Help" -command Help]  -row 0 -column 1
-    grid [ttk::button .b1  -text "Edit Settings" -command EditSettings] -row 1 -column 1
-    grid [ttk::button .bwl -text "Window Layout" -command WindowLayout] -row 2 -column 1
+    set labelW 16
+    grid [ttk::button .bH -text "Help" -width $labelW -command Help]  -row 0 -column 1
+    grid [ttk::button .bwl -text "Window Layout" -width $labelW -command WindowLayout] -row 1 -column 1
+    grid [ttk::button .b1  -text "Edit Settings" -width $labelW -command EditSettings] -row 2 -column 1
     # label width - enough to fit "-9999 -9999"
     set width 10
-    grid [ttk::label .l2 -text "Next Wow :" -anchor e] [entry .e1 -textvariable nextWindow -width $width] -padx 4 -sticky ew
+    grid [frame .sep -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
+    grid [ttk::label .l2 -text "Next Wow :"] [entry .e1 -textvariable nextWindow -width $width] -padx 4 -sticky ew
     bind .e1 <FocusIn> [list focusIn %W]
     grid [ttk::label .l3 -text "Resize to" -anchor e] [entry .e2 -textvariable windowSize -width $width] -padx 4 -sticky ew
     grid [ttk::label .l4 -text "Move to" -anchor e] [entry .e3 -textvariable pos -width $width] -padx 4 -sticky ew
@@ -155,8 +153,7 @@ proc UISetup {} {
     bind .emd <Return> UpdateMouseDelay
     grid [ttk::button .bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -padx 4 -sticky w
     grid [ttk::label .l_bottom -text "Wow Open Box v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>" -justify center -anchor c] -padx 2 -columnspan 2
-    grid rowconfigure    . 8 -weight 1
-    #grid columnconfigure . 0 -weight 1
+    grid rowconfigure . 9 -weight 1
     grid columnconfigure . 1 -weight 1
 }
 
@@ -200,10 +197,25 @@ proc selectChanged {w args} {
     global nextWindow maxNumW ww
     set sel [$w curselection]
     Debug "got selectChanged $w $args: $sel - nextWindow $nextWindow max $maxNumW"
-    if {$sel != "" } {
-        set nextWindow [expr {$sel+1}]
-        # Not foreground, just focus
-        FocusN $nextWindow false
+    if {$sel == "" } {
+        return
+    }
+    set nextWindow [expr {$sel+1}]
+    if {![info exists ww($nextWindow)]} {
+        Debug "Not (yet/anymore) a window $nextWindow"
+        #.b2 configure -text " Capture "
+        return
+    }
+    # Not foreground, just focus
+    if {[catch {FocusN $nextWindow false} err]} {
+        Debug "Selecting Window $nextWindow Got error $err"
+        unset ww($nextWindow)
+        .b2 configure -text " Capture "
+        set n0 [expr {$nextWindow-1}]
+        .lbw delete $n0
+        .lbw insert $n0 " WoW $nextWindow (lost)"
+        .lbw see $n0
+        .lbw selection set $n0
     }
 }
 
@@ -254,18 +266,16 @@ proc Move {w x y} {
 }
 
 proc FindExisting {} {
-    global nextWindow ww
-    set n 1
-    while {1} {
-        set wname "Wow $n"
+    global settings
+    for {set n 1} {$n<$settings(numWindows)} {incr n 1} {
+        set wname "WoW $n"
         set w [twapi::find_windows -match regexp -text "^$wname\$" -visible true -single]
         if {$w eq ""} {
-            Debug "wow $n not found, stopping"
-            return
+            Debug "wow $n not found, skipping"
+            continue
         }
         Debug "found Wow $n!"
         updateListBox $n $w $wname
-        incr n 1
     }
 }
 
@@ -470,14 +480,19 @@ proc updateListBox {n w wname} {
     set n0 [expr {$n-1}]
     Debug "n is $n nextWindow is $nextWindow maxNumW is $maxNumW"
     if {$n<$maxNumW} {
+        .lbw delete $n0
+        .lbw insert $n0 " $wname "
         .lbw see $n0
+        .lbw selection set $n0
+        # todo: handle update/capture in one place
+        .b2 configure -text " Update "
         return
     }
     # jump by more than 1
     for {set i $maxNumW} {$i < $n} {incr i} {
-        .lbw insert end "WoW $i*"
+        .lbw insert end " WoW $i (not present)"
     }
-    .lbw insert $n0 $wname
+    .lbw insert $n0 " $wname "
     set nextWindow [expr {$n+1}]
     set maxNumW $nextWindow
 }
