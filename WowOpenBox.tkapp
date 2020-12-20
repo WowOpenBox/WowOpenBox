@@ -17,7 +17,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.11.0"
+set vers "1.11.1"
 
 proc Debug {msg} {
     global settings
@@ -193,6 +193,20 @@ proc focusIn {w args} {
     set nextWindow $maxNumW
 }
 
+proc CheckWindow {cmd n} {
+    global ww
+    if {![catch $cmd err]} {
+        Debug "Ok $cmd for $n"
+        return
+    }
+    Debug "Error processing $cmd for $n: $err"
+    unset ww($n)
+    .b2 configure -text " Capture "
+    set n0 [expr {$n-1}]
+    .lbw delete $n0
+    .lbw insert $n0 " WoW $n (lost)"
+}
+
 proc selectChanged {w args} {
     global nextWindow maxNumW ww
     set sel [$w curselection]
@@ -207,16 +221,10 @@ proc selectChanged {w args} {
         return
     }
     # Not foreground, just focus
-    if {[catch {FocusN $nextWindow false} err]} {
-        Debug "Selecting Window $nextWindow Got error $err"
-        unset ww($nextWindow)
-        .b2 configure -text " Capture "
-        set n0 [expr {$nextWindow-1}]
-        .lbw delete $n0
-        .lbw insert $n0 " WoW $nextWindow (lost)"
-        .lbw see $n0
-        .lbw selection set $n0
-    }
+    CheckWindow [list FocusN $nextWindow false] $nextWindow
+    set n0 [expr {$nextWindow-1}]
+    .lbw see $n0
+    .lbw selection set $n0
 }
 
 # --- utilities ---
@@ -267,7 +275,8 @@ proc Move {w x y} {
 
 proc FindExisting {} {
     global settings
-    for {set n 1} {$n<$settings(numWindows)} {incr n 1} {
+    # do +1 just in case there is one more than last save
+    for {set n 1} {$n<=$settings(numWindows)+1} {incr n 1} {
         set wname "WoW $n"
         set w [twapi::find_windows -match regexp -text "^$wname\$" -visible true -single]
         if {$w eq ""} {
@@ -858,7 +867,7 @@ proc SaveLayout {} {
         set settings($i,posXY) "$x1 $y1"
         set settings($i,size) "$w $h"
         set settings($i,stayOnTop) $sot($i)
-        UpdateN $i
+        CheckWindow [list UpdateN $i] $i
     }
     SaveSettings
     updateIndex
