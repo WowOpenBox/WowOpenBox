@@ -10,6 +10,8 @@
 package require Tk
 package require twapi
 package require TclCurl
+package require tooltip
+namespace import tooltip::tooltip
 # tkk native
 ttk::style theme use winnative
 
@@ -17,7 +19,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.11.1"
+set vers "1.12.0"
 
 proc Debug {msg} {
     global settings
@@ -131,27 +133,37 @@ proc UISetup {} {
     }
     set labelW 16
     grid [ttk::button .bH -text "Help" -width $labelW -command Help]  -row 0 -column 1
+    tooltip .bH "Opens online help page"
     grid [ttk::button .bwl -text "Window Layout" -width $labelW -command WindowLayout] -row 1 -column 1
+    tooltip .bwl "View or change the Window Layout"
     grid [ttk::button .b1  -text "Edit Settings" -width $labelW -command EditSettings] -row 2 -column 1
+    tooltip .b1 "Opens the editor to edit settings\nand reload them after save.\nLet's you change hotkeys like:\nSwap next window: $settings(hk1,swap)\nFocus next window: $settings(hk,focusNextWindow)\netc... See Help for details."
     # label width - enough to fit "-9999 -9999"
     set width 10
-    grid [frame .sep -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
-    grid [ttk::label .l2 -text "Next Wow :"] [entry .e1 -textvariable nextWindow -width $width] -padx 4 -sticky ew
+    grid [frame .sep1 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
+    grid [ttk::label .l2 -text "Next Wow :" -anchor e] [entry .e1 -textvariable nextWindow -width $width] -padx 4 -sticky ew
     bind .e1 <FocusIn> [list focusIn %W]
     grid [ttk::label .l3 -text "Resize to" -anchor e] [entry .e2 -textvariable windowSize -width $width] -padx 4 -sticky ew
     grid [ttk::label .l4 -text "Move to" -anchor e] [entry .e3 -textvariable pos -width $width] -padx 4 -sticky ew
     grid [ttk::checkbutton .csop -text "Wow window always on top" -variable stayOnTop] -columnspan 2
+    tooltip .csop "Whether that window should be on top of others.\nThis can be changed at anytime for the current focused window\nusing the Hotkey: $settings(hk,stayOnTopToggle)"
     grid [ttk::button .b2 -text " Capture " -command CaptureOrUpdate] -pady 5 -columnspan 2
+    tooltip .b2 "Capture or update window\nHotkey: $settings(hk,capture)"
     grid [listbox .lbw -height 6] -columnspan 2 -sticky ns
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
     grid [ttk::checkbutton .csswapfocus -text "Swap hotkey also focuses" -variable settings(swapAlsoFocus)] -columnspan 2
     grid [ttk::checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
-    grid [ttk::label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -ipady 4 -columnspan 2 -sticky sw
+    grid [frame .sep2 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
+    grid [ttk::label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
     grid [ttk::checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
+    tooltip .mf "Toggle focus follow mouse mode\nHotkey: $settings(hk,focusFollowMouse)"
     grid [ttk::checkbutton .mr -text "Mouse auto foreground window" -variable mouseRaise -command UpdateMouseRaise] -padx 4 -columnspan 2 -sticky w
     grid [ttk::label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width]  -padx 4 -sticky w
+    tooltip .emd "Focus follow mouse activation delay\nType <Return> after change to take effect."
     bind .emd <Return> UpdateMouseDelay
+    grid [frame .sep3 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
     grid [ttk::button .bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -padx 4 -sticky w
+    tooltip .bml "Start/Stop mouse tracking\nHotkey: $settings(hk,mouseTrack)"
     grid [ttk::label .l_bottom -text "Wow Open Box v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>" -justify center -anchor c] -padx 2 -columnspan 2
     grid rowconfigure . 9 -weight 1
     grid columnconfigure . 1 -weight 1
@@ -558,11 +570,14 @@ proc WindowLayout {} {
     wm title $tw "Wow Open Box Window Layout"
     set numWindowsFloat $settings(numWindows)
     ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to 16 -command ChangeNumWindow
+    tooltip $tw.s "Select how many windows in your layout."
     ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size for all windows" -command ChangeLayout
+    tooltip $tw.cb1 "Check or uncheck to redo the layout with\nwindows of the same size (fastest switch later)\nor not (1 big main window and smaller minions windows)"
     set layoutNumWindowsText "Layout for 99 windows"
     set width [expr {2+[string length $layoutNumWindowsText]}]
     set layoutNumWindowsText "Layout for $settings(numWindows) windows"
     grid [ttk::label $tw.l1 -textvariable layoutNumWindowsText -width $width -anchor c -justify center] $tw.s - - - $tw.cb1 -sticky we -pady 4 -padx 4
+    tooltip $tw.l1 "After automatic layout,\ndrag any window to adjust as necessary,\nuse arrow keys for fine pixel adjustment.\nClick on text to toggle stay on top... etc..."
     ttk::radiobutton $tw.as0 -value "Any" -text "Any" -variable settings(aspectRatio) -command ChangeLayout
     ttk::radiobutton $tw.as1 -value "5/4" -text "5:4" -variable settings(aspectRatio) -command ChangeLayout
     ttk::radiobutton $tw.as2 -value "4/3" -text "4:3" -variable settings(aspectRatio) -command ChangeLayout
@@ -572,9 +587,11 @@ proc WindowLayout {} {
     grid [canvas $tw.c -relief ridge -bd 2] -columnspan 6 -padx 5 -pady 5
     grid [ttk::label $tw.linfo -textvariable layoutinfo] -columnspan 6
     ttk::menubutton $tw.monIdx -textvariable skipMonitorText -menu $tw.monIdx.menu
+    tooltip $tw.monIdx "Select the monitor(s) to exclude from the automatic layout."
     menu $tw.monIdx.menu -tearoff 0
     set scaleText "Scale: $settings(layoutScale)"
     ttk::menubutton $tw.scaleMenu -textvariable scaleText -menu $tw.scaleMenu.menu
+    tooltip $tw.scaleMenu "Pick the scaling down for this visualization (zoom in/out).\nAlso affects the grid."
     menu $tw.scaleMenu.menu -tearoff 0
     foreach scaleLabel {1/16 1/10 1/8 1/6 1/5 1/4 1/3 1/2} {
         $tw.scaleMenu.menu add radiobutton -variable settings(layoutScale) -label $scaleLabel -value $scaleLabel -command UpdateExcluded
@@ -584,6 +601,8 @@ proc WindowLayout {} {
     if {$settings(layoutSnap) != 1} {
         set snapMenuText "Snap to: $settings(layoutSnap)"
     }
+    tooltip $tw.snapMenu "When releasing manual mouse drag of windows,\nthe top left corner will be rounded to the nearest\nmultiple of this / scale."
+
     menu $tw.snapMenu.menu -tearoff 0
     foreach snapLabel {None 2 4 5 8 10 16 20 24 32 50 64 100} {
         set v $snapLabel
@@ -597,6 +616,8 @@ proc WindowLayout {} {
         [ttk::checkbutton $tw.cstayontop -text "Default to\nStay on top" -variable stayOnTop] \
         $tw.snapMenu \
         [ttk::button $tw.bsave -text ">> Save and Apply <<" -command SaveLayout] -padx 4 -pady 4
+    tooltip $tw.bsave "Saves the currently shown layout into permanent settings\nand apply it to any captured WoW windows.\nClose the window without clicking to keep your previous Layout."
+    tooltip  $tw.cstayontop "Whether newly laid out window will have\nStay On Top set or not as starting value."
     grid rowconfigure $tw 2 -weight 1
     for {set i 0} {$i<6} {incr i} {
         grid columnconfigure $tw $i -weight 1
