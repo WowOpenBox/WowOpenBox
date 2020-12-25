@@ -676,11 +676,11 @@ proc SetUpMonitors {} {
     set n 0
     set i 0
     set colors {navyblue purple darkgreen grey brown black}
-    set smallestMonitor 0
-    set biggestMonitor 0
     $tw.monIdx.menu delete 0 99
     $tw.monIdx.menu add checkbutton -label "None" -command "set settings(ignoreMonitorIdx) 0; UpdateExcluded" -variable ignoreMonitorIdx(0)
     set ignoreMonitorIdx(0) 1
+    set totalArea 0
+    set mlist {}
     foreach monitor $displayInfo {
         incr i 1
         $tw.monIdx.menu add checkbutton -label "Display $i"  -command [list AddRemoveExcluded $i] -variable ignoreMonitorIdx($i)
@@ -712,6 +712,8 @@ proc SetUpMonitors {} {
         set monitorInfo($n,height) $height
         set area [expr $width*$height]
         set monitorInfo($n,area) $area
+        lappend mlist [list $n $area]
+        incr totalArea $area
         if {$n==0} {
             set minX $xx1
             set maxX $xx2
@@ -719,16 +721,7 @@ proc SetUpMonitors {} {
             set maxY $yy2
             set minHeight $height
             set minWidth $width
-            set smallestArea $area
-            set biggestArea $area
         } else {
-            if {$area<$smallestArea} {
-                set smallestMonitor $n
-                set smallestArea $area
-            } elseif {$area>=$biggestArea} {
-                set biggestMonitor $n
-                set biggestArea $area
-            }
             set minX [expr min($minX,$xx1)]
             set maxX [expr max($maxX,$xx2)]
             set minY [expr min($minY,$yy1)]
@@ -747,10 +740,10 @@ proc SetUpMonitors {} {
         $tw.c create text 0 0 -text "\n   All your monitors are excluded,\n   you need to leave at least 1." -tag wowAll -anchor nw
         return 0
     }
+    set monitorInfo(mlist) [lsort -integer -index 1 $mlist]
+    set monitorInfo(totalArea) $totalArea
     set monitorInfo(minHeight) $minHeight
     set monitorInfo(minWidth) $minWidth
-    set monitorInfo(biggest) $biggestMonitor
-    set monitorInfo(smallest) $smallestMonitor
     parray monitorInfo
     Debug "bbox 1 [$tw.c bbox all]"
     set scale [expr "1.0*$settings(layoutScale)"]
@@ -1032,8 +1025,8 @@ proc ChangeLayout {args} {
         LayoutOneMonitor 0 1 $n $layoutOneSize 0 0 0 0
     } else {
         # cut biggest monitor in n-1 - this only works with 2 monitors...
-        set s $monitorInfo(smallest)
-        set b $monitorInfo(biggest)
+        lassign [lindex $monitorInfo(mlist) 0] s sArea
+        lassign [lindex $monitorInfo(mlist) end] b bArea
         if {!$layoutOneSize} {
             lassign [LayoutOneMonitorOneSize $b 2 [expr {$n-1}] 0 0 $monitorInfo($s,width) $monitorInfo($s,height)] w h
             LayoutOneMonitorVariable $s 1 1
@@ -1057,6 +1050,9 @@ proc ChangeLayout {args} {
     }
     $c scale wowAll 0 0 $scale $scale
     SetupMove
+}
+
+proc LayoutMonitors {mlist} {
 }
 
 proc LayoutOneMonitor {monitor startAt numWindows sameSize w h maxW maxH} {
