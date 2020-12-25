@@ -19,7 +19,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.14.0"
+set vers "1.14.1"
 
 proc Debug {msg} {
     global settings
@@ -525,6 +525,10 @@ proc updateListBox {n w wname} {
         .lbw insert end " WoW $i (not present)"
     }
     .lbw insert $n0 " $wname "
+    if {$n>$settings(numWindows)} {
+        set settings(numWindows) $n
+        Overlay
+    }
     set nextWindow [expr {$n+1}]
     set maxNumW $nextWindow
 }
