@@ -19,7 +19,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.12.0"
+set vers "1.14.0"
 
 proc Debug {msg} {
     global settings
@@ -66,11 +66,13 @@ proc LoadSettings {} {
     RegisterHotkey "Swap previous window" hk,swapPreviousWindow SwapPreviousWindow
     RegisterHotkey "Focus follow mouse toggle" hk,focusFollowMouse FocusFollowMouseToggle
     RegisterHotkey "Always on top toggle" hk,stayOnTopToggle StayOnTopToggle
+    RegisterHotkey "Overlay toggle" hk,overlayToggle OverlayToggle
     # Set mouse control to current values
     global mouseFollow mouseRaise mouseDelay
     set mouseDelay [GetMouseDelay]
     set mouseFollow [GetFocusFollowMouse]
     set mouseRaise [GetMouseRaise]
+    Overlay
     Debug "Settings (re)Loaded."
 }
 
@@ -151,6 +153,8 @@ proc UISetup {} {
     tooltip .b2 "Capture or update window\nHotkey: $settings(hk,capture)"
     grid [listbox .lbw -height 6] -columnspan 2 -sticky ns
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
+    grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command OverlayUpdate] -columnspan 2
+    tooltip .cboverlay "Show/Hide the overlay info\nHotkey: $settings(hk,overlayToggle)"
     grid [ttk::checkbutton .csswapfocus -text "Swap hotkey also focuses" -variable settings(swapAlsoFocus)] -columnspan 2
     grid [ttk::checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
     grid [frame .sep2 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
@@ -383,11 +387,16 @@ proc FocusN {n fg} {
     if {![info exists ww($n)]} {
        Debug "FocusN $n called but no such window"
     }
-    Debug "FocusN $n called, found window - fg is $fg"
-    Focus $ww($n)
+    lassign $ww($n) wh i
+    Debug "FocusN $n called, found window $i - fg is $fg"
+    Focus $wh
     if {$fg && $settings(focusAlsoFG)} {
         Debug "Also making $n foreground"
-        Foreground $ww($n)
+        Foreground $wh
+    }
+    if {$settings(showOverlay)} {
+        .o$focusWindow.l configure -foreground white
+        .o$n.l configure -foreground $settings(focusOverlayColor)
     }
     set focusWindow $n
 }
@@ -395,7 +404,7 @@ proc FocusN {n fg} {
 proc StayOnTopToggle {} {
     global focusWindow settings ww
     set settings($focusWindow,stayOnTop) [expr {!$settings($focusWindow,stayOnTop)}]
-    SetStayOnTop $ww($focusWindow) $settings($focusWindow,stayOnTop)
+    SetStayOnTop [lindex $ww($focusWindow) 0] $settings($focusWindow,stayOnTop)
 }
 
 proc SwapNextWindow {} {
@@ -443,13 +452,15 @@ proc UpdateN {n} {
         return
     }
     # local/temp only
-    set lpos $settings($n,posXY)
-    set lsize $settings($n,size)
+    lassign $settings($n,posXY) lx ly
+    lassign $settings($n,size) lw lh
     set lstayOnTop 0
     if {[info exists settings($n,stayOnTop)]} {
         set lstayOnTop $settings($n,stayOnTop)
     }
-    Update $ww($n) [lindex $lpos 0] [lindex $lpos 1] [lindex $lsize 0] [lindex $lsize 1] $lstayOnTop
+    lassign $ww($n) wh i
+    Update $wh $lx $ly $lw $lh $lstayOnTop
+    .o$n.l configure -text $i
 }
 
 proc Swap {n1 n2} {
@@ -480,7 +491,7 @@ proc Capture {} {
 
 proc updateListBox {n w wname} {
     global ww nextWindow maxNumW settings
-    set ww($n) $w
+    set ww($n) [list $w $n]
     if {[info exists settings(hk$n,focus)]} {
         Debug "Setting focus hotkey for $n / $wname: $settings(hk$n,focus)"
         RegisterHotkey "Focus window $n" hk$n,focus [list FocusN $n true]
@@ -875,6 +886,79 @@ proc SizeOfWindow {tag} {
     return [list $x1 $y1 $w $h]
 }
 
+proc OverlayToggle {} {
+    global settings
+    set settings(showOverlay) [expr {!$settings(showOverlay)}]
+    OverlayUpdate
+}
+
+proc OverlayUpdate {} {
+    global settings focusWindow
+    set on $settings(showOverlay)
+    for {set i 1} {$i<=$settings(numWindows)} {incr i} {
+        set t .o$i
+        if {$on} {
+            if {$i==$focusWindow} {
+                $t.l configure -foreground $settings(focusOverlayColor)
+            } else {
+                $t.l configure -foreground white
+            }
+            wm state $t normal
+        } else {
+            wm state $t withdrawn
+            $t.l configure -foreground white
+        }
+    }
+}
+
+# Wip (aka not working!)
+proc SetClickThrough {t} {
+    set wh [twapi::tkpath_to_hwnd $t]
+    lassign [twapi::get_window_style $wh] style exstyle
+    Debug "$t : $wh : [format "%x %x" $style $exstyle]"
+    set nex [expr {0x08000000|0x00080000|0x00000008|0x00000020}]
+    Debug "$t : $wh : [twapi::get_window_style $wh] -> [format %x $nex]"
+    twapi::set_window_style $wh $style $nex
+    lassign [twapi::get_window_style $wh] style exstyle
+    Debug "$t : $wh : [format "%x %x" $style $exstyle]"
+    Debug "$t : $wh : [twapi::get_window_style $wh]"
+}
+
+proc Overlay {} {
+    global settings
+    set transparentcolor #606060
+    ttk::style configure WobOverlayText.Label -font {Arial 48 bold} -foreground white -background $transparentcolor
+    set on $settings(showOverlay)
+    for {set i 1} {$i<=$settings(numWindows)} {incr i} {
+        set t .o$i
+        if {![winfo exists $t]} {
+            toplevel $t -bd 2 -relief ridge
+            wm overrideredirect $t 1
+            wm attributes $t -alpha .7 -topmost 1 -transparentcolor $transparentcolor
+            $t configure -bg $transparentcolor
+            ttk::label $t.l -text "$i" -style WobOverlayText.Label
+            if {$i==1} {
+                bind $t.l <ButtonPress> SwapNextWindow
+            } else {
+                bind $t.l <ButtonPress> [list Swap 1 $i]
+            }
+            pack $t.l -anchor c
+        }
+        lassign $settings($i,posXY) x y
+        lassign $settings($i,size) w h
+        wm geometry $t ${w}x$h+$x+$y
+        if {$on} {
+            wm state $t normal
+        } else {
+            wm state $t withdrawn
+        }
+    }
+    while {[winfo exists .o$i]} {
+        wm state .o$i withdrawn
+        incr i
+    }
+}
+
 proc SaveLayout {} {
     global settings scale sot
     set c .layout.c
@@ -891,6 +975,7 @@ proc SaveLayout {} {
         CheckWindow [list UpdateN $i] $i
     }
     SaveSettings
+    Overlay
     updateIndex
 }
 
@@ -1356,6 +1441,7 @@ array set settings {
     hk,swapNextWindow "Binding for next window swap is set on 'hk1,swap'"
     hk,focusFollowMouse "Ctrl-Shift-F"
     hk,stayOnTopToggle "Ctrl-Shift-T"
+    hk,overlayToggle "Ctrl-Shift-O"
     DEBUG 0
     focusAlsoFG 1
     swapAlsoFocus 1
@@ -1366,6 +1452,8 @@ array set settings {
     layoutOneSize 1
     layoutScale "1/8"
     layoutSnap 4
+    showOverlay 1
+    focusOverlayColor #ffff00
 }
 
 # globals
