@@ -19,7 +19,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.15.1"
+set vers "1.15.2"
 
 proc Debug {msg} {
     global settings
@@ -396,7 +396,7 @@ proc FocusN {n fg} {
     }
     if {$settings(showOverlay)} {
         .o$focusWindow.l configure -foreground white
-        .o$n.l configure -foreground $settings(focusOverlayColor)
+        .o$n.l configure -foreground $settings(overlayFocusColor)
     }
     set focusWindow $n
 }
@@ -896,7 +896,7 @@ proc OverlayUpdate {} {
         set t .o$i
         if {$on} {
             if {$i==$focusWindow} {
-                $t.l configure -foreground $settings(focusOverlayColor)
+                $t.l configure -foreground $settings(overlayFocusColor)
             } else {
                 $t.l configure -foreground white
             }
@@ -933,13 +933,13 @@ proc Overlay {} {
             wm overrideredirect $t 1
             wm attributes $t -alpha $settings(overlayAlpha) -topmost 1 -transparentcolor $transparentcolor
             $t configure -bg $transparentcolor
-            ttk::label $t.l -text "$i" -style WobOverlayText.Label
+            ttk::label $t.l -text "$i" -style WobOverlayText.Label -anchor $settings(overlayAnchor)
             if {$i==1} {
                 bind $t.l <ButtonPress> SwapNextWindow
             } else {
                 bind $t.l <ButtonPress> [list Swap 1 $i]
             }
-            pack $t.l -side $settings(overlaySide) -anchor $settings(overlayAnchor) -padx 8 -pady 8
+            pack $t.l -fill both -expand 1
         }
         lassign $settings($i,posXY) x y
         lassign $settings($i,size) w h
@@ -1463,10 +1463,9 @@ array set settings {
     layoutScale "1/8"
     layoutSnap 4
     showOverlay 1
-    focusOverlayColor #ffff00
+    overlayFocusColor #ffff00
     overlayAlpha 0.7
-    overlayAnchor c
-    overlaySide top
+    overlayAnchor n
 }
 
 # globals
