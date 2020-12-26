@@ -19,7 +19,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.15.2"
+set vers "1.15.3"
 
 proc Debug {msg} {
     global settings
@@ -153,10 +153,10 @@ proc UISetup {} {
     tooltip .b2 "Capture or update window\nHotkey: $settings(hk,capture)"
     grid [listbox .lbw -height 6] -columnspan 2 -sticky ns
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
-    grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command OverlayUpdate] -columnspan 2
-    tooltip .cboverlay "Show/Hide the overlay info\nHotkey: $settings(hk,overlayToggle)"
     grid [ttk::checkbutton .csswapfocus -text "Swap hotkey also focuses" -variable settings(swapAlsoFocus)] -columnspan 2
     grid [ttk::checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
+    grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command OverlayUpdate] [ttk::button .cbocfg -text "Overlay config" -command OverlayConfig]
+    tooltip .cboverlay "Show/Hide the overlay info\nHotkey: $settings(hk,overlayToggle)"
     grid [frame .sep2 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
     grid [ttk::label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
     grid [ttk::checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
@@ -906,6 +906,62 @@ proc OverlayUpdate {} {
             $t.l configure -foreground white
         }
     }
+}
+
+proc OverlayConfig {} {
+    global settings
+    set tw .overlayConfig
+    if {[winfo exists $tw]} {
+        wm state $tw normal
+        return
+    }
+    toplevel $tw
+    wm title $tw "Wow Open Box Overlay Configuration"
+    grid [ttk::label $tw.l1 -text "Pick the location of the overlay:"] -columnspan 3
+    grid [ttk::button $tw.b1 -text "\u2b76" -command "OverlayAnchor nw"] [ttk::button $tw.b2 -text "\u2b71" -command "OverlayAnchor n"] [ttk::button $tw.b3 -text "\u2b77" -command "OverlayAnchor ne"]
+    grid [ttk::button $tw.b4 -text "\u2b70" -command "OverlayAnchor w"] [ttk::button $tw.b5 -text "\uB7" -command "OverlayAnchor c"] [ttk::button $tw.b6 -text "\u2b72" -command "OverlayAnchor e"]
+    grid [ttk::button $tw.b7 -text "\u2b79" -command "OverlayAnchor sw"] [ttk::button $tw.b8 -text "\u2b73" -command "OverlayAnchor s"] [ttk::button $tw.b9 -text "\u2b78" -command "OverlayAnchor se"]
+    grid [ttk::label $tw.l2 -text "Overlay transparency:"] -columnspan 3
+    grid [ttk::scale $tw.str  -variable settings(overlayAlpha) -command "OverlayTransparency"] -sticky ew -padx 4 -pady 4 -columnspan 3
+    for {set i 0} {$i<3} {incr i} {
+        grid rowconfigure $tw [expr {$i+1}] -weight 1
+        grid columnconfigure $tw $i -weight 1
+    }
+    grid [button $tw.color -text "Change Focus Color" -bg $settings(overlayFocusColor) -command OverlayChangeFocusColor] -padx 8 -pady 4 -columnspan 3
+}
+
+proc OverlayChangeFocusColor {} {
+    global settings focusWindow
+    set color [tk_chooseColor -initialcolor gray -title "Choose overlay focus color"]
+    if {$color == ""} {
+        return
+    }
+    set settings(overlayFocusColor) $color
+    .overlayConfig.color configure -bg $color
+    set f .o$focusWindow.l
+    if {[winfo exist $f]} {
+        $f configure -foreground $color
+    }
+    SaveSettings
+}
+
+proc OverlayTransparency {alpha} {
+    set i 1
+    while {[winfo exists .o$i]} {
+        wm attributes .o$i -alpha $alpha
+        incr i
+    }
+}
+
+proc OverlayAnchor {anchor} {
+    global settings
+    set settings(overlayAnchor) $anchor
+    set i 1
+    while {[winfo exists .o$i.l]} {
+        .o$i.l configure -anchor $anchor
+        incr i
+    }
+    SaveSettings
 }
 
 # Wip (aka not working!)
