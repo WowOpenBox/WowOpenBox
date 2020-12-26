@@ -19,7 +19,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.15.0"
+set vers "1.15.1"
 
 proc Debug {msg} {
     global settings
@@ -931,7 +931,7 @@ proc Overlay {} {
         if {![winfo exists $t]} {
             toplevel $t -bd 2 -relief ridge
             wm overrideredirect $t 1
-            wm attributes $t -alpha .7 -topmost 1 -transparentcolor $transparentcolor
+            wm attributes $t -alpha $settings(overlayAlpha) -topmost 1 -transparentcolor $transparentcolor
             $t configure -bg $transparentcolor
             ttk::label $t.l -text "$i" -style WobOverlayText.Label
             if {$i==1} {
@@ -939,7 +939,7 @@ proc Overlay {} {
             } else {
                 bind $t.l <ButtonPress> [list Swap 1 $i]
             }
-            pack $t.l -anchor c
+            pack $t.l -side $settings(overlaySide) -anchor $settings(overlayAnchor) -padx 8 -pady 8
         }
         lassign $settings($i,posXY) x y
         lassign $settings($i,size) w h
@@ -1464,6 +1464,9 @@ array set settings {
     layoutSnap 4
     showOverlay 1
     focusOverlayColor #ffff00
+    overlayAlpha 0.7
+    overlayAnchor c
+    overlaySide top
 }
 
 # globals
