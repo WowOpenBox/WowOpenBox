@@ -19,7 +19,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.14.1"
+set vers "1.15.0"
 
 proc Debug {msg} {
     global settings
@@ -584,7 +584,7 @@ proc WindowLayout {} {
     toplevel $tw
     wm title $tw "Wow Open Box Window Layout"
     set numWindowsFloat $settings(numWindows)
-    ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to 16 -command ChangeNumWindow
+    ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to 22 -command ChangeNumWindow
     tooltip $tw.s "Select how many windows in your layout."
     ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size for all windows" -command ChangeLayout
     tooltip $tw.cb1 "Check or uncheck to redo the layout with\nwindows of the same size (fastest switch later)\nor not (1 big main window and smaller minions windows)"
@@ -1024,35 +1024,45 @@ proc ChangeLayout {args} {
         # Single monitor
         LayoutOneMonitor 0 1 $n $layoutOneSize 0 0 0 0
     } else {
-        # cut biggest monitor in n-1 - this only works with 2 monitors...
-        lassign [lindex $monitorInfo(mlist) 0] s sArea
-        lassign [lindex $monitorInfo(mlist) end] b bArea
+        # assign windows in proportion of monitor surface
+        set mlist $monitorInfo(mlist)
+        lassign [lindex $mlist 0] s sArea
         if {!$layoutOneSize} {
-            lassign [LayoutOneMonitorOneSize $b 2 [expr {$n-1}] 0 0 $monitorInfo($s,width) $monitorInfo($s,height)] w h
             LayoutOneMonitorVariable $s 1 1
+            LayoutMonitors [lrange $mlist 1 end] [expr {$monitorInfo(totalArea)-$sArea}] 2 [expr {$n-1}]
         } else {
-            # split windows based on area
-            set areaRatio [expr {1.0*$monitorInfo($b,area)/$monitorInfo($s,area)}]
-            Debug "Monitor $b $areaRatio times bigger than $s"
-            set n1 [expr {int(floor(1.0*$n/(1.0+$areaRatio)))}]
-            if {$n1==0} {
-                set n1 1
-            }
-            set n2 [expr {$n-$n1}]
-            Debug "Out of $n windows, putting $n1 on smaller and $n2 on bigger"
-            lassign [CalcSize $s $n1] w1 h1
-            lassign [CalcSize $b $n2] w2 h2
-            set ww [expr {min($w1,$w2)}]
-            set wh [expr {min($h1,$h2)}]
-            LayoutOneMonitorOneSize $b [expr {$n1+1}] $n2 $ww $wh 0 0
-            LayoutOneMonitorOneSize $s 1 $n1 $ww $wh 0 0
+            LayoutMonitors $mlist $monitorInfo(totalArea) 1 $n
         }
     }
     $c scale wowAll 0 0 $scale $scale
     SetupMove
 }
 
-proc LayoutMonitors {mlist} {
+proc LayoutMonitors {mlist totalArea startAt n args} {
+    if {[llength $mlist]==0} {
+        return $args
+    }
+    # split windows based on area
+    lassign [lindex $mlist 0] s sArea
+    set n1 [expr {int(floor(1.0*$n*$sArea/$totalArea))}]
+    if {$n1==0} {
+        set n1 1
+    }
+    set n2 [expr {$n-$n1}]
+    Debug "Out of $n windows, putting $n1 on $s and rest $n2 on rest (bigger)"
+
+    lassign [CalcSize $s $n1] w1 h1
+    if {[llength $args]} {
+        lassign $args w2 h2
+        set ww [expr {min($w1,$w2)}]
+        set wh [expr {min($h1,$h2)}]
+    } else {
+        set ww $w1
+        set wh $h1
+    }
+    lassign [LayoutMonitors [lrange $mlist 1 end] [expr {$totalArea-$sArea}] [expr {$startAt+$n1}] [expr {$n-$n1}] $ww $wh] ww wh
+    LayoutOneMonitorOneSize $s $startAt $n1 $ww $wh 0 0
+    return [list $ww $wh]
 }
 
 proc LayoutOneMonitor {monitor startAt numWindows sameSize w h maxW maxH} {
