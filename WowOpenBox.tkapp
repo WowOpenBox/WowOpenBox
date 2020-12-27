@@ -594,7 +594,7 @@ proc WindowLayout {} {
     toplevel $tw
     wm title $tw "Wow Open Box Window Layout"
     set numWindowsFloat $settings(numWindows)
-    ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to 22 -command ChangeNumWindow
+    ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to $settings(layoutMaxWindows) -command ChangeNumWindow
     tooltip $tw.s "Select how many windows in your layout."
     ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size for all windows" -command ChangeLayout
     tooltip $tw.cb1 "Check or uncheck to redo the layout with\nwindows of the same size (fastest switch later)\nor not (1 big main window and smaller minions windows)"
@@ -1528,6 +1528,7 @@ array set settings {
     layoutOneSize 1
     layoutScale "1/8"
     layoutSnap 4
+    layoutMaxWindows 32
     showOverlay 1
     overlayFocusColor #ffff00
     overlayAlpha 0.7
