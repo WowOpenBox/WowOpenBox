@@ -19,7 +19,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.15.3"
+set vers "1.15.4"
 
 proc Debug {msg} {
     global settings
@@ -466,6 +466,10 @@ proc UpdateN {n} {
 proc Swap {n1 n2} {
     global ww settings
     Debug "Swap $n1<->$n2 called"
+    if {![info exists ww($n1)] || ![info exists ww($n2)]} {
+        Debug "Missing one of the windows"
+        return
+    }
     set tmp $ww($n2)
     set ww($n2) $ww($n1)
     set ww($n1) $tmp
