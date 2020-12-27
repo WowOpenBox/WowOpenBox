@@ -19,7 +19,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.15.4"
+set vers "1.15.5"
 
 proc Debug {msg} {
     global settings
@@ -32,7 +32,8 @@ proc Debug {msg} {
 # -- App utils - save settings
 set app_dir [file dirname [file normalize [info script]]]
 
-set SETTINGS_FILE [file join $app_dir "wowopenboxSettings.tcl"]
+set SETTINGS_BASE "wowopenboxSettings.tcl"
+set SETTINGS_FILE [file join $app_dir $SETTINGS_BASE]
 
 proc SaveSettings {args} {
     global SETTINGS_FILE settings
@@ -290,7 +291,7 @@ proc Move {w x y} {
 }
 
 proc FindExisting {} {
-    global settings
+    global settings SETTINGS_BASE
     # do +1 just in case there is one more than last save
     for {set n 1} {$n<=$settings(numWindows)+1} {incr n 1} {
         set wname "WoW $n"
@@ -300,6 +301,11 @@ proc FindExisting {} {
             continue
         }
         Debug "found Wow $n!"
+        if {$settings(numWindows)==0} {
+            WobMessage -type ok -icon error -title "WoW Open Box missing settings error" \
+                -message "You have existing WoW 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
+            exit 1
+        }
         updateListBox $n $w $wname
     }
 }
