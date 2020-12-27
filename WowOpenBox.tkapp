@@ -1,4 +1,4 @@
-#  WowOpenBox by MooreaTV moorea@ymail.com (c) 2020 All rights reserved
+#  WowOpenBox by MooreaTV moorea@ymail.com (c) 2020-2021 All rights reserved
 #  Open Source Software licensed under GPLv3 - No Warranty
 #  (contact the author if you need a different license)
 #
@@ -11,6 +11,7 @@ package require Tk
 package require twapi
 package require TclCurl
 package require tooltip
+package require tkdnd
 namespace import tooltip::tooltip
 # tkk native
 ttk::style theme use winnative
@@ -19,7 +20,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "1.15.4"
+set vers "2.0.0-pre1"
 
 proc Debug {msg} {
     global settings
@@ -270,8 +271,9 @@ proc GetY {} {
 
 # --- Windows API: https://twapi.magicsplat.com/v4.4/ui.html
 
-proc FindWow {} {
-    set w [twapi::find_windows -text "World of Warcraft" -visible true -single]
+proc FindGameWindow {} {
+    global settings
+    set w [twapi::find_windows -text $settings(game) -visible true -single]
     return $w
 }
 
@@ -482,7 +484,7 @@ proc Swap {n1 n2} {
 
 proc Capture {} {
     global nextWindow maxNumW settings stayOnTop
-    set w [FindWow]
+    set w [FindGameWindow]
     if {$w eq ""} {
         WobMessage -type ok -icon error -title "WoW Open Box Error" -message "No World of Warcraft window found"
         return
@@ -1526,6 +1528,7 @@ array set settings {
     overlayFocusColor #ffff00
     overlayAlpha 0.7
     overlayAnchor n
+    game "World of Warcraft"
 }
 
 # globals
