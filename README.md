@@ -1,9 +1,11 @@
 # WowOpenBox
-<img src="https://wowopenbox.org/sshot2.png" alt="WOB Screenshot" align="right">
+<img src="https://wowopenbox.org/sshot2_0_narrow.png" alt="WOB Screenshot" align="right">
 
 Open source, non commercial use software for MultiBoxing World of Warcraft within the rules.
 
-Web home: https://WowOpenBox.org
+Since version 2.0 you can also manage the windows of any Windows10 application or game (Eve online, Path of Exile, Browser Games, etc... under the "OpenMultiBoxing" moniker but this is the same code that started for just Wow and now works for both/all)
+
+Web homes: https://WowOpenBox.org (for World of Warcraft) and https://OpenMultiBoxing.org/ (for information about other games/applications)
 
 Github home: https://github.com/WowOpenBox/WowOpenBox
 
