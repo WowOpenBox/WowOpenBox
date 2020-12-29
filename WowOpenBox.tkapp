@@ -1,4 +1,4 @@
-#  WowOpenBox by MooreaTV moorea@ymail.com (c) 2020-2021 All rights reserved
+#  WowOpenBox / OpenMultiboxing by MooreaTV <moorea@ymail.com> (c) 2020-2021 All rights reserved
 #  Open Source Software licensed under GPLv3 - No Warranty
 #  (contact the author if you need a different license)
 #
@@ -20,7 +20,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "2.0.0-pre1"
+set vers "2.0.0"
 
 proc Debug {msg} {
     global settings
@@ -97,7 +97,7 @@ proc updateIndex {args} {
     if {$nextWindow<$maxNumW} {
         .l2 configure -text "Selected :"
     } else {
-        .l2 configure -text "Next Wow :"
+        .l2 configure -text "Next window :"
     }
     if {[info exists ww($nextWindow)]} {
         .b2 configure -text " Update "
@@ -123,17 +123,53 @@ proc GetLogo {} {
     return ""
 }
 
-set ourTitle "WoW Open Box - Open Source Multiboxing"
+proc GetOMGLogo {} {
+    global imgWOB70 vers
+    set errMsg ""
+    if {[catch {curl::transfer -followlocation 1 -failonerror 1 -url "https://openmultiboxing.org/OpenMultiBoxing70.png?v=$vers" -errorbuffer errMsg -bodyvar body} err]} {
+        WobMessage -type ok -icon error -title "OpenMultiBoxing network error" \
+         -message "Url fetch error $err -:- $errMsg -:- $body"
+        return $errMsg
+    }
+    if {[catch {set imgWOB70 [image create photo -data $body]} err]} {
+        WobMessage -type ok -icon error -title "WoW Open Box logo error" \
+         -message "Logo error $err -:- $body"
+        return "Invalid data $err $body"
+    }
+    return ""
+}
+
+
+proc SwitchLogo {} {
+    global skin imgObj70 imgWOB70
+    if {$skin} {
+        .logo configure -image $imgWOB70
+        wm iconphoto . -default $imgWOB70
+    } else {
+        .logo configure -image $imgObj70
+        wm iconphoto . -default $imgObj70
+    }
+    set skin [expr {1-$skin}]
+}
+
+set ourTitle "WoW Open Box - Opensource MultiBoxing"
+
 proc UISetup {} {
-    global imgObj70 vers stayOnTop pos windowSize settings mouseFollow mouseRaise mouseDelay mouseCoords ourTitle
+    global imgObj70 vers stayOnTop pos windowSize settings mouseFollow mouseRaise mouseDelay mouseCoords ourTitle skin
     wm title . $ourTitle
     # Get logo
-    set err [GetLogo]
-    if {$err != ""} {
-        grid [ttk::label .logo -text "WoW\nOpenBox\nMultiboxing"] -rowspan 3
+    set err1 [GetLogo]
+    set err2 [GetOMGLogo]
+    if {$err1 != "" || $err2 != ""} {
+        set txt "WoW\nOpenBox\nMultiboxing"
+        if {$skin} {
+            set txt "Opensource\nMulti\nBoxing"
+        }
+        grid [ttk::label .logo -text $txt] -rowspan 3
     } else {
-        wm iconphoto . -default $imgObj70
-        grid [ttk::label .logo -image $imgObj70] -rowspan 3 -pady 4
+        grid [ttk::label .logo] -rowspan 3 -pady 4
+        bind .logo <ButtonPress> SwitchLogo
+        SwitchLogo
     }
     set labelW 16
     grid [ttk::button .bH -text "Help" -width $labelW -command Help]  -row 0 -column 1
@@ -145,7 +181,7 @@ proc UISetup {} {
     # label width - enough to fit "-9999 -9999"
     set width 10
     grid [frame .sep1 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
-    grid [ttk::label .l2 -text "Next Wow :" -anchor e] [entry .e1 -textvariable nextWindow -width $width] -padx 4 -sticky ew
+    grid [ttk::label .l2 -text "Next window :" -anchor e] [entry .e1 -textvariable nextWindow -width $width] -padx 4 -sticky ew
     bind .e1 <FocusIn> [list focusIn %W]
     grid [ttk::label .l3 -text "Resize to" -anchor e] [entry .e2 -textvariable windowSize -width $width] -padx 4 -sticky ew
     grid [ttk::label .l4 -text "Move to" -anchor e] [entry .e3 -textvariable pos -width $width] -padx 4 -sticky ew
@@ -172,7 +208,7 @@ proc UISetup {} {
     grid [frame .sep3 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
     grid [ttk::button .bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -padx 4 -sticky w
     tooltip .bml "Start/Stop mouse tracking\nHotkey: $settings(hk,mouseTrack)"
-    grid [ttk::label .l_bottom -text "Wow Open Box v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>" -justify center -anchor c] -padx 2 -columnspan 2
+    grid [ttk::label .l_bottom -text "WowOpenBox, OpenMultiBoxing v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>" -justify center -anchor c] -padx 2 -columnspan 2
     grid rowconfigure . 9 -weight 1
     grid columnconfigure . 1 -weight 1
 }
@@ -343,7 +379,8 @@ proc Help {} {
 
 proc EditSettings {} {
     global SETTINGS_FILE
-    Debug "Edit settings requested"
+    Debug "Edit settings requested, first saving and then opening editor"
+    SaveSettings
     twapi::shell_execute -path notepad.exe -params $SETTINGS_FILE
     .b1 configure -text "Reload Settings" -command LoadSettings
 }
@@ -1590,6 +1627,13 @@ if {![info exists pos]} {
 
 LoadSettings
 
+if {$settings(captureForegroundWindow)} {
+    set skin 1
+} else {
+    set skin 0
+}
+
+
 # -- get/save sequence
 trace add variable nextWindow write updateIndex
 
@@ -1608,7 +1652,7 @@ if {![winfo exists .logo]} {
 }
 
 # --- main / tweak me ---
-puts "WowOpenBox $vers started..."
+puts "WowOpenBox - OpenMultiBoxing $vers started..."
 FindExisting
 wm state . normal
 if {$settings(numWindows)==0} {
