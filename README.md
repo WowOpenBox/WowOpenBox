@@ -28,3 +28,5 @@ Then start your world of warcraft clients (Classic or Shadowlands) using launche
 ![WOB Window Layout GUI Screenshot](https://wowopenbox.org/sshotWindowLayout.png?src=github)
 
 Want to compare MultiBoxing solutions: See the [Analysis Matrix](https://github.com/WowOpenBox/WowOpenBox/wiki/compare) in our Wiki (feedback welcome).
+
+Also checkout our [FAQ](https://github.com/WowOpenBox/WowOpenBox/wiki/FAQ)
