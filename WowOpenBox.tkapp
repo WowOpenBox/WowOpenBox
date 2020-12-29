@@ -157,6 +157,8 @@ proc UISetup {} {
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
     grid [ttk::checkbutton .csswapfocus -text "Swap hotkey also focuses" -variable settings(swapAlsoFocus)] -columnspan 2
     grid [ttk::checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
+    grid [ttk::checkbutton .cbCaptureFG -text "Capture using foreground window" -variable settings(captureForegroundWindow)] -columnspan 2
+    tooltip .cbCaptureFG "Instead of capturing the game window by name ($settings(game))\nif checked, capture the current foreground window\nFor this to work you must use the hotkey:\n$settings(hk,capture)"
     grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command OverlayUpdate] [ttk::button .cbocfg -text "Overlay config" -command OverlayConfig]
     tooltip .cboverlay "Show/Hide the overlay info\nHotkey: $settings(hk,overlayToggle)"
     grid [frame .sep2 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
@@ -222,7 +224,7 @@ proc CheckWindow {cmd n} {
     .b2 configure -text " Capture "
     set n0 [expr {$n-1}]
     .lbw delete $n0
-    .lbw insert $n0 " WoW $n (lost)"
+    .lbw insert $n0 " WOB $n (lost)"
 }
 
 proc selectChanged {w args} {
@@ -296,13 +298,13 @@ proc FindExisting {} {
     global settings SETTINGS_BASE
     # do +1 just in case there is one more than last save
     for {set n 1} {$n<=$settings(numWindows)+1} {incr n 1} {
-        set wname "WoW $n"
+        set wname "WOB $n"
         set w [twapi::find_windows -match regexp -text "^$wname\$" -visible true -single]
         if {$w eq ""} {
-            Debug "wow $n not found, skipping"
+            Debug "WOB $n not found, skipping"
             continue
         }
-        Debug "found Wow $n!"
+        Debug "found WOB $n!"
         if {$settings(numWindows)==0} {
             WobMessage -type ok -icon error -title "WoW Open Box missing settings error" \
                 -message "You have existing WoW 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
@@ -488,14 +490,40 @@ proc Swap {n1 n2} {
     }
 }
 
+proc IsOurs {w} {
+    global ww
+    set thisAppWH [twapi::get_parent_window [twapi::tkpath_to_hwnd .]]
+    if {$w==$thisAppWH} {
+        Debug "Trying to capture our own main window... $w"
+        return true
+    }
+    foreach {n lst} [array get ww] {
+        lassign $lst wh i
+        if {$w==$wh} {
+            Debug "Trying to capture our own WOB $n/$i... $w"
+            return true
+        }
+    }
+    Debug "Requesting capture of $w which is not $thisAppWH nor one of the WOB windows"
+    return false
+}
+
 proc Capture {} {
     global nextWindow maxNumW settings stayOnTop
-    set w [FindGameWindow]
-    if {$w eq ""} {
-        WobMessage -type ok -icon error -title "WoW Open Box Error" -message "No World of Warcraft window found"
-        return
+    if {$settings(captureForegroundWindow)} {
+        set w [twapi::get_foreground_window]
+        if {[IsOurs $w]} {
+            WobMessage -type ok -icon error -title "WoW Open Box Error" -message "Can't capture foreground window: it's (already) ours!"
+            return
+        }
+    } else {
+        set w [FindGameWindow]
+        if {$w eq ""} {
+            WobMessage -type ok -icon error -title "WoW Open Box Error" -message "No $settings(game) window found"
+            return
+        }
     }
-    set wname "WoW $nextWindow"
+    set wname "WOB $nextWindow"
     Rename $w $wname
     Update $w [GetX] [GetY] [GetWidth] [GetHeight] $stayOnTop
     updateListBox $nextWindow $w $wname
@@ -534,7 +562,7 @@ proc updateListBox {n w wname} {
     }
     # jump by more than 1
     for {set i $maxNumW} {$i < $n} {incr i} {
-        .lbw insert end " WoW $i (not present)"
+        .lbw insert end " WOB $i (not present)"
     }
     .lbw insert $n0 " $wname "
     if {$n>$settings(numWindows)} {
@@ -834,7 +862,7 @@ proc SetWindowOnCanvas {id x1 y1 x2 y2} {
         set sot($id) 0
         after idle "$c itemconfigure $tag&&wowWindow -fill #ffd633"
     }
-    $c create text $x1 $y1 -text "\n   ${pin}WoW $id${pin}\n   $w x $h" -anchor "nw" -tags $txtTags
+    $c create text $x1 $y1 -text "\n   ${pin}WOB $id${pin}\n   $w x $h" -anchor "nw" -tags $txtTags
     Debug "Window $id $x1,$y1 $x2,$y2 ($tags)"
 }
 
@@ -851,7 +879,7 @@ proc UpdateWindowText {tag w h} {
     } else {
         after idle "$c itemconfigure $tag&&wowWindow -fill #ffd633"
     }
-    $c itemconfigure $t -text "\n   ${pin}WoW $id${pin}\n   $w x $h"
+    $c itemconfigure $t -text "\n   ${pin}WOB $id${pin}\n   $w x $h"
 }
 
 proc LoadLayout {} {
@@ -866,7 +894,7 @@ proc LoadLayout {} {
         set i [lindex [split $k ","] 0]
         lassign $settings($k) x1 y1
         lassign $settings($i,size) w h
-        Debug "Found settings for Wow $i $x1 , $y1  $w x $h"
+        Debug "Found settings for WOB $i $x1 , $y1  $w x $h"
         if {$i>$n} {
             continue
         }
@@ -1302,7 +1330,7 @@ proc UpdateLayoutInfo {tag} {
     if {$sot($id)} {
         set x ", On top"
     }
-    set layoutinfo "WoW $id: Top Left ($x1 , $y1) Size $w x $h$x"
+    set layoutinfo "WOB $id: Top Left ($x1 , $y1) Size $w x $h$x"
 }
 
 # -- move/resize windows in layout
@@ -1536,6 +1564,7 @@ array set settings {
     overlayAlpha 0.7
     overlayAnchor n
     game "World of Warcraft"
+    captureForegroundWindow 0
 }
 
 # globals
