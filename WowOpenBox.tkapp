@@ -20,7 +20,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "2.0.0"
+set vers "2.0.1"
 
 proc Debug {msg} {
     global settings
@@ -335,12 +335,13 @@ proc FindExisting {} {
     # do +1 just in case there is one more than last save
     for {set n 1} {$n<=$settings(numWindows)+1} {incr n 1} {
         set wname "WOB $n"
-        set w [twapi::find_windows -match regexp -text "^$wname\$" -visible true -single]
-        if {$w eq ""} {
+        set wl [twapi::find_windows -match regexp -text "^$wname\$" -visible true]
+        if {$wl eq {}} {
             Debug "WOB $n not found, skipping"
             continue
         }
-        Debug "found WOB $n!"
+        lassign $wl w
+        Debug "found WOB $n! : $wl : $w"
         if {$settings(numWindows)==0} {
             WobMessage -type ok -icon error -title "WoW Open Box missing settings error" \
                 -message "You have existing WoW 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
@@ -527,6 +528,12 @@ proc Swap {n1 n2} {
     }
 }
 
+proc IsDesktop {w} {
+    lassign $w id
+    expr {$id==0x10010}
+}
+
+
 proc IsOurs {w} {
     global ww
     set thisAppWH [twapi::get_parent_window [twapi::tkpath_to_hwnd .]]
@@ -549,6 +556,10 @@ proc Capture {} {
     global nextWindow maxNumW settings stayOnTop
     if {$settings(captureForegroundWindow)} {
         set w [twapi::get_foreground_window]
+        if {[IsDesktop $w]} {
+            Debug "Not capturing desktop window"
+            return
+        }
         if {[IsOurs $w]} {
             WobMessage -type ok -icon error -title "WoW Open Box Error" -message "Can't capture foreground window: it's (already) ours!"
             return
