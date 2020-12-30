@@ -20,7 +20,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "2.0.1"
+set vers "2.1.0"
 
 proc Debug {msg} {
     global settings
@@ -1009,13 +1009,15 @@ proc OverlayConfig {} {
     grid [ttk::button $tw.b1 -text "\u2b76" -command "OverlayAnchor nw"] [ttk::button $tw.b2 -text "\u2b71" -command "OverlayAnchor n"] [ttk::button $tw.b3 -text "\u2b77" -command "OverlayAnchor ne"]
     grid [ttk::button $tw.b4 -text "\u2b70" -command "OverlayAnchor w"] [ttk::button $tw.b5 -text "\uB7" -command "OverlayAnchor c"] [ttk::button $tw.b6 -text "\u2b72" -command "OverlayAnchor e"]
     grid [ttk::button $tw.b7 -text "\u2b79" -command "OverlayAnchor sw"] [ttk::button $tw.b8 -text "\u2b73" -command "OverlayAnchor s"] [ttk::button $tw.b9 -text "\u2b78" -command "OverlayAnchor se"]
-    grid [ttk::label $tw.l2 -text "Overlay transparency:"] -columnspan 3
-    grid [ttk::scale $tw.str  -variable settings(overlayAlpha) -command "OverlayTransparency"] -sticky ew -padx 4 -pady 4 -columnspan 3
     for {set i 0} {$i<3} {incr i} {
         grid rowconfigure $tw [expr {$i+1}] -weight 1
         grid columnconfigure $tw $i -weight 1
     }
+    grid [ttk::label $tw.l2 -text "Overlay transparency:"] -columnspan 3
+    grid [ttk::scale $tw.str  -variable settings(overlayAlpha) -command "OverlayTransparency"] -sticky ew -padx 4 -pady 4 -columnspan 3
     grid [button $tw.color -text "Change Focus Color" -bg $settings(overlayFocusColor) -command OverlayChangeFocusColor] -padx 8 -pady 4 -columnspan 3
+    grid [ttk::checkbutton $tw.border -text "Overlay border" -variable settings(overlayShowBorder) -command Overlay] -padx 8 -pady 4 -columnspan 3
+
 }
 
 proc OverlayChangeFocusColor {} {
@@ -1072,8 +1074,12 @@ proc Overlay {} {
     set on $settings(showOverlay)
     for {set i 1} {$i<=$settings(numWindows)} {incr i} {
         set t .o$i
+        set relief flat
+        if {$settings(overlayShowBorder)} {
+            set relief ridge
+        }
         if {![winfo exists $t]} {
-            toplevel $t -bd 2 -relief ridge
+            toplevel $t -bd 2 -relief $relief
             wm overrideredirect $t 1
             wm attributes $t -alpha $settings(overlayAlpha) -topmost 1 -transparentcolor $transparentcolor
             $t configure -bg $transparentcolor
@@ -1084,6 +1090,8 @@ proc Overlay {} {
                 bind $t.l <ButtonPress> [list Swap 1 $i]
             }
             pack $t.l -fill both -expand 1
+        } else {
+            $t configure -relief $relief
         }
         lassign $settings($i,posXY) x y
         lassign $settings($i,size) w h
@@ -1611,6 +1619,7 @@ array set settings {
     overlayFocusColor #ffff00
     overlayAlpha 0.7
     overlayAnchor n
+    overlayShowBorder 1
     game "World of Warcraft"
     captureForegroundWindow 0
 }
