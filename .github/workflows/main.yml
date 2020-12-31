@@ -33,13 +33,13 @@ jobs:
         
       - name: Make the executable
         run: |
+          Add-Content -Path buildkit\OpenMultiBoxing.vfs\tclkit.inf -Value 'ProductVersion "',(git describe --tags --match 'v*'),'"'
           cd buildkit
           mkdir OpenMultiBoxing.vfs\app
           cp ..\WowOpenBox.tkapp OpenMultiBoxing.vfs\app
-          Add-Content -Path OpenMultiBoxing.vfs\tclkit.inf -Value 'ProductVersion "',(git describe --tags --match 'v*'),'"'
           tclkit\tclkit.exe sdx\sdx.kit wrap OpenMultiBoxing -runtime runtime.exe
           Rename-Item OpenMultiBoxing OpenMultiBoxing.exe
-          upx -q --ultra-brute --compress-resources=0 OpenMultiBoxing.exe
+          upx.exe -q --ultra-brute --compress-resources=0 OpenMultiBoxing.exe
 
       - uses: actions/upload-artifact@v2
         with:
