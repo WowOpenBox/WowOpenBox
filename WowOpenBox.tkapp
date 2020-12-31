@@ -9,7 +9,9 @@
 #
 package require Tk
 package require twapi
-package require TclCurl
+package require http
+package require twapi_crypto
+http::register https 443 ::twapi::tls_socket
 package require tooltip
 package require tkdnd
 namespace import tooltip::tooltip
@@ -20,7 +22,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "2.1.1"
+set vers "2.2.0"
 
 proc Debug {msg} {
     global settings
@@ -109,12 +111,12 @@ proc updateIndex {args} {
 
 proc GetLogo {} {
     global imgObj70 vers
-    set errMsg ""
-    if {[catch {curl::transfer -followlocation 1 -failonerror 1 -url "https://wowopenbox.org/WoWOpenBox70.png?v=$vers" -errorbuffer errMsg -bodyvar body} err]} {
+    if {[catch {set token [http::geturl "https://wowopenbox.org/WoWOpenBox70.png?v=$vers"]} err]} {
         WobMessage -type ok -icon error -title "WoW Open Box network error" \
-         -message "Url fetch error $err -:- $errMsg -:- $body"
-        return $errMsg
+         -message "Url fetch error $err"
+        return $err
     }
+    set body [http::data $token]
     if {[catch {set imgObj70 [image create photo -data $body]} err]} {
         WobMessage -type ok -icon error -title "WoW Open Box logo error" \
          -message "Logo error $err -:- $body"
@@ -125,12 +127,12 @@ proc GetLogo {} {
 
 proc GetOMGLogo {} {
     global imgWOB70 vers
-    set errMsg ""
-    if {[catch {curl::transfer -followlocation 1 -failonerror 1 -url "https://openmultiboxing.org/OpenMultiBoxing70.png?v=$vers" -errorbuffer errMsg -bodyvar body} err]} {
+    if {[catch {set token [http::geturl "https://openmultiboxing.org/OpenMultiBoxing70.png?v=$vers"]} err]} {
         WobMessage -type ok -icon error -title "OpenMultiBoxing network error" \
-         -message "Url fetch error $err -:- $errMsg -:- $body"
+         -message "Url fetch error $err"
         return $errMsg
     }
+    set body [http::data $token]
     if {[catch {set imgWOB70 [image create photo -data $body]} err]} {
         WobMessage -type ok -icon error -title "WoW Open Box logo error" \
          -message "Logo error $err -:- $body"
