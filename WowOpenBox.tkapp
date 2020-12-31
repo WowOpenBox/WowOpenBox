@@ -20,7 +20,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "2.1.0"
+set vers "2.1.1"
 
 proc Debug {msg} {
     global settings
@@ -195,7 +195,7 @@ proc UISetup {} {
     grid [ttk::checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
     grid [ttk::checkbutton .cbCaptureFG -text "Capture using foreground window" -variable settings(captureForegroundWindow)] -columnspan 2
     tooltip .cbCaptureFG "Instead of capturing the game window by name\n($settings(game))\nif checked, capture the current foreground window\nFor this to work you must use the hotkey:\n$settings(hk,capture)"
-    grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command OverlayUpdate] [ttk::button .cbocfg -text "Overlay config" -command OverlayConfig]
+    grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command "OverlayUpdate; SaveSettings"] [ttk::button .cbocfg -text "Overlay config" -command OverlayConfig]
     tooltip .cboverlay "Show/Hide the overlay info\nHotkey: $settings(hk,overlayToggle)"
     grid [frame .sep2 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
     grid [ttk::label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
@@ -982,6 +982,10 @@ proc OverlayUpdate {} {
     set on $settings(showOverlay)
     for {set i 1} {$i<=$settings(numWindows)} {incr i} {
         set t .o$i
+        if {![winfo exists $t]} {
+            Debug "Overlay for $i doesn't exist..."
+            return
+        }
         if {$on} {
             if {$i==$focusWindow} {
                 $t.l configure -foreground $settings(overlayFocusColor)
@@ -1016,7 +1020,7 @@ proc OverlayConfig {} {
     grid [ttk::label $tw.l2 -text "Overlay transparency:"] -columnspan 3
     grid [ttk::scale $tw.str  -variable settings(overlayAlpha) -command "OverlayTransparency"] -sticky ew -padx 4 -pady 4 -columnspan 3
     grid [button $tw.color -text "Change Focus Color" -bg $settings(overlayFocusColor) -command OverlayChangeFocusColor] -padx 8 -pady 4 -columnspan 3
-    grid [ttk::checkbutton $tw.border -text "Overlay border" -variable settings(overlayShowBorder) -command Overlay] -padx 8 -pady 4 -columnspan 3
+    grid [ttk::checkbutton $tw.border -text "Overlay border" -variable settings(overlayShowBorder) -command "Overlay; SaveSettings"] -padx 8 -pady 4 -columnspan 3
 
 }
 
