@@ -37,7 +37,7 @@ jobs:
           mkdir OpenMultiBoxing.vfs\app
           cp ..\WowOpenBox.tkapp OpenMultiBoxing.vfs\app
           tclkit\tclkit.exe sdx\sdx.kit wrap OpenMultiBoxing -runtime runtime.exe
-          rename OpenMultiBoxing OpenMultiBoxing.exe
+          Rename-Item OpenMultiBoxing OpenMultiBoxing.exe
 
       - uses: actions/upload-artifact@v2
         with:
