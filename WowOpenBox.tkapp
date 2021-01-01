@@ -22,7 +22,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "2.2.0"
+set vers "2.2.1"
 
 proc Debug {msg} {
     global settings
@@ -34,7 +34,8 @@ proc Debug {msg} {
 # Settings
 # -- App utils - save settings
 set app_dir [file dirname [file normalize [info script]]]
-
+# Normalize appdir in case we're inside the binary
+regsub {OpenMultiBoxing\.exe.*$} $app_dir {} app_dir
 set SETTINGS_BASE "wowopenboxSettings.tcl"
 set SETTINGS_FILE [file join $app_dir $SETTINGS_BASE]
 
@@ -1670,6 +1671,10 @@ trace add variable nextWindow write updateIndex
 
 # Make it so the code can be reloaded without errors
 if {![winfo exists .logo]} {
+    if {$argv=="-debug"} {
+        set settings(DEBUG) 1
+        catch {console show}
+    }
     UISetup
     set mouseTrackOn ""
     updateIndex
