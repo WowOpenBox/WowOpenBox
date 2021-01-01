@@ -22,7 +22,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "2.2.1"
+set vers "2.2.3"
 
 proc Debug {msg} {
     global settings
