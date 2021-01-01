@@ -668,6 +668,7 @@ proc WindowLayout {} {
     set tw .layout
     if {[winfo exists $tw]} {
         wm state $tw normal
+        raise $tw
         ChangeLayout
         return
     }
@@ -718,8 +719,6 @@ proc WindowLayout {} {
         }
         $tw.snapMenu.menu add radiobutton -variable settings(layoutSnap) -label $snapLabel -value $v -command [list set snapMenuText "Snap to: $snapLabel"]
     }
-    font create WOBBold {*}[font actual [::ttk::style lookup TButton -font]]
-    font configure WOBBold -weight bold
     ttk::style configure WobBoldButton.TButton -font WOBBold
     grid $tw.monIdx $tw.scaleMenu \
         [ttk::checkbutton $tw.ctaskbar -text "Avoid\ntaskbar area" -variable settings(avoidTaskbar) -command UpdateExcluded] \
@@ -1012,6 +1011,7 @@ proc OverlayConfig {} {
     set tw .overlayConfig
     if {[winfo exists $tw]} {
         wm state $tw normal
+        raise $tw
         return
     }
     toplevel $tw
@@ -1679,6 +1679,8 @@ if {![winfo exists .logo]} {
         set settings(DEBUG) 1
         catch {console show}
     }
+    font create WOBBold {*}[font actual [::ttk::style lookup TButton -font]]
+    font configure WOBBold -weight bold
     UISetup
     set mouseTrackOn ""
     updateIndex
