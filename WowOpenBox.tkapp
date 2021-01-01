@@ -35,7 +35,7 @@ proc Debug {msg} {
 # -- App utils - save settings
 set app_dir [file dirname [file normalize [info script]]]
 # Normalize appdir in case we're inside the binary
-regsub {OpenMultiBoxing\.exe.*$} $app_dir {} app_dir
+regsub -nocase {/[^/]+\.exe.*$} $app_dir {} app_dir
 set SETTINGS_BASE "wowopenboxSettings.tcl"
 set SETTINGS_FILE [file join $app_dir $SETTINGS_BASE]
 
