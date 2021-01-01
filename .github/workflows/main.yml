@@ -30,11 +30,12 @@ jobs:
         
       - name: Make the executable
         run: |
-          $version=(git.exe describe --tags --match 'v*').Trim()
-          Add-Content -Path buildkit\OpenMultiBoxing.vfs\tclkit.inf -Value "ProductVersion ""$version""" -PassThru
+          ls
+          $version=(git.exe describe --always --tags --match 'v*').Trim()
           cd buildkit
           mkdir OpenMultiBoxing.vfs\app
           cp ..\WowOpenBox.tkapp OpenMultiBoxing.vfs\app
+          Add-Content -Path OpenMultiBoxing.vfs\tclkit.inf -Value "ProductVersion ""$version""" -PassThru
           tclkit\tclkit.exe sdx\sdx.kit wrap OpenMultiBoxing -runtime runtime.exe
           Rename-Item OpenMultiBoxing OpenMultiBoxing.exe
           .\upx.exe -q --ultra-brute --compress-resources=0 OpenMultiBoxing.exe
