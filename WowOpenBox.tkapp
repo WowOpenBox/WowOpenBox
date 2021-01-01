@@ -117,7 +117,7 @@ proc CheckForUpdates {} {
     set body [http::data $token]
     file rename $update_path ${update_path}.bak
     set f [open $update_path w+]
-    puts $f -nonewline $body
+    puts -nonewline $f $body
     close $f
     Debug "Updated $update_path"
     source $update_path
