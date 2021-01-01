@@ -35,8 +35,9 @@ proc WobMessage {args} {
     global hotkeyOk
     set hotkeyOk 0
     Debug "WOB message $args"
-    tk_messageBox {*}$args
+    set ret [tk_messageBox {*}$args]
     set hotkeyOk 1
+    return $ret
 }
 
 proc WobError {title msg} {
@@ -47,6 +48,8 @@ proc WobError {title msg} {
 
 if {![info exists wobInitDone]} {
     set wobInitDone 1
+    set forceDebug 0
+    array set settings {DEBUG 0}
     if {$argv=="-debug"} {
         set forceDebug 1
         catch {console show}
@@ -63,9 +66,9 @@ if {![info exists wobInitDone]} {
     Debug "Post exe detection app_dir: $app_dir"
     set SETTINGS_BASE "wowopenboxSettings.tcl"
     set SETTINGS_FILE [file join $app_dir $SETTINGS_BASE]
+    set update_path [file join $app_dir $script_name]
     if {$inExe} {
         # We're inside the exe, check for updated code
-        set update_path [file join $app_dir $script_name]
         Debug "In EXE, checking for code outside: $update_path"
         if {[file readable $update_path]} {
             if {[catch {source $update_path} err]} {
@@ -78,6 +81,48 @@ if {![info exists wobInitDone]} {
         }
     }
 }
+
+proc CheckForUpdates {} {
+    global vers update_path
+    set url "https://api.github.com/repos/WowOpenBox/WowOpenBox/releases"
+    if {[catch {set token [http::geturl $url]} err]} {
+        WobError "WoW Open Box network error" "Url fetch error $err"
+        return
+    }
+    set body [http::data $token]
+    if {[string match "/tag/$vers\"," $body]} {
+        WobMessage  -type ok -icon info -title "Already uptodate" \
+            -message "You're already running the latest version $vers"
+        return
+    }
+    if {![regexp {browser_download_url":"(https://github\.com/WowOpenBox/WowOpenBox/releases/download/[^"]+\.tkapp)"} $body all updateUrl]} {
+        WobError "Update Error" "Couldn't find update in latest release - please report as a bug"
+        return
+    }
+    Debug "Found update $updateUrl"
+    if {![regexp {/(v[^/]+)/} $updateUrl all newVersion]} {
+        WobError "Update Error" "Couldn't find version in update url: $updateUrl\nPlease report this bug!"
+        return
+    }
+    set doUpdate [WobMessage -type yesno -icon question -title "Update Available" \
+            -message "$newVersion is available, do you want to install it?"]
+    Debug "Do update is $doUpdate"
+    if {$doUpdate=="no"} {
+        return
+    }
+    if {[catch {set token [http::geturl $updateUrl]} err]} {
+        WobError "Update error" "Update fetch error $err"
+        return
+    }
+    set body [http::data $token]
+    file rename $update_path ${update_path}.bak
+    set f [open $update_path w+]
+    puts $f -nonewline $body
+    close $f
+    Debug "Updated $update_path"
+    source $update_path
+}
+
 
 # -- UI
 
@@ -250,6 +295,8 @@ proc UISetup {} {
     grid [ttk::button .bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -padx 4 -sticky w
     tooltip .bml "Start/Stop mouse tracking\nHotkey: $settings(hk,mouseTrack)"
     grid [ttk::label .l_bottom -text "WowOpenBox, OpenMultiBoxing v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>" -justify center -anchor c] -padx 2 -columnspan 2
+    bind .l_bottom <ButtonPress> CheckForUpdates
+    tooltip .l_bottom "Click to check for update from $vers"
     grid rowconfigure . 9 -weight 1
     grid columnconfigure . 1 -weight 1
 }
