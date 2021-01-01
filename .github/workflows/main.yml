@@ -30,7 +30,13 @@ jobs:
 
       - name: Get the version
         id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+        run: |
+          echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+          if [ -z "${VERSION##*pre*}" ]; then
+            echo ::set-output name=PRERELEASE::true
+          else
+            echo ::set-output name=PRERELEASE::false
+          fi
         shell: bash
 
       - name: Make the executable
@@ -52,8 +58,8 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: WowOpenBox / OpenMultiBoxing ${{ steps.get_version.outputs.VERSION }}
-          draft: false
-          prerelease: false
+          draft: true
+          prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
 
       - name: Upload Binary
         id: upload-release-asset1
