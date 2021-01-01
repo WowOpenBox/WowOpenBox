@@ -21,23 +21,65 @@ ttk::style theme use winnative
 # start not showing top level for error dialogs
 wm state . withdrawn
 
-# -- UI
-set vers "2.2.4"
+set vers "2.3-pre1"
 
 proc Debug {msg} {
-    global settings
-    if {$settings(DEBUG)} {
+    global settings forceDebug
+    if {$forceDebug || $settings(DEBUG)} {
         puts "DEBUG $msg"
     }
 }
 
-# Settings
-# -- App utils - save settings
-set app_dir [file dirname [file normalize [info script]]]
-# Normalize appdir in case we're inside the binary
-regsub -nocase {/[^/]+\.exe.*$} $app_dir {} app_dir
-set SETTINGS_BASE "wowopenboxSettings.tcl"
-set SETTINGS_FILE [file join $app_dir $SETTINGS_BASE]
+
+proc WobMessage {args} {
+    global hotkeyOk
+    set hotkeyOk 0
+    Debug "WOB message $args"
+    tk_messageBox {*}$args
+    set hotkeyOk 1
+}
+
+proc WobError {title msg} {
+    puts stderr "Error $title: $msg"
+    WobMessage -type ok -icon error -title $title -message $msg
+}
+
+
+if {![info exists wobInitDone]} {
+    set wobInitDone 1
+    if {$argv=="-debug"} {
+        set forceDebug 1
+        catch {console show}
+        Debug "WOB $vers called with -debug"
+    }
+    # Settings and updated code directory
+    # -- App utils - save settings
+    set script_path [file normalize [info script]]
+    set app_dir [file dirname $script_path]
+    set script_name [file tail $script_path]
+    Debug "Original app_dir: $app_dir (script [info script])"
+    # Normalize appdir in case we're inside the binary
+    set inExe [regsub -nocase {/[^/]+\.exe/app$} $app_dir {} app_dir]
+    Debug "Post exe detection app_dir: $app_dir"
+    set SETTINGS_BASE "wowopenboxSettings.tcl"
+    set SETTINGS_FILE [file join $app_dir $SETTINGS_BASE]
+    if {$inExe} {
+        # We're inside the exe, check for updated code
+        set update_path [file join $app_dir $script_name]
+        Debug "In EXE, checking for code outside: $update_path"
+        if {[file readable $update_path]} {
+            if {[catch {source $update_path} err]} {
+                WobError "WOB/OMB error: update file error" \
+                 "Please delete [file nativename $update_path] and restart\n\n$err"
+            } else {
+                Debug "Control passed to $update_path"
+                return
+            }
+        }
+    }
+}
+
+# -- UI
 
 proc SaveSettings {args} {
     global SETTINGS_FILE settings
@@ -60,8 +102,8 @@ proc LoadSettings {} {
     if {[file exists $SETTINGS_FILE]} {
         if {[catch {source $SETTINGS_FILE} err]} {
             puts stderr "Could not source $SETTINGS_FILE\n$err"
-            WobMessage -type ok -icon error -title "WoW Open Box settings error" \
-                -message "Your $SETTINGS_FILE has and error: $err"
+            WobError "WoW Open Box settings error" \
+                "Your $SETTINGS_FILE has and error: $err"
         }
     }
     RegisterHotkey "Capture" hk,capture CaptureOrUpdate
@@ -113,14 +155,12 @@ proc updateIndex {args} {
 proc GetLogo {} {
     global imgObj70 vers
     if {[catch {set token [http::geturl "https://wowopenbox.org/WoWOpenBox70.png?v=$vers"]} err]} {
-        WobMessage -type ok -icon error -title "WoW Open Box network error" \
-         -message "Url fetch error $err"
+        WobError "WoW Open Box network error" "Url fetch error $err"
         return $err
     }
     set body [http::data $token]
     if {[catch {set imgObj70 [image create photo -data $body]} err]} {
-        WobMessage -type ok -icon error -title "WoW Open Box logo error" \
-         -message "Logo error $err -:- $body"
+        WobError "WoW Open Box logo error" "Logo error $err -:- $body"
         return "Invalid data $err $body"
     }
     return ""
@@ -129,14 +169,12 @@ proc GetLogo {} {
 proc GetOMGLogo {} {
     global imgWOB70 vers
     if {[catch {set token [http::geturl "https://openmultiboxing.org/OpenMultiBoxing70.png?v=$vers"]} err]} {
-        WobMessage -type ok -icon error -title "OpenMultiBoxing network error" \
-         -message "Url fetch error $err"
+        WobError "OpenMultiBoxing network error" "Url fetch error $err"
         return $errMsg
     }
     set body [http::data $token]
     if {[catch {set imgWOB70 [image create photo -data $body]} err]} {
-        WobMessage -type ok -icon error -title "WoW Open Box logo error" \
-         -message "Logo error $err -:- $body"
+        WobError "WoW Open Box logo error" "Logo error $err -:- $body"
         return "Invalid data $err $body"
     }
     return ""
@@ -346,8 +384,8 @@ proc FindExisting {} {
         lassign $wl w
         Debug "found WOB $n! : $wl : $w"
         if {$settings(numWindows)==0} {
-            WobMessage -type ok -icon error -title "WoW Open Box missing settings error" \
-                -message "You have existing WoW 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
+            WobError "WoW Open Box missing settings error" \
+                "You have existing WoW 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
             exit 1
         }
         updateListBox $n $w $wname
@@ -389,14 +427,6 @@ proc EditSettings {} {
     .b1 configure -text "Reload Settings" -command LoadSettings
 }
 
-proc WobMessage {args} {
-    global hotkeyOk
-    set hotkeyOk 0
-    Debug "WOB message $args"
-    tk_messageBox {*}$args
-    set hotkeyOk 1
-}
-
 # Hotkeys
 proc HandleHotKey {msg cb} {
     global hotkeyOk
@@ -410,8 +440,8 @@ proc RegisterHotkey {msg var callback} {
     Debug "RegisterHotkey $hk $msg $var $callback"
     if {[catch {twapi::register_hotkey $hk [list HandleHotKey $msg $callback]} err]} {
         puts "hotkey error $hk for $msg: $err"
-         WobMessage -type ok -icon error -title "WoW Open Box HotKey error" \
-         -message "Conflict for hotkey for $msg, change $var in settings to use something different than $hk"
+         WobError "WoW Open Box HotKey error" \
+         "Conflict for hotkey for $msg, change $var in settings to use something different than $hk"
     }
 }
 
@@ -421,8 +451,8 @@ proc FindOtherCopy {} {
     if {$w!=""} {
         catch {twapi::flash_window $w -count 3} err
         puts "Found another window of ours. Flashed it. $err"
-        WobMessage -type ok -icon error -title "WoW Open Box duplicate error" \
-          -message "Another copy of WowOpenBox is running, please exit it before starting a new one (or hotkeys will conflict)."
+        WobError "WoW Open Box duplicate error" \
+          "Another copy of WowOpenBox is running, please exit it before starting a new one (or hotkeys will conflict)."
         catch {Foreground $w; Focus $w; twapi::flash_window $w -count 3} err
         puts "Bring other window in focus. $err"
         exit 1
@@ -564,13 +594,13 @@ proc Capture {} {
             return
         }
         if {[IsOurs $w]} {
-            WobMessage -type ok -icon error -title "WoW Open Box Error" -message "Can't capture foreground window: it's (already) ours!"
+            WobError "WoW Open Box Error" "Can't capture foreground window: it's (already) ours!"
             return
         }
     } else {
         set w [FindGameWindow]
         if {$w eq ""} {
-            WobMessage -type ok -icon error -title "WoW Open Box Error" -message "No $settings(game) window found"
+            WobError "WoW Open Box Error" "No $settings(game) window found"
             return
         }
     }
@@ -1675,10 +1705,6 @@ trace add variable nextWindow write updateIndex
 
 # Make it so the code can be reloaded without errors
 if {![winfo exists .logo]} {
-    if {$argv=="-debug"} {
-        set settings(DEBUG) 1
-        catch {console show}
-    }
     font create WOBBold {*}[font actual [::ttk::style lookup TButton -font]]
     font configure WOBBold -weight bold
     UISetup
