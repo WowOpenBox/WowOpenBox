@@ -7,7 +7,7 @@ Since version 2.0 you can also manage the windows of any Windows10 application o
 
 Web homes: https://WowOpenBox.org (for World of Warcraft) and https://OpenMultiBoxing.org/ (for information about other games/applications)
 
-Github home: https://github.com/WowOpenBox/WowOpenBox##wowopenbox
+Github home: https://github.com/WowOpenBox/WowOpenBox#wowopenbox
 
 ## Installation
 
