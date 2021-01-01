@@ -51,7 +51,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ steps.get_version.outputs.VERSION }}
+          release_name: WowOpenBox / OpenMultiBoxing ${{ steps.get_version.outputs.VERSION }}
           draft: false
           prerelease: false
 
