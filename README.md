@@ -7,21 +7,16 @@ Since version 2.0 you can also manage the windows of any Windows10 application o
 
 Web homes: https://WowOpenBox.org (for World of Warcraft) and https://OpenMultiBoxing.org/ (for information about other games/applications)
 
-Github home: https://github.com/WowOpenBox/WowOpenBox
+Github home: https://github.com/WowOpenBox/WowOpenBox##wowopenbox
 
 ## Installation
 
 WowOpenBox is optimized for Microsoft Windows 10.
 
-We will eventually have an all in one installer but for now you need to get Tcl/Tk for windows with twapi first (one time thing, not needed to get newer WOB updates later):
+New since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest `.exe` built by the Github CI in [release](https://github.com/WowOpenBox/WowOpenBox/releases).
 
-https://www.magicsplat.com/tcl-installer/index.html#downloads
-
-Then get this application using a [release](https://github.com/WowOpenBox/WowOpenBox/releases) zip, or the latest zip:
-
-https://github.com/WowOpenBox/WowOpenBox/archive/main.zip 
-
-Extract all (unzip) to your folder of choice and run it: double click `WowOpenBox.tkapp` to launch.
+Alternatively feel free, if you have Tcl/Tk+Twapi already installed (from 
+https://www.magicsplat.com/tcl-installer/index.html#downloads for instance) to use just the source tkapp and run it: double click `WowOpenBox.tkapp` to launch.
 
 Then start your world of warcraft clients (Classic or Shadowlands) using launcher is fine (that way you don't need to keep typing your password) and in "Windowed (Fullscreen)" mode, so they don't have a title or border and can be neatly arranged by WowOpenBox!
 
