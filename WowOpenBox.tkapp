@@ -21,7 +21,7 @@ ttk::style theme use winnative
 # start not showing top level for error dialogs
 wm state . withdrawn
 
-set vers "2.3-pre1"
+set vers "2.3-pre2"
 
 proc Debug {msg} {
     global settings forceDebug
@@ -73,9 +73,9 @@ if {![info exists wobInitDone]} {
         if {[file readable $update_path]} {
             if {[catch {source $update_path} err]} {
                 WobError "WOB/OMB error: update file error" \
-                 "Please delete [file nativename $update_path] and restart\n\n$err"
+                 "Please delete [file nativename $update_path] and restart\n\n$err\n$errorInfo"
             } else {
-                Debug "Control passed to $update_path"
+                Debug "Control passed to local file $update_path"
                 return
             }
         }
@@ -111,16 +111,41 @@ proc CheckForUpdates {} {
         return
     }
     if {[catch {set token [http::geturl $updateUrl]} err]} {
-        WobError "Update error" "Update fetch error $err"
+        WobError "Update error" "Update fetch error for\n$updateUrl\n$err"
         return
     }
+    set ncode [http::ncode $token]
+    if {$ncode == 301 || $ncode == 302} {
+        upvar #0 $token state
+        array set meta $state(meta)
+        set location "not-found!"
+        if {[info exists meta(Location)]} {
+            set location $meta(Location)
+        }
+        if {[info exists meta(location)]} {
+            set location $meta(location)
+        }
+        Debug "Got a redirect $ncode: $location"
+        if {[catch {set token [http::geturl $location]} err]} {
+            WobError "Update error" "Update fetch error for redirected\n$location\n$err"
+            return
+        }
+    }
     set body [http::data $token]
-    file rename $update_path ${update_path}.bak
+    set backup_path ${update_path}.$vers.bak
+    # can error when in exe...
+    catch {file rename -force $update_path $backup_path}
     set f [open $update_path w+]
     puts -nonewline $f $body
     close $f
     Debug "Updated $update_path"
-    source $update_path
+    WobMessage  -type ok -icon info -title "Download complete" \
+            -message "Backed up previous version as $backup_path - ready to restart with $newVersion"
+    if {[catch {uplevel #0 [list source $update_path]} err]} {
+       WobError "Update error" "Error in new downloaded script:\n$err"
+       return
+    }
+    Debug "Control passed successfully to updated file $newVersion"
 }
 
 
@@ -487,7 +512,7 @@ proc RegisterHotkey {msg var callback} {
     Debug "RegisterHotkey $hk $msg $var $callback"
     if {[catch {twapi::register_hotkey $hk [list HandleHotKey $msg $callback]} err]} {
         puts "hotkey error $hk for $msg: $err"
-         WobError "WoW Open Box HotKey error" \
+        WobError "WoW Open Box HotKey error" \
          "Conflict for hotkey for $msg, change $var in settings to use something different than $hk"
     }
 }
