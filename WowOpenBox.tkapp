@@ -22,7 +22,7 @@ ttk::style theme use winnative
 wm state . withdrawn
 
 # -- UI
-set vers "2.2.3"
+set vers "2.3.0-pre1"
 
 proc Debug {msg} {
     global settings
@@ -677,11 +677,11 @@ proc WindowLayout {} {
     set numWindowsFloat $settings(numWindows)
     ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to $settings(layoutMaxWindows) -command ChangeNumWindow
     tooltip $tw.s "Select how many windows in your layout."
-    ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size for all windows" -command ChangeLayout
+    ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size\nfor all windows" -command ChangeLayout
     tooltip $tw.cb1 "Check or uncheck to redo the layout with\nwindows of the same size (fastest switch later)\nor not (1 big main window and smaller minions windows)"
-    set layoutNumWindowsText "Layout for 99 windows"
+    set layoutNumWindowsText "99 windows"
     set width [expr {2+[string length $layoutNumWindowsText]}]
-    set layoutNumWindowsText "Layout for $settings(numWindows) windows"
+    set layoutNumWindowsText "Layout for\n$settings(numWindows) windows"
     grid [ttk::label $tw.l1 -textvariable layoutNumWindowsText -width $width -anchor c -justify center] $tw.s - - - $tw.cb1 -sticky we -pady 4 -padx 4
     tooltip $tw.l1 "After automatic layout,\ndrag any window to adjust as necessary,\nuse arrow keys for fine pixel adjustment.\nClick on text to toggle stay on top... etc..."
     ttk::radiobutton $tw.as0 -value "Any" -text "Any" -variable settings(aspectRatio) -command ChangeLayout
@@ -689,6 +689,7 @@ proc WindowLayout {} {
     ttk::radiobutton $tw.as2 -value "4/3" -text "4:3" -variable settings(aspectRatio) -command ChangeLayout
     ttk::radiobutton $tw.as3 -value "16/10" -text "16:10" -variable settings(aspectRatio) -command ChangeLayout
     ttk::radiobutton $tw.as4 -value "16/9" -text "16:9" -variable settings(aspectRatio) -command ChangeLayout
+#    ttk::radiobutton $tw.as5 -value "21/9" -text "21:9" -variable settings(aspectRatio) -command ChangeLayout
     grid [ttk::label $tw.l2 -text "Aspect ratio:"] $tw.as0  $tw.as1  $tw.as2  $tw.as3  $tw.as4
     grid [canvas $tw.c -relief ridge -bd 2] -columnspan 6 -padx 5 -pady 5
     grid [ttk::label $tw.linfo -textvariable layoutinfo] -columnspan 6
@@ -717,11 +718,14 @@ proc WindowLayout {} {
         }
         $tw.snapMenu.menu add radiobutton -variable settings(layoutSnap) -label $snapLabel -value $v -command [list set snapMenuText "Snap to: $snapLabel"]
     }
+    font create WOBBold {*}[font actual [::ttk::style lookup TButton -font]]
+    font configure WOBBold -weight bold
+    ttk::style configure WobBoldButton.TButton -font WOBBold
     grid $tw.monIdx $tw.scaleMenu \
         [ttk::checkbutton $tw.ctaskbar -text "Avoid\ntaskbar area" -variable settings(avoidTaskbar) -command UpdateExcluded] \
         [ttk::checkbutton $tw.cstayontop -text "Default to\nStay on top" -variable stayOnTop] \
         $tw.snapMenu \
-        [ttk::button $tw.bsave -text ">> Save and Apply <<" -command SaveLayout] -padx 4 -pady 4
+        [ttk::button $tw.bsave -text " Save and Apply " -command SaveLayout -style WobBoldButton.TButton] -sticky ns -padx 4 -pady 4
     tooltip $tw.bsave "Saves the currently shown layout into permanent settings\nand apply it to any captured WoW windows.\nClose the window without clicking to keep your previous Layout."
     tooltip  $tw.cstayontop "Whether newly laid out window will have\nStay On Top set or not as starting value."
     grid rowconfigure $tw 2 -weight 1
@@ -1148,7 +1152,7 @@ proc ChangeLayout {args} {
     set layoutOneSize $settings(layoutOneSize)
     set n [expr round($settings(numWindows))]
     set settings(numWindows) $n
-    set layoutNumWindowsText "Auto layout for $n windows"
+    set layoutNumWindowsText "Layout for\n$n windows"
     set c .layout.c
     if {![winfo exists $c]} {
         return
