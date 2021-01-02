@@ -21,7 +21,7 @@ ttk::style theme use winnative
 # start not showing top level for error dialogs
 wm state . withdrawn
 
-set vers "2.3.3"
+set vers "2.3.4"
 
 proc Debug {msg} {
     global settings forceDebug
@@ -248,7 +248,7 @@ proc GetOMGLogo {} {
     global imgWOB70 vers
     if {[catch {set token [http::geturl "https://openmultiboxing.org/OpenMultiBoxing70.png?v=$vers"]} err]} {
         WobError "OpenMultiBoxing network error" "Url fetch error $err"
-        return $errMsg
+        return $err
     }
     set body [http::data $token]
     if {[catch {set imgWOB70 [image create photo -data $body]} err]} {
