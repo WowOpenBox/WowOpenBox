@@ -21,7 +21,7 @@ ttk::style theme use winnative
 # start not showing top level for error dialogs
 wm state . withdrawn
 
-set vers "2.3.1"
+set vers "2.3.3"
 
 proc Debug {msg} {
     global settings forceDebug
