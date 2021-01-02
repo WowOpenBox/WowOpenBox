@@ -21,7 +21,7 @@ ttk::style theme use winnative
 # start not showing top level for error dialogs
 wm state . withdrawn
 
-set vers "2.3-pre2"
+set vers "2.3.0"
 
 proc Debug {msg} {
     global settings forceDebug
@@ -82,20 +82,27 @@ if {![info exists wobInitDone]} {
     }
 }
 
-proc CheckForUpdates {} {
-    global vers update_path
-    set url "https://api.github.com/repos/WowOpenBox/WowOpenBox/releases"
+proc CheckForUpdates {silent} {
+    global vers update_path settings
+    set url "https://api.github.com/repos/WowOpenBox/WowOpenBox/releases/latest"
     if {[catch {set token [http::geturl $url]} err]} {
         WobError "WoW Open Box network error" "Url fetch error $err"
         return
     }
     set body [http::data $token]
     if {[string match "/tag/$vers\"," $body]} {
+        if {$silent} {
+            Debug "Already running latest $vers"
+            return
+        }
         WobMessage  -type ok -icon info -title "Already uptodate" \
             -message "You're already running the latest version $vers"
         return
     }
+    set settings(lastUpdateChecked) [clock seconds]
+    SaveSettings
     if {![regexp {browser_download_url":"(https://github\.com/WowOpenBox/WowOpenBox/releases/download/[^"]+\.tkapp)"} $body all updateUrl]} {
+        Debug "--- Update not found in $url ---\n$body\n--- end of $url ---"
         WobError "Update Error" "Couldn't find update in latest release - please report as a bug"
         return
     }
@@ -320,7 +327,7 @@ proc UISetup {} {
     grid [ttk::button .bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -padx 4 -sticky w
     tooltip .bml "Start/Stop mouse tracking\nHotkey: $settings(hk,mouseTrack)"
     grid [ttk::label .l_bottom -text "WowOpenBox, OpenMultiBoxing v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>" -justify center -anchor c] -padx 2 -columnspan 2
-    bind .l_bottom <ButtonPress> CheckForUpdates
+    bind .l_bottom <ButtonPress> [list CheckForUpdates 0]
     tooltip .l_bottom "Click to check for update from $vers"
     grid rowconfigure . 9 -weight 1
     grid columnconfigure . 1 -weight 1
@@ -1735,6 +1742,7 @@ array set settings {
     overlayShowBorder 1
     game "World of Warcraft"
     captureForegroundWindow 0
+    lastUpdateChecked 0
 }
 
 # globals
@@ -1793,4 +1801,9 @@ wm state . normal
 if {$settings(numWindows)==0} {
     Debug "No layout setup, opening layout"
     after 250 {.bwl invoke}
+}
+
+if {[expr {([clock seconds]-$settings(lastUpdateChecked))>24*3600}]} {
+    Debug "Last update check $settings(lastUpdateChecked) - updating"
+    after 1000 {CheckForUpdates 1}
 }
