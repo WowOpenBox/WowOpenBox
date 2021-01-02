@@ -106,13 +106,20 @@ proc CheckForUpdates {silent} {
         WobError "Update Error" "Couldn't find update in latest release - please report as a bug"
         return
     }
-    Debug "Found update $updateUrl"
+    set name ""
+    set description ""
+    regexp {"name":"(.*?)",} $body all name
+    regexp "\"body\":\"(.*?)\"(,|\})" $body all description
+    regsub -all {\\r} $description "" description
+    regsub -all {\\n} $description "\n" description
+    set description [string trimright $description]
+    Debug "Found update $updateUrl : $name ($description)"
     if {![regexp {/(v[^/]+)/} $updateUrl all newVersion]} {
         WobError "Update Error" "Couldn't find version in update url: $updateUrl\nPlease report this bug!"
         return
     }
     set doUpdate [WobMessage -type yesno -icon question -title "Update Available" \
-            -message "$newVersion is available, do you want to install it?"]
+            -message "$newVersion is available:\n\n$name\n\n$description\n\nDo you want to install it?"]
     Debug "Do update is $doUpdate"
     if {$doUpdate=="no"} {
         return
