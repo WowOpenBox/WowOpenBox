@@ -90,7 +90,7 @@ proc CheckForUpdates {silent} {
         return
     }
     set body [http::data $token]
-    if {[string match "/tag/$vers\"," $body]} {
+    if {[string match "*/tag/v$vers\",*" $body]} {
         if {$silent} {
             Debug "Already running latest $vers"
             return
