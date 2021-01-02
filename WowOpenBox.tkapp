@@ -274,7 +274,7 @@ proc SwitchLogo {} {
 set ourTitle "WoW Open Box - Opensource MultiBoxing"
 
 proc UISetup {} {
-    global imgObj70 vers stayOnTop pos windowSize settings mouseFollow mouseRaise mouseDelay mouseCoords ourTitle skin
+    global imgObj70 vers stayOnTop pos windowSize settings mouseFollow mouseRaise mouseDelay mouseCoords ourTitle skin bottomText
     wm title . $ourTitle
     # Get logo
     set err1 [GetLogo]
@@ -327,7 +327,7 @@ proc UISetup {} {
     grid [frame .sep3 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
     grid [ttk::button .bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -padx 4 -sticky w
     tooltip .bml "Start/Stop mouse tracking\nHotkey: $settings(hk,mouseTrack)"
-    grid [ttk::label .l_bottom -text "WowOpenBox, OpenMultiBoxing v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>" -justify center -anchor c] -padx 2 -columnspan 2
+    grid [ttk::label .l_bottom -textvariable bottomText -justify center -anchor c] -padx 2 -columnspan 2
     bind .l_bottom <ButtonPress> [list CheckForUpdates 0]
     tooltip .l_bottom "Click to check for update from $vers"
     grid rowconfigure . 9 -weight 1
@@ -1798,6 +1798,7 @@ if {![winfo exists .logo]} {
 # --- main / tweak me ---
 puts "WowOpenBox - OpenMultiBoxing $vers started..."
 FindExisting
+set bottomText "WowOpenBox, OpenMultiBoxing v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>"
 wm state . normal
 if {$settings(numWindows)==0} {
     Debug "No layout setup, opening layout"
