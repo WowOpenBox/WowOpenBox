@@ -21,7 +21,7 @@ ttk::style theme use winnative
 # start not showing top level for error dialogs
 wm state . withdrawn
 
-set vers "2.3.4"
+set vers "dev"
 
 proc Debug {msg} {
     global settings forceDebug
@@ -90,7 +90,7 @@ proc CheckForUpdates {silent} {
         return
     }
     set body [http::data $token]
-    if {[string match "*/tag/v$vers\",*" $body]} {
+    if {[string match "*/tag/$vers\",*" $body]} {
         if {$silent} {
             Debug "Already running latest $vers"
             return
@@ -1798,7 +1798,7 @@ if {![winfo exists .logo]} {
 # --- main / tweak me ---
 puts "WowOpenBox - OpenMultiBoxing $vers started..."
 FindExisting
-set bottomText "WowOpenBox, OpenMultiBoxing v$vers\n\uA9 2020 MooreaTv <moorea@ymail.com>"
+set bottomText "WowOpenBox, OpenMultiBoxing $vers\n\uA9 2020 MooreaTv <moorea@ymail.com>"
 wm state . normal
 if {$settings(numWindows)==0} {
     Debug "No layout setup, opening layout"

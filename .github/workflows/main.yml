@@ -28,15 +28,17 @@ jobs:
           repository: WowOpenBox/BuildKit
           path: buildkit
 
-      - name: Get the version
+      - name: Get and set the version
         id: get_version
         run: |
-          echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-          if [ -z "${GITHUB_REF##*pre*}" ]; then
+          VERSION=${GITHUB_REF/refs\/tags\//}
+          echo ::set-output name=VERSION::${VERSION}
+          if [ -z "${VERSION##*pre*}" ]; then
             echo ::set-output name=PRERELEASE::true
           else
             echo ::set-output name=PRERELEASE::false
           fi
+          sed -i -e "s/^set vers .*$/set vers \"$VERSION\"/" WowOpenBox.tkapp
         shell: bash
 
       - name: Make the executable
