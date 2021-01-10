@@ -35,7 +35,9 @@ proc WobMessage {args} {
     global hotkeyOk
     set hotkeyOk 0
     Debug "WOB message $args"
+    EnableDisableWindows 0
     set ret [tk_messageBox {*}$args]
+    EnableDisableWindows 1
     set hotkeyOk 1
     return $ret
 }
@@ -778,6 +780,18 @@ proc ChangeNumWindow {v} {
     set settings(numWindows) $n
     set layoutNumWindowsText "Layout for $n windows"
     ChangeLayout
+}
+
+proc EnableDisableWindows {enable} {
+    if {$enable} {
+        # tk busy forget .
+        catch {tk busy forget .layout}
+        catch {tk busy forget .overlayConfig}
+    } else {
+        # tk busy hold .
+        catch {tk busy hold .layout}
+        catch {tk busy hold .overlayConfig}
+    }
 }
 
 proc WindowLayout {} {
