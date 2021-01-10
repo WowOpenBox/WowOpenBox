@@ -20,6 +20,16 @@ ttk::style theme use winnative
 
 # start not showing top level for error dialogs
 wm state . withdrawn
+# Update in progress detected
+array set updateCheck [info frame -1]
+if {[info exists updateCheck(proc)] && $updateCheck(proc)=="::CheckForUpdates"} {
+    puts stderr "Update detected!"
+    set isUpdate 1
+    set oldVersion $vers
+} else {
+    set isUpdate 0
+}
+
 
 set vers "dev"
 
@@ -27,6 +37,19 @@ proc Debug {msg} {
     global settings forceDebug
     if {$forceDebug || $settings(DEBUG)} {
         puts "DEBUG $msg"
+    }
+}
+
+
+proc EnableDisableWindows {enable} {
+    if {$enable} {
+        # tk busy forget .
+        catch {tk busy forget .layout}
+        catch {tk busy forget .overlayConfig}
+    } else {
+        # tk busy hold .
+        catch {tk busy hold .layout}
+        catch {tk busy hold .overlayConfig}
     }
 }
 
@@ -780,18 +803,6 @@ proc ChangeNumWindow {v} {
     set settings(numWindows) $n
     set layoutNumWindowsText "Layout for $n windows"
     ChangeLayout
-}
-
-proc EnableDisableWindows {enable} {
-    if {$enable} {
-        # tk busy forget .
-        catch {tk busy forget .layout}
-        catch {tk busy forget .overlayConfig}
-    } else {
-        # tk busy hold .
-        catch {tk busy hold .layout}
-        catch {tk busy hold .overlayConfig}
-    }
 }
 
 proc WindowLayout {} {
@@ -1826,7 +1837,13 @@ if {$settings(numWindows)==0} {
     after 250 {.bwl invoke}
 }
 
-if {[expr {([clock seconds]-$settings(lastUpdateChecked))>24*3600}]} {
-    Debug "Last update check $settings(lastUpdateChecked) - updating"
-    after 1000 {CheckForUpdates 1}
+if {$isUpdate} {
+    # Do update stuff
+    Debug "Update detected ($oldVersion to $vers)"
+    set isUpdate 0
+} else {
+    if {[expr {([clock seconds]-$settings(lastUpdateChecked))>24*3600}]} {
+        Debug "Last update check $settings(lastUpdateChecked) - updating"
+        after 1000 {CheckForUpdates 1}
+    }
 }
