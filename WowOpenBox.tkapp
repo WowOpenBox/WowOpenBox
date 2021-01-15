@@ -21,7 +21,8 @@ ttk::style theme use winnative
 # start not showing top level for error dialogs
 wm state . withdrawn
 # Update in progress detected
-array set updateCheck [info frame -1]
+array set updateCheck {}
+catch {array set updateCheck [info frame -1]}
 if {[info exists updateCheck(proc)] && $updateCheck(proc)=="::CheckForUpdates"} {
     puts stderr "Update detected!"
     set isUpdate 1
