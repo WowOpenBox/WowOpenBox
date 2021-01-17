@@ -199,7 +199,7 @@ proc SaveSettings {args} {
     puts $f "array set settings {"
     foreach i [lsort [array names settings]] {
         #  Debug "saving $i \"$settings($i)\""
-        puts $f "\t$i\t\"$settings($i)\""
+        puts $f "\t$i\t[list $settings($i)]"
     }
     puts $f "}"
     close $f
@@ -367,6 +367,62 @@ proc UISetup {} {
     grid columnconfigure . 1 -weight 1
 }
 
+proc About {} {
+    global vers
+    WobMessage -type ok -icon info -title "About Wow Open Box / Open MultiBoxing" \
+            -message \
+"WoW Open Box (WOB) / Open MultiBoxing (OMB) $vers\n\nFree, OpenSource, Safe, Rules compliant, Multiboxing Software\n\nLicensed under GPLv3 - No Warranty\nThe GNU General Public License does not permit incorporating this work into proprietary programs.\n\nhttps://openmultiboxing.org https://wowopenbox.org/\n\uA9 2020-2021 MooreaTv <moorea@ymail.com>"
+
+}
+
+proc MenuSetup {} {
+    global vers settings
+    if {[winfo exists .mbar]} {
+        return
+    }
+
+    menu .mbar -type menubar
+    . configure -menu .mbar
+
+    set m1 .mbar.file
+    menu $m1 -tearoff 0
+    .mbar add cascade -label File -menu $m1
+    $m1 add command -label "Edit settings..." -command EditSettings
+    $m1 add command -label "Save settings" -command SaveSettings
+    $m1 add command -label "Reload settings" -command LoadSettings
+    $m1 add separator
+    $m1 add command -label Exit -command [list exit 0]
+
+    set mG .mbar.game
+    menu $mG -tearoff 0
+    .mbar add cascade -label Game -menu $mG
+    foreach g $settings(games) {
+        $mG add radiobutton -label $g -variable settings(game)
+    }
+    $mG add separator
+    $mG add checkbutton -label "Other (capture foreground mode)" -variable settings(captureForegroundWindow)
+    $mG add separator
+    $mG add command -label "Edit Games..." -state disabled
+
+    set m2 .mbar.profile
+    menu $m2 -tearoff 0
+    .mbar add cascade -label Profile -menu $m2
+    $m2 add command -label "Work in progress..." -state disabled
+    global profile
+    set profile "Main Profile"
+    $m2 add radiobutton -label "Main Profile" -variable profile
+    $m2 add radiobutton -label "Profile 1" -state disabled
+    $m2 add radiobutton -label "Profile 2" -state disabled
+    $m2 add radiobutton -label "Profile 3" -state disabled
+#    .mbar add separator
+
+    menu .mbar.help -tearoff 0
+    .mbar add cascade -label Help -menu .mbar.help
+    .mbar.help add command -label "Online help..." -command Help
+    .mbar.help add separator 
+    .mbar.help add command -label "Check for update" -command [list CheckForUpdates 1]
+    .mbar.help add command -label About -command About
+ }
 
 proc mouseTrack {} {
     global mouseTrackOn mouseCoords
@@ -1775,6 +1831,7 @@ array set settings {
     overlayAnchor n
     overlayShowBorder 1
     game "World of Warcraft"
+    games {"World of Warcraft" "EVE" "Star Wars\u2122: The Old Republic\u2122"}
     captureForegroundWindow 0
     lastUpdateChecked 0
 }
@@ -1802,7 +1859,7 @@ if {![info exists pos]} {
 
 LoadSettings
 
-if {$settings(captureForegroundWindow)} {
+if {$settings(captureForegroundWindow) || $settings(game) != "World of Warcraft"} {
     set skin 1
 } else {
     set skin 0
@@ -1816,6 +1873,8 @@ trace add variable nextWindow write updateIndex
 #Debug "desktop workarea [twapi::get_desktop_workarea]"
 #Debug "display monitors [twapi::get_display_monitors -activeonly]"
 #Debug "display info [twapi::get_multiple_display_monitor_info]"
+
+MenuSetup
 
 # Make it so the code can be reloaded without errors
 if {![winfo exists .logo]} {
