@@ -402,7 +402,7 @@ proc MenuSetup {} {
         $mG add radiobutton -label $g -variable settings(game)
     }
     $mG add separator
-    $mG add checkbutton -label "Other (capture foreground mode)" -variable settings(captureForegroundWindow)
+    $mG add checkbutton -label "Add (capture focused window mode)" -variable settings(captureForegroundWindow)
 
     set m2 .mbar.profile
     menu $m2 -tearoff 0
@@ -554,7 +554,7 @@ proc FindExisting {} {
         Debug "found WOB $n! : $wl : $w"
         if {$settings(numWindows)==0} {
             WobError "WoW Open Box missing settings error" \
-                "You have existing WoW 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
+                "You have existing WOB 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
             exit 1
         }
         updateListBox $n $w $wname
@@ -1291,6 +1291,10 @@ proc Overlay {} {
     ttk::style configure WobOverlayText.Label -font {Arial 48 bold} -foreground white -background $transparentcolor
     set on $settings(showOverlay)
     for {set i 1} {$i<=$settings(numWindows)} {incr i} {
+        if {![info exists settings($i,posXY)]} {
+            Debug "Numwindows $settings(numWindows) is higher than configured windows... error for $i"
+            return
+        }
         set t .o$i
         set relief flat
         if {$settings(overlayShowBorder)} {
@@ -1723,7 +1727,7 @@ proc SetupMove {} {
     bind $c <Leave> {
         set lastResize ""
         set selectedTag ""
-        %W delete wowResize
+        catch {%W delete wowResize}
         set layoutinfo ""
     }
     bind $c <Left> {
