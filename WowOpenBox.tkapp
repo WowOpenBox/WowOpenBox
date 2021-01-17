@@ -51,6 +51,7 @@ proc EnableDisableWindows {enable} {
         # tk busy hold .
         catch {tk busy hold .layout}
         catch {tk busy hold .overlayConfig}
+        update
     }
 }
 
@@ -391,7 +392,8 @@ proc MenuSetup {} {
     $m1 add command -label "Save settings" -command SaveSettings
     $m1 add command -label "Reload settings" -command LoadSettings
     $m1 add separator
-    $m1 add command -label Exit -command [list exit 0]
+    $m1 add command -label "Save and Exit" -command "SaveSettings; exit 0"
+    $m1 add command -label "Exit" -command "exit 0"
 
     set mG .mbar.game
     menu $mG -tearoff 0
@@ -401,8 +403,6 @@ proc MenuSetup {} {
     }
     $mG add separator
     $mG add checkbutton -label "Other (capture foreground mode)" -variable settings(captureForegroundWindow)
-    $mG add separator
-    $mG add command -label "Edit Games..." -state disabled
 
     set m2 .mbar.profile
     menu $m2 -tearoff 0
@@ -765,6 +765,14 @@ proc Capture {} {
         if {[IsOurs $w]} {
             WobError "WoW Open Box Error" "Can't capture foreground window: it's (already) ours!"
             return
+        }
+        set wtitle [twapi::get_window_text $w]
+        Debug "Capturing \"$wtitle\""
+        if {[lsearch -exact $settings(games) $wtitle]==-1} {
+            Debug "New game $wtitle"
+            lappend settings(games) $wtitle
+            .mbar.game insert [expr {[.mbar.game index end]-1}] checkbutton -label $wtitle -variable settings(game)
+            set settings(game) $wtitle
         }
     } else {
         set w [FindGameWindow]
@@ -1710,7 +1718,7 @@ proc SetupMove {} {
     }
     bind $c <Enter> {
         Debug "entering canvas %W"
-        focus %W
+        catch {focus %W}
     }
     bind $c <Leave> {
         set lastResize ""
