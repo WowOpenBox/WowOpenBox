@@ -44,13 +44,13 @@ proc Debug {msg} {
 
 proc EnableDisableWindows {enable} {
     if {$enable} {
-        # tk busy forget .
         catch {tk busy forget .layout}
         catch {tk busy forget .overlayConfig}
+        tk busy forget .
     } else {
-        # tk busy hold .
-        catch {tk busy hold .layout}
+        tk busy hold .
         catch {tk busy hold .overlayConfig}
+        catch {tk busy hold .layout}
         update
     }
 }
@@ -91,9 +91,12 @@ if {![info exists wobInitDone]} {
     # Normalize appdir in case we're inside the binary
     set inExe [regsub -nocase {/[^/]+\.exe/app$} $app_dir {} app_dir]
     Debug "Post exe detection app_dir: $app_dir"
-    set SETTINGS_BASE "wowopenboxSettings.tcl"
+    set SETTINGS_PREFIX "wowopenboxSettings"
+    set SETTINGS_SUFFIX ".tcl"
+    set SETTINGS_BASE "$SETTINGS_PREFIX$SETTINGS_SUFFIX"
     set SETTINGS_FILE [file join $app_dir $SETTINGS_BASE]
     set update_path [file join $app_dir $script_name]
+    Debug "Base settings: $SETTINGS_FILE"
     if {$inExe} {
         # We're inside the exe, check for updated code
         Debug "In EXE, checking for code outside: $update_path"
@@ -193,9 +196,71 @@ proc CheckForUpdates {silent} {
 
 # -- UI
 
+proc NewProfile {} {
+    global settings profileName
+    set t .newProfile
+    set profileName {}
+    EnableDisableWindows 0
+    toplevel $t
+    wm resizable $t 0 0
+    wm title $t "WOB/OMB New Profile Name..."
+    ttk::label  $t.l -text "Save settings as new Profile named:"
+    ttk::entry  $t.e -textvar profileName
+    bind $t.e <Return> {set doneDialog 1}
+    ttk::button $t.ok -text OK -command {set doneDialog 1}
+    ttk::button $t.cancel -text Cancel -command "set v {}; set doneDialog 1"
+    grid $t.l - -sticky news -padx 4 -pady 4
+    grid $t.e - -sticky news -padx 4 -pady 4
+    grid $t.ok $t.cancel -padx 4 -pady 4
+    focus $t.e
+    vwait doneDialog
+    destroy $t
+    EnableDisableWindows 1
+    if {$profileName!=""} {
+        Debug "New profile dialog returned $profileName"
+        set settings(profile) $profileName
+        SaveSettings
+    } else {
+        Debug "New profile cancelled"
+    }
+}
+
+proc ProfileFileName {profile} {
+    global app_dir SETTINGS_PREFIX SETTINGS_SUFFIX
+    set p $profile
+    if {$p=="Default"} {
+        set p ""
+    }
+    set path [file join $app_dir "$SETTINGS_PREFIX$p$SETTINGS_SUFFIX"]
+    Debug "For profile $profile path: $path"
+    return $path
+}
+
 proc SaveSettings {args} {
-    global SETTINGS_FILE settings
-    Debug "Saving settings to $SETTINGS_FILE (from cb $args)"
+    global SETTINGS_FILE settings app_dir
+    set p $settings(profile)
+    if {$p!="Default"} {
+        Debug "SaveSettings for profile $p"
+        if {[lsearch $settings(profiles) $p]==-1} {
+            Debug "New profile $p"
+            lappend settings(profiles) $p
+            .mbar.profile insert end radiobutton -label $p -variable settings(profile) -command LoadProfile
+        }
+        set pMode 1
+        set pf [ProfileFileName $p]
+        set f [open $pf w+]
+        puts $f "array set settings {"
+        foreach i [lsort [array names settings]] {
+            if {$i=="profile" || $i=="profiles" || $i=="games"} {
+                continue
+            }
+            #  Debug "saving $i \"$settings($i)\""
+            puts $f "\t$i\t[list $settings($i)]"
+        }
+        puts $f "}"
+        close $f
+    }
+    Debug "SaveSettings base $SETTINGS_FILE (from cb $args)"
     set f [open $SETTINGS_FILE w+]
     puts $f "array set settings {"
     foreach i [lsort [array names settings]] {
@@ -206,8 +271,22 @@ proc SaveSettings {args} {
     close $f
 }
 
+proc LoadProfile {} {
+    global settings
+    set profile $settings(profile)
+    set pf [ProfileFileName $profile]
+    if {[catch {source $pf} err]} {
+        puts stderr "Error sourcing profile $pf\n$err"
+        WobError "WoW Open Box profile error" \
+            "Your $pf has an error: $err"
+    }
+    # Otherwise can be reset when switching from Profile N back to Default
+    set settings(profile) $profile
+    AfterSettings
+}
+
 proc LoadSettings {} {
-    global SETTINGS_FILE settings
+    global SETTINGS_FILE settings app_dir
     if {[winfo exists .b1]} {
         .b1 configure -text "Edit Settings" -command EditSettings
     }
@@ -215,9 +294,18 @@ proc LoadSettings {} {
         if {[catch {source $SETTINGS_FILE} err]} {
             puts stderr "Could not source $SETTINGS_FILE\n$err"
             WobError "WoW Open Box settings error" \
-                "Your $SETTINGS_FILE has and error: $err"
+                "Your $SETTINGS_FILE has an error: $err"
+        } else {
+            if {$settings(profile)!="Default"} {
+                LoadProfile
+            }
         }
     }
+    AfterSettings
+}
+
+proc AfterSettings {} {
+    global settings
     RegisterHotkey "Capture" hk,capture CaptureOrUpdate
     RegisterHotkey "Start/Stop mouse tracking" hk,mouseTrack StartStopMouseTrack
     RegisterHotkey "Focus next window" hk,focusNextWindow FocusNextWindow
@@ -388,7 +476,8 @@ proc MenuSetup {} {
     set m1 .mbar.file
     menu $m1 -tearoff 0
     .mbar add cascade -label File -menu $m1
-    $m1 add command -label "Edit settings..." -command EditSettings
+    $m1 add command -label "New Profile..." -command NewProfile
+    $m1 add command -label "Edit raw settings..." -command EditSettings
     $m1 add command -label "Save settings" -command SaveSettings
     $m1 add command -label "Reload settings" -command LoadSettings
     $m1 add separator
@@ -407,14 +496,9 @@ proc MenuSetup {} {
     set m2 .mbar.profile
     menu $m2 -tearoff 0
     .mbar add cascade -label Profile -menu $m2
-    $m2 add command -label "Work in progress..." -state disabled
-    global profile
-    set profile "Main Profile"
-    $m2 add radiobutton -label "Main Profile" -variable profile
-    $m2 add radiobutton -label "Profile 1" -state disabled
-    $m2 add radiobutton -label "Profile 2" -state disabled
-    $m2 add radiobutton -label "Profile 3" -state disabled
-#    .mbar add separator
+    foreach p $settings(profiles) {
+        $m2 add radiobutton -label $p -variable settings(profile) -command LoadProfile
+    }
 
     menu .mbar.help -tearoff 0
     .mbar add cascade -label Help -menu .mbar.help
@@ -589,10 +673,10 @@ proc Help {} {
 }
 
 proc EditSettings {} {
-    global SETTINGS_FILE
+    global settings
     Debug "Edit settings requested, first saving and then opening editor"
     SaveSettings
-    twapi::shell_execute -path notepad.exe -params $SETTINGS_FILE
+    twapi::shell_execute -path notepad.exe -params [ProfileFileName $settings(profile)]
     .b1 configure -text "Reload Settings" -command LoadSettings
 }
 
@@ -1846,6 +1930,8 @@ array set settings {
     games {"World of Warcraft" "EVE" "Star Wars\u2122: The Old Republic\u2122"}
     captureForegroundWindow 0
     lastUpdateChecked 0
+    profile "Default"
+    profiles {"Default"}
 }
 
 # globals
