@@ -306,10 +306,14 @@ proc LoadSettings {} {
 
 proc AfterSettings {} {
     global settings
+    if {$settings(hk,swapNextWindow)=="Binding for next window swap is set on 'hk1,swap'"} {
+        set settings(hk,swapNextWindow) "Ctrl-0xC0"
+    }
     RegisterHotkey "Capture" hk,capture CaptureOrUpdate
     RegisterHotkey "Start/Stop mouse tracking" hk,mouseTrack StartStopMouseTrack
     RegisterHotkey "Focus next window" hk,focusNextWindow FocusNextWindow
     RegisterHotkey "Focus previous window" hk,focusPreviousWindow FocusPreviousWindow
+    RegisterHotkey "Swap next window" hk,swapNextWindow SwapNextWindow
     RegisterHotkey "Swap previous window" hk,swapPreviousWindow SwapPreviousWindow
     RegisterHotkey "Focus follow mouse toggle" hk,focusFollowMouse FocusFollowMouseToggle
     RegisterHotkey "Always on top toggle" hk,stayOnTopToggle StayOnTopToggle
@@ -574,13 +578,14 @@ proc focusIn {w args} {
 }
 
 proc CheckWindow {cmd n} {
-    global slot2handle
+    global slot2handle slot2position
     if {![catch $cmd err]} {
         Debug "Ok $cmd for $n"
         return
     }
     Debug "Error processing $cmd for $n: $err"
     unset slot2handle($n)
+    unset slot2position($n)
     .b2 configure -text " Capture "
     set n0 [expr {$n-1}]
     .lbw delete $n0
@@ -618,7 +623,7 @@ proc ContextMenu {n x y} {
 }
 
 proc Forget {n} {
-    global slot2handle settings savedWindowStyle
+    global slot2handle slot2position settings savedWindowStyle
     if {![info exists slot2handle($n)]} {
         Debug "Nothing to forget for $n"
         return
@@ -626,6 +631,7 @@ proc Forget {n} {
     set wh $slot2handle($n)
     Rename $wh $settings(game)
     unset slot2handle($n)
+    unset slot2position($n)
     .b2 configure -text " Capture "
     set n0 [expr {$n-1}]
     .lbw delete $n0
@@ -794,8 +800,9 @@ proc FocusN {n fg} {
         Foreground $wh
     }
     if {$settings(showOverlay)} {
-        .o$focusWindow.l configure -foreground white
-        .o$n.l configure -foreground $settings(overlayFocusColor)
+        set prevFocusPos $slot2position($focusWindow)
+        .o$prevFocusPos.l configure -foreground white
+        .o$p.l configure -foreground $settings(overlayFocusColor)
     }
     set focusWindow $n
 }
@@ -809,24 +816,24 @@ proc StayOnTopToggle {} {
 proc SwapNextWindow {} {
     global swappedWindow maxNumW
     # maxNumW is one more than number of windows
-    # we want   2,3,4,...N cycle
+    # we want 2,3,4,...N,1,2,3..N,1... cycle
     if {$maxNumW<3} {
         Debug "Not enough windows to swap"
         return
     }
-    set n [expr {($swappedWindow-1) % ($maxNumW-2) + 2}]
+    set n [expr {$swappedWindow % ($maxNumW-1) + 1}]
     Debug "SwapNextWindow: swappedWindow $swappedWindow maxNumW $maxNumW -> $n"
     set swappedWindow $n
-    Swap 1 $n
+    SetAsMain $n
 }
 
 proc SwapPreviousWindow {} {
     global swappedWindow maxNumW
     # maxNumW is one more than number of windows
-    set n [expr {($swappedWindow+$maxNumW-2) % ($maxNumW-2) + 2}]
-    Debug "SwapNextWindow: swappedWindow $swappedWindow maxNumW $maxNumW -> $n"
+    set n [expr {($swappedWindow+$maxNumW-3) % ($maxNumW-1) + 1}]
+    Debug "SwapPreviousWindow: swappedWindow $swappedWindow maxNumW $maxNumW -> $n"
     set swappedWindow $n
-    Swap 1 $n
+    SetAsMain $n
 }
 
 proc FocusNextWindow {} {
@@ -865,6 +872,42 @@ proc UpdateN {n} {
     }
     Update $wh $lx $ly $lw $lh $lstayOnTop
     .o$p.l configure -text $n
+    bind .o$p.l <ButtonPress> [list SetAsMain $n]
+}
+
+proc SetAsMain {n} {
+    global slot2handle slot2position settings
+    if {![info exists slot2position($n)]} {
+        Debug "SetAsMain $n doesn't exist"
+        return
+    }
+    set p $slot2position($n)
+    if {$p==1} {
+        Debug "SetAsMain $n already in slot 1"
+        return
+    }
+    set p1 $slot2position(1)
+    Debug "SetAsMain $n called currently was in $p, s1 is in $p1"
+    if {$slot2position($p1)!=1} {
+        WobError "Bug?" "Unexpected s1 is in $p1 but $p1 is in $slot2position($p1)"
+        return
+    }
+    set slot2position($n) 1
+    set slot2position(1) $n
+    if {$p1!=1} {
+        # Move back whoever was in 1
+        set slot2position($p1) $p1
+        UpdateN $p1
+    }
+    # Move 1 to n'th slot
+    UpdateN 1
+    # Move n to 1
+    if {$n != 1} {
+        UpdateN $n
+    }
+    if {$settings(swapAlsoFocus)} {
+        FocusN $n true
+    }
 }
 
 proc Swap {n1 n2} {
@@ -957,11 +1000,7 @@ proc updateListBox {n w wname} {
     }
     if {[info exists settings(hk$n,swap)]} {
         Debug "Setting swap hotkey for $n / $wname: $settings(hk$n,swap)"
-        if {$n==1} {
-            RegisterHotkey "Swap next window" hk$n,swap SwapNextWindow
-        } else {
-            RegisterHotkey "Swap window $n" hk$n,swap [list Swap 1 $n]
-        }
+        RegisterHotkey "Swap window $n" hk$n,swap [list SetAsMain $n]
     } else {
         Debug "No focus hotkey found or set for $n / $wname"
     }
@@ -1468,7 +1507,7 @@ proc Overlay {} {
             if {$i==1} {
                 bind $t.l <ButtonPress> SwapNextWindow
             } else {
-                bind $t.l <ButtonPress> [list Swap 1 $i]
+                bind $t.l <ButtonPress> [list SetAsMain $i]
             }
             pack $t.l -fill both -expand 1
         } else {
@@ -1490,7 +1529,7 @@ proc Overlay {} {
 }
 
 proc SaveLayout {} {
-    global settings scale sot
+    global settings slot2position scale sot
     set c .layout.c
     for {set i 1} {$i<=$settings(numWindows)} {incr i} {
         set coords [SizeOfWindow "wow$i"]
@@ -1502,6 +1541,8 @@ proc SaveLayout {} {
         set settings($i,posXY) "$x1 $y1"
         set settings($i,size) "$w $h"
         set settings($i,stayOnTop) $sot($i)
+        # reset initial position
+        set slot2position($i) $i
         CheckWindow [list UpdateN $i] $i
     }
     SaveSettings
@@ -1981,7 +2022,7 @@ array set settings {
     hk,focusNextWindow "Ctrl-Shift-N"
     hk,focusPreviousWindow "Ctrl-Shift-P"
     hk,swapPreviousWindow "Ctrl-Shift-0xC0"
-    hk,swapNextWindow "Binding for next window swap is set on 'hk1,swap'"
+    hk,swapNextWindow "Ctrl-0xC0"
     hk,focusFollowMouse "Ctrl-Shift-F"
     hk,stayOnTopToggle "Ctrl-Shift-T"
     hk,overlayToggle "Ctrl-Shift-O"
