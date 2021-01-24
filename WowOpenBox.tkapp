@@ -584,8 +584,7 @@ proc CheckWindow {cmd n} {
         return
     }
     Debug "Error processing $cmd for $n: $err"
-    unset slot2handle($n)
-    unset slot2position($n)
+    catch {unset slot2handle($n)}
     .b2 configure -text " Capture "
     set n0 [expr {$n-1}]
     .lbw delete $n0
@@ -631,7 +630,6 @@ proc Forget {n} {
     set wh $slot2handle($n)
     Rename $wh $settings(game)
     unset slot2handle($n)
-    unset slot2position($n)
     .b2 configure -text " Capture "
     set n0 [expr {$n-1}]
     .lbw delete $n0
@@ -790,6 +788,7 @@ proc FocusN {n fg} {
     global slot2handle slot2position focusWindow settings
     if {![info exists slot2handle($n)]} {
        Debug "FocusN $n called but no such window"
+       return
     }
     set wh $slot2handle($n)
     set p $slot2position($n)
@@ -879,13 +878,13 @@ proc SetAsMain {n} {
     global settings
     SetAsMainInt $n
     if {$settings(swapAlsoFocus)} {
-        FocusN $n true
+        CheckWindow [list FocusN $n true] $n
     }
 }
 
 proc SetAsMainInt {n} {
     global slot2handle slot2position settings
-    if {![info exists slot2position($n)]} {
+    if {![info exists slot2handle($n)]} {
         Debug "SetAsMain $n doesn't exist"
         return
     }
@@ -905,10 +904,10 @@ proc SetAsMainInt {n} {
     if {$p1!=1} {
         # Move back whoever was in 1
         set slot2position($p1) $p1
-        UpdateN $p1
+        CheckWindow [list UpdateN $p1] $p1
     }
     # Move 1 to n'th slot
-    UpdateN 1
+    CheckWindow [list UpdateN 1] 1
     # Move n to 1
     if {$n != 1} {
         UpdateN $n
