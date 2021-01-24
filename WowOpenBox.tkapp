@@ -329,7 +329,7 @@ proc FocusFollowMouseToggle {} {
 }
 
 proc updateIndex {args} {
-    global nextWindow maxNumW pos windowSize stayOnTop settings ww
+    global nextWindow maxNumW pos windowSize stayOnTop settings slot2handle
     Debug "nextWindow is $nextWindow - args $args"
     if {[info exists settings($nextWindow,size)]} {
         set windowSize $settings($nextWindow,size)
@@ -344,7 +344,7 @@ proc updateIndex {args} {
     } else {
         .l2 configure -text "Next window :"
     }
-    if {[info exists ww($nextWindow)]} {
+    if {[info exists slot2handle($nextWindow)]} {
         .b2 configure -text " Update "
     } else {
         .b2 configure -text " Capture "
@@ -435,6 +435,7 @@ proc UISetup {} {
     grid [ttk::checkbutton .csswapfocus -text "Swap hotkey also focuses" -variable settings(swapAlsoFocus)] -columnspan 2
     grid [ttk::checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
     grid [ttk::checkbutton .cbCaptureFG -text "Capture using foreground window" -variable settings(captureForegroundWindow)] -columnspan 2
+    grid [ttk::checkbutton .cbCaptureBorderLess -text "Capture makes windows borderless" -variable settings(borderless)] -columnspan 2
     tooltip .cbCaptureFG "Instead of capturing the game window by name\n($settings(game))\nif checked, capture the current foreground window\nFor this to work you must use the hotkey:\n$settings(hk,capture)"
     grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command "OverlayUpdate; SaveSettings"] [ttk::button .cbocfg -text "Overlay config" -command OverlayConfig]
     tooltip .cboverlay "Show/Hide the overlay info\nHotkey: $settings(hk,overlayToggle)"
@@ -514,6 +515,35 @@ proc mouseTrack {} {
     set mouseTrackOn [after 100 mouseTrack]
 }
 
+# hey when you take this code, please be nice and add:
+# I got this from MooreaTv at https://openmultiboxing.org/
+proc BorderLess {w resize} {
+    global savedWindowStyle
+    set stL [twapi::get_window_style $w]
+    if {![info exist savedWindowStyle($w)]} {
+        # Used to restore style in Forget
+        set savedWindowStyle($w) $stL
+    }
+    lassign $stL style exstyle
+    # style & 
+    # ~(WS_CAPTION | WS_THICKFRAME)
+    #   0x00C00000L  0x00040000L 
+    # exstyle & 
+    # ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE)
+    #    0x00000001L          0x00000100L         0x00000200L       0x00020000L
+    lassign [twapi::get_window_client_area_size $w] w1 h1
+    Debug "Client area : $w1 x $h1"
+    lassign [twapi::get_window_coordinates $w] x1 y1 x2 y2
+    set w2 [expr {$x2-$x1}]
+    set h2 [expr {$y2-$y1}]
+    Debug "Size $x1 $y1 $x2 $y2 -> $w2 x $h2"
+    twapi::set_window_style $w [expr {$style & ~ 0xc40000}] [expr {$exstyle & ~ 0x20301}]
+    if {$resize} {
+        twapi::resize_window $w $w1 $h1
+        twapi::resize_window $w $w2 $h2
+    }
+}
+
 proc StartStopMouseTrack {} {
     global mouseTrackOn
     if {$mouseTrackOn != ""} {
@@ -544,13 +574,13 @@ proc focusIn {w args} {
 }
 
 proc CheckWindow {cmd n} {
-    global ww
+    global slot2handle
     if {![catch $cmd err]} {
         Debug "Ok $cmd for $n"
         return
     }
     Debug "Error processing $cmd for $n: $err"
-    unset ww($n)
+    unset slot2handle($n)
     .b2 configure -text " Capture "
     set n0 [expr {$n-1}]
     .lbw delete $n0
@@ -558,14 +588,16 @@ proc CheckWindow {cmd n} {
 }
 
 proc selectChanged {w args} {
-    global nextWindow maxNumW ww
+    global nextWindow maxNumW slot2handle
     set sel [$w curselection]
     Debug "got selectChanged $w $args: $sel - nextWindow $nextWindow max $maxNumW"
     if {$sel == "" } {
+        bind $w <3> {}
         return
     }
     set nextWindow [expr {$sel+1}]
-    if {![info exists ww($nextWindow)]} {
+    bind $w <3> [list ContextMenu $nextWindow %X %Y]
+    if {![info exists slot2handle($nextWindow)]} {
         Debug "Not (yet/anymore) a window $nextWindow"
         #.b2 configure -text " Capture "
         return
@@ -575,6 +607,36 @@ proc selectChanged {w args} {
     set n0 [expr {$nextWindow-1}]
     .lbw see $n0
     .lbw selection set $n0
+}
+
+proc ContextMenu {n x y} {
+    Debug "In context for $n"
+    catch {destroy .ctx}
+    menu .ctx -tearoff 0
+    .ctx add command -label "Forget WOB $n..." -command [list Forget $n]
+    tk_popup .ctx $x $y
+}
+
+proc Forget {n} {
+    global slot2handle settings savedWindowStyle
+    if {![info exists slot2handle($n)]} {
+        Debug "Nothing to forget for $n"
+        return
+    }
+    set wh $slot2handle($n)
+    Rename $wh $settings(game)
+    unset slot2handle($n)
+    .b2 configure -text " Capture "
+    set n0 [expr {$n-1}]
+    .lbw delete $n0
+    .lbw insert $n0 " WOB $n (removed)"
+    if {[info exists savedWindowStyle($wh)]} {
+        # this would require a resize as well for the game to pickup the change
+        # but this is "forget" so... that's enough we get back a title and resize
+        # if the user which to move the window out of wob/omb
+        lassign $savedWindowStyle($wh) st exst
+        twapi::set_window_style $wh $st $exst
+    }
 }
 
 # --- utilities ---
@@ -713,16 +775,19 @@ proc FindOtherCopy {} {
 }
 # ---
 
-# wow windows handles
-array set ww {}
+# wow windows handles for each slot (slot#)
+array set slot2handle {}
+# wow windows handle slots - on screen/current position
+array set slot2position {}
 
 proc FocusN {n fg} {
-    global ww focusWindow settings
-    if {![info exists ww($n)]} {
+    global slot2handle slot2position focusWindow settings
+    if {![info exists slot2handle($n)]} {
        Debug "FocusN $n called but no such window"
     }
-    lassign $ww($n) wh i
-    Debug "FocusN $n called, found window $i - fg is $fg"
+    set wh $slot2handle($n)
+    set p $slot2position($n)
+    Debug "FocusN $n called, at position $p - fg is $fg"
     Focus $wh
     if {$fg && $settings(focusAlsoFG)} {
         Debug "Also making $n foreground"
@@ -736,15 +801,19 @@ proc FocusN {n fg} {
 }
 
 proc StayOnTopToggle {} {
-    global focusWindow settings ww
+    global focusWindow settings slot2handle
     set settings($focusWindow,stayOnTop) [expr {!$settings($focusWindow,stayOnTop)}]
-    SetStayOnTop [lindex $ww($focusWindow) 0] $settings($focusWindow,stayOnTop)
+    SetStayOnTop $slot2handle($focusWindow) $settings($focusWindow,stayOnTop)
 }
 
 proc SwapNextWindow {} {
     global swappedWindow maxNumW
     # maxNumW is one more than number of windows
     # we want   2,3,4,...N cycle
+    if {$maxNumW<3} {
+        Debug "Not enough windows to swap"
+        return
+    }
     set n [expr {($swappedWindow-1) % ($maxNumW-2) + 2}]
     Debug "SwapNextWindow: swappedWindow $swappedWindow maxNumW $maxNumW -> $n"
     set swappedWindow $n
@@ -776,8 +845,8 @@ proc FocusPreviousWindow {} {
 }
 
 proc UpdateN {n} {
-    global ww settings
-    if {![info exists ww($n)]} {
+    global slot2handle slot2position settings
+    if {![info exists slot2handle($n)]} {
         Debug "Can't update non existent window $n"
         return
     }
@@ -786,31 +855,32 @@ proc UpdateN {n} {
         return
     }
     # local/temp only
-    lassign $settings($n,posXY) lx ly
-    lassign $settings($n,size) lw lh
+    set wh $slot2handle($n)
+    set p $slot2position($n)
+    lassign $settings($p,posXY) lx ly
+    lassign $settings($p,size) lw lh
     set lstayOnTop 0
     if {[info exists settings($n,stayOnTop)]} {
         set lstayOnTop $settings($n,stayOnTop)
     }
-    lassign $ww($n) wh i
     Update $wh $lx $ly $lw $lh $lstayOnTop
-    .o$n.l configure -text $i
+    .o$p.l configure -text $n
 }
 
 proc Swap {n1 n2} {
-    global ww settings
+    global slot2handle slot2position settings
     Debug "Swap $n1<->$n2 called"
-    if {![info exists ww($n1)] || ![info exists ww($n2)]} {
+    if {![info exists slot2handle($n1)] || ![info exists slot2handle($n2)]} {
         Debug "Missing one of the windows"
         return
     }
-    set tmp $ww($n2)
-    set ww($n2) $ww($n1)
-    set ww($n1) $tmp
+    set tmp $slot2position($n2)
+    set slot2position($n2) $slot2position($n1)
+    set slot2position($n1) $tmp
     UpdateN $n1
     UpdateN $n2
     if {$settings(swapAlsoFocus)} {
-        FocusN $n1 true
+        FocusN $n2 true
     }
 }
 
@@ -821,16 +891,15 @@ proc IsDesktop {w} {
 
 
 proc IsOurs {w} {
-    global ww
+    global slot2handle
     set thisAppWH [twapi::get_parent_window [twapi::tkpath_to_hwnd .]]
     if {$w==$thisAppWH} {
         Debug "Trying to capture our own main window... $w"
         return true
     }
-    foreach {n lst} [array get ww] {
-        lassign $lst wh i
+    foreach {n wh} [array get slot2handle] {
         if {$w==$wh} {
-            Debug "Trying to capture our own WOB $n/$i... $w"
+            Debug "Trying to capture our own WOB $n... $w"
             return true
         }
     }
@@ -867,13 +936,19 @@ proc Capture {} {
     }
     set wname "WOB $nextWindow"
     Rename $w $wname
+    # We are resizing just after so no need to do it twice,
+    # but otherwise it is needed for the inner size of wow to be correct
+    if {$settings(borderless)} {
+        BorderLess $w 0
+    }
     Update $w [GetX] [GetY] [GetWidth] [GetHeight] $stayOnTop
     updateListBox $nextWindow $w $wname
 }
 
 proc updateListBox {n w wname} {
-    global ww nextWindow maxNumW settings
-    set ww($n) [list $w $n]
+    global slot2handle slot2position nextWindow maxNumW settings
+    set slot2handle($n) $w
+    set slot2position($n) $n
     if {[info exists settings(hk$n,focus)]} {
         Debug "Setting focus hotkey for $n / $wname: $settings(hk$n,focus)"
         RegisterHotkey "Focus window $n" hk$n,focus [list FocusN $n true]
@@ -916,12 +991,12 @@ proc updateListBox {n w wname} {
 }
 
 proc CaptureOrUpdate {} {
-    global nextWindow ww settings stayOnTop
+    global nextWindow slot2handle settings stayOnTop
     Debug "Capturing/updating $nextWindow"
     set settings($nextWindow,posXY) "[GetX] [GetY]"
     set settings($nextWindow,size) "[GetWidth] [GetHeight]"
     set settings($nextWindow,stayOnTop) $stayOnTop
-    if {![info exists ww($nextWindow)]} {
+    if {![info exists slot2handle($nextWindow)]} {
         Capture
     } else {
         UpdateN $nextWindow
@@ -1932,6 +2007,7 @@ array set settings {
     lastUpdateChecked 0
     profile "Default"
     profiles {"Default"}
+    borderless 1
 }
 
 # globals

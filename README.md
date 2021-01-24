@@ -18,7 +18,7 @@ New since version 2.2 we made a compact all in one .exe binary distribution. Jus
 Alternatively feel free, if you have Tcl/Tk+Twapi already installed (from 
 https://www.magicsplat.com/tcl-installer/index.html#downloads for instance) to use just the source tkapp and run it: double click `WowOpenBox.tkapp` to launch.
 
-Then start your world of warcraft clients (Classic or Shadowlands) using launcher is fine (that way you don't need to keep typing your password) and in "Windowed (Fullscreen)" mode, so they don't have a title or border and can be neatly arranged by WowOpenBox!
+Then start your world of warcraft clients (Classic or Shadowlands) using launcher is fine (that way you don't need to keep typing your password). Before WOB/OMB 2.6 you needed to make sure your game was in "Windowed (Fullscreen)" mode, so they didn't have a title or border but now OpenMultiBoxing will remove the border for you if there is one and they'll be neatly arranged.
 
 ![WOB Window Layout GUI Screenshot](https://wowopenbox.org/sshotWindowLayout.png?src=github)
 
