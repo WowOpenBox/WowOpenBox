@@ -876,6 +876,14 @@ proc UpdateN {n} {
 }
 
 proc SetAsMain {n} {
+    global settings
+    SetAsMainInt $n
+    if {$settings(swapAlsoFocus)} {
+        FocusN $n true
+    }
+}
+
+proc SetAsMainInt {n} {
     global slot2handle slot2position settings
     if {![info exists slot2position($n)]} {
         Debug "SetAsMain $n doesn't exist"
@@ -904,9 +912,6 @@ proc SetAsMain {n} {
     # Move n to 1
     if {$n != 1} {
         UpdateN $n
-    }
-    if {$settings(swapAlsoFocus)} {
-        FocusN $n true
     }
 }
 
