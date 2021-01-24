@@ -910,24 +910,7 @@ proc SetAsMainInt {n} {
     CheckWindow [list UpdateN 1] 1
     # Move n to 1
     if {$n != 1} {
-        UpdateN $n
-    }
-}
-
-proc Swap {n1 n2} {
-    global slot2handle slot2position settings
-    Debug "Swap $n1<->$n2 called"
-    if {![info exists slot2handle($n1)] || ![info exists slot2handle($n2)]} {
-        Debug "Missing one of the windows"
-        return
-    }
-    set tmp $slot2position($n2)
-    set slot2position($n2) $slot2position($n1)
-    set slot2position($n1) $tmp
-    UpdateN $n1
-    UpdateN $n2
-    if {$settings(swapAlsoFocus)} {
-        FocusN $n2 true
+        CheckWindow [list UpdateN $n] $n
     }
 }
 
