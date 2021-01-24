@@ -509,7 +509,7 @@ proc MenuSetup {} {
     .mbar add cascade -label Help -menu .mbar.help
     .mbar.help add command -label "Online help..." -command Help
     .mbar.help add separator 
-    .mbar.help add command -label "Check for update" -command [list CheckForUpdates 1]
+    .mbar.help add command -label "Check for update" -command [list CheckForUpdates 0]
     .mbar.help add command -label About -command About
  }
 
