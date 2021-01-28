@@ -44,7 +44,6 @@ jobs:
       - name: Make the executable
         run: |
           cd buildkit
-          mkdir OpenMultiBoxing.vfs\app
           cp ..\WowOpenBox.tkapp OpenMultiBoxing.vfs\app
           Add-Content -Path OpenMultiBoxing.vfs\tclkit.inf -Value "ProductVersion ""${{ steps.get_version.outputs.VERSION }}""" -PassThru
           tclkit\tclkit.exe sdx\sdx.kit wrap OpenMultiBoxing -runtime runtime.exe
