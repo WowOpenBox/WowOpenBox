@@ -360,8 +360,12 @@ proc updateIndex {args} {
 proc GetLogo {} {
     global imgObj70 vers inExe img_dir
     if {$inExe} {
-        set imgObj70 [image create photo -file [file join $img_dir "WoWOpenBox70.png"]]
-        return ""
+        if {[catch {set imgObj70 [image create photo -file [file join $img_dir "WoWOpenBox70.png"]]} err]} {
+            Debug "Didn't get logos: $err - falling back to https download"
+        } else {
+            Debug "In exe wob logo loaded"
+            return ""
+        }
     }
     if {[catch {set token [http::geturl "https://wowopenbox.org/WoWOpenBox70.png?v=$vers"]} err]} {
         WobError "WoW Open Box network error" "Url fetch error $err"
@@ -375,10 +379,12 @@ proc GetLogo {} {
     return ""
 }
 
-proc GetOMGLogo {} {
-    global imgWOB70 vers inExe img_dir
-    if {$inExe} {
-        set imgWOB70 [image create photo -file [file join $img_dir "OpenMultiBoxing70.png"]]
+proc GetOMBLogo {} {
+    global imgOMB70 vers inExe img_dir
+    if {[catch {set imgOMB70 [image create photo -file [file join $img_dir "OpenMultiBoxing70.png"]]} err]} {
+        Debug "Didn't get logos: $err - falling back to https download"
+    } else {
+        Debug "In exe omb logo loaded"
         return ""
     }
     if {[catch {set token [http::geturl "https://openmultiboxing.org/OpenMultiBoxing70.png?v=$vers"]} err]} {
@@ -386,8 +392,8 @@ proc GetOMGLogo {} {
         return $err
     }
     set body [http::data $token]
-    if {[catch {set imgWOB70 [image create photo -data $body]} err]} {
-        WobError "WoW Open Box logo error" "Logo error $err -:- $body"
+    if {[catch {set imgOMB70 [image create photo -data $body]} err]} {
+        WobError "Open Multi Boxing logo error" "Logo error $err -:- $body"
         return "Invalid data $err $body"
     }
     return ""
@@ -395,10 +401,10 @@ proc GetOMGLogo {} {
 
 
 proc SwitchLogo {} {
-    global skin imgObj70 imgWOB70
+    global skin imgObj70 imgOMB70
     if {$skin} {
-        .logo configure -image $imgWOB70
-        wm iconphoto . -default $imgWOB70
+        .logo configure -image $imgOMB70
+        wm iconphoto . -default $imgOMB70
     } else {
         .logo configure -image $imgObj70
         wm iconphoto . -default $imgObj70
@@ -413,7 +419,7 @@ proc UISetup {} {
     wm title . $ourTitle
     # Get logo
     set err1 [GetLogo]
-    set err2 [GetOMGLogo]
+    set err2 [GetOMBLogo]
     if {$err1 != "" || $err2 != ""} {
         set txt "WoW\nOpenBox\nMultiboxing"
         if {$skin} {
