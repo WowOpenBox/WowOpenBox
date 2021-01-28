@@ -708,6 +708,7 @@ proc FindExisting {} {
             exit 1
         }
         updateListBox $n $w $wname
+        UpdateN $n
     }
 }
 
