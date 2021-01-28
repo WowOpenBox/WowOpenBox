@@ -1,3 +1,4 @@
+![CI](https://github.com/WowOpenBox/WowOpenBox/workflows/CI/badge.svg)
 # WowOpenBox
 <img src="https://wowopenbox.org/sshot2_0_narrow.png" alt="WOB Screenshot" align="right">
 
