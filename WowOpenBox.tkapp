@@ -86,6 +86,7 @@ if {![info exists wobInitDone]} {
     # -- App utils - save settings
     set script_path [file normalize [info script]]
     set app_dir [file dirname $script_path]
+    set img_dir [file dirname $script_path]
     set script_name [file tail $script_path]
     Debug "Original app_dir: $app_dir (script [info script])"
     # Normalize appdir in case we're inside the binary
@@ -357,7 +358,11 @@ proc updateIndex {args} {
 
 
 proc GetLogo {} {
-    global imgObj70 vers
+    global imgObj70 vers inExe img_dir
+    if {$inExe} {
+        set imgObj70 [image create photo -file [file join $img_dir "WoWOpenBox70.png"]]
+        return ""
+    }
     if {[catch {set token [http::geturl "https://wowopenbox.org/WoWOpenBox70.png?v=$vers"]} err]} {
         WobError "WoW Open Box network error" "Url fetch error $err"
         return $err
@@ -371,7 +376,11 @@ proc GetLogo {} {
 }
 
 proc GetOMGLogo {} {
-    global imgWOB70 vers
+    global imgWOB70 vers inExe img_dir
+    if {$inExe} {
+        set imgWOB70 [image create photo -file [file join $img_dir "OpenMultiBoxing70.png"]]
+        return ""
+    }
     if {[catch {set token [http::geturl "https://openmultiboxing.org/OpenMultiBoxing70.png?v=$vers"]} err]} {
         WobError "OpenMultiBoxing network error" "Url fetch error $err"
         return $err
