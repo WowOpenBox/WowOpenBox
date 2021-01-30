@@ -728,17 +728,53 @@ proc FindExisting {} {
 }
 
 proc SetStayOnTop {wh top} {
+    global settings lastSOT
+    if {[info exists lastSOT($wh)] && $lastSOT($wh)==$top} {
+        Debug "Same StayOnTop $top for $wh, skipping."
+        return 0
+    }
+    set lastSOT($wh) $top
     if {$top} {
+        Debug "Setting stay on top for $wh"
         twapi::set_window_zorder $wh toplayer
+        return 1
     } else {
+        Debug "Clearing stay on top for $wh"
         twapi::set_window_zorder $wh bottomlayer
+        return 0
     }
 }
 
+array set lastUpdate {}
+
 proc Update {wh x y w h top} {
-    Resize $wh $w $h
-    Move $wh $x $y
-    SetStayOnTop $wh $top
+    global lastUpdate
+    set ret 0
+    # Clear stay on top first
+    if {$top==0} {
+        SetStayOnTop $wh 0
+    }
+    if {[info exists lastUpdate($wh)]} {
+        lassign $lastUpdate($wh) px py pw ph
+    } else {
+        set px {}
+        set py {}
+        set pw -1
+        set ph -1
+    }
+    if {$pw!=$w || $ph!=$h} {
+        Resize $wh $w $h
+    }
+    if {$px!=$x || $py!=$y} {
+        Move $wh $x $y
+    }
+    set lastUpdate($wh) [list $x $y $w $h $top]
+    # Return if we raised that window (for overlay)
+    # Set stay on top last
+    if {$top} {
+        set ret [SetStayOnTop $wh 1]
+    }
+    return $ret
 }
 
 proc Focus {wh} {
@@ -882,12 +918,24 @@ proc UpdateN {n} {
     lassign $settings($p,posXY) lx ly
     lassign $settings($p,size) lw lh
     set lstayOnTop 0
-    if {[info exists settings($n,stayOnTop)]} {
-        set lstayOnTop $settings($n,stayOnTop)
+    if {[info exists settings($p,stayOnTop)]} {
+        set lstayOnTop $settings($p,stayOnTop)
     }
-    Update $wh $lx $ly $lw $lh $lstayOnTop
-    .o$p.l configure -text $n
-    bind .o$p.l <ButtonPress> [list SetAsMain $n]
+    Debug "Update for $n in pos $p : $lx,$ly ${lw}x$lh - $lstayOnTop"
+    set raised [Update $wh $lx $ly $lw $lh $lstayOnTop]
+    if {$settings(showOverlay)} {
+        .o$p.l configure -text $n
+        bind .o$p.l <ButtonPress> [list SetAsMain $n]
+        if {$raised} {
+            Debug "OVERLAY raising $p"
+            # hacky/shouldn't be necessary/doesn't seem to work 100%
+            after 100 "
+                Debug \"changing zorder for $p\"
+                raise .o$p
+            "
+            #twapi::set_window_zorder [list [twapi::tkpath_to_hwnd .o$p]] toplayer
+        }
+    }
 }
 
 proc SetAsMain {n} {
@@ -1546,6 +1594,7 @@ proc SaveLayout {} {
         set settings($i,stayOnTop) $sot($i)
         # reset initial position
         set slot2position($i) $i
+        Debug "Sot for $i is $settings($i,stayOnTop) $sot($i)"
         CheckWindow [list UpdateN $i] $i
     }
     SaveSettings
