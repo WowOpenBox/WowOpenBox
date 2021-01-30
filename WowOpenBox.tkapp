@@ -72,6 +72,9 @@ proc WobError {title msg} {
     WobMessage -type ok -icon error -title $title -message $msg
 }
 
+set SETTINGS_PREFIX "wowopenboxSettings"
+set SETTINGS_SUFFIX ".tcl"
+set SETTINGS_BASE "$SETTINGS_PREFIX$SETTINGS_SUFFIX"
 
 if {![info exists wobInitDone]} {
     set wobInitDone 1
@@ -92,9 +95,6 @@ if {![info exists wobInitDone]} {
     # Normalize appdir in case we're inside the binary
     set inExe [regsub -nocase {/[^/]+\.exe/app$} $app_dir {} app_dir]
     Debug "Post exe detection app_dir: $app_dir"
-    set SETTINGS_PREFIX "wowopenboxSettings"
-    set SETTINGS_SUFFIX ".tcl"
-    set SETTINGS_BASE "$SETTINGS_PREFIX$SETTINGS_SUFFIX"
     set SETTINGS_FILE [file join $app_dir $SETTINGS_BASE]
     set update_path [file join $app_dir $script_name]
     Debug "Base settings: $SETTINGS_FILE"
@@ -120,6 +120,8 @@ proc CheckForUpdates {silent} {
         WobError "WoW Open Box network error" "Url fetch error $err"
         return
     }
+    set settings(lastUpdateChecked) [clock seconds]
+    SaveSettings
     set body [http::data $token]
     if {[string match "*/tag/$vers\",*" $body]} {
         if {$silent} {
@@ -130,8 +132,6 @@ proc CheckForUpdates {silent} {
             -message "You're already running the latest version $vers"
         return
     }
-    set settings(lastUpdateChecked) [clock seconds]
-    SaveSettings
     if {![regexp {browser_download_url":"(https://github\.com/WowOpenBox/WowOpenBox/releases/download/[^"]+\.tkapp)"} $body all updateUrl]} {
         Debug "--- Update not found in $url ---\n$body\n--- end of $url ---"
         WobError "Update Error" "Couldn't find update in latest release - please report as a bug"
