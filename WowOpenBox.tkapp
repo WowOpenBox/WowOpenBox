@@ -907,14 +907,14 @@ proc FocusNextWindow {} {
     # maxNumW is one more than number of windows
     set n [expr {$focusWindow % ($maxNumW-1) + 1}]
     Debug "FocusNextWindow: focusWindow $focusWindow maxNumW $maxNumW -> $n"
-    FocusN $n true
+    CheckWindow [list FocusN $n true] $n
 }
 
 proc FocusPreviousWindow {} {
     global focusWindow maxNumW
     set n [expr {($focusWindow+$maxNumW-3) % ($maxNumW-1) + 1}]
     Debug "FocusPreviousWindow: focusWindow $focusWindow maxNumW $maxNumW -> $n"
-    FocusN $n true
+    CheckWindow [list FocusN $n true] $n
 }
 
 proc UpdateN {n} {
@@ -2159,7 +2159,7 @@ array set settings {
     layoutSnap 4
     layoutMaxWindows 32
     showOverlay 1
-    overlayFocusColor #ffff00
+    overlayFocusColor "#ff0080"
     overlayAlpha 0.7
     overlayAnchor n
     overlayShowBorder 1
@@ -2244,7 +2244,7 @@ if {$isUpdate} {
     set isUpdate 0
     set rrOn 0
 } else {
-    if {[expr {([clock seconds]-$settings(lastUpdateChecked))>24*3600}]} {
+    if {[expr {([clock seconds]-$settings(lastUpdateChecked))>2*24*3600}]} {
         Debug "Last update check $settings(lastUpdateChecked) - updating"
         after 1000 {CheckForUpdates 1}
     }
