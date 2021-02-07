@@ -319,6 +319,7 @@ proc AfterSettings {} {
     RegisterHotkey "Focus follow mouse toggle" hk,focusFollowMouse FocusFollowMouseToggle
     RegisterHotkey "Always on top toggle" hk,stayOnTopToggle StayOnTopToggle
     RegisterHotkey "Overlay toggle" hk,overlayToggle OverlayToggle
+    RegisterHotkey "RoundRobin toggle" hk,rrToggle RRToggle
     # Set mouse control to current values
     global mouseFollow mouseRaise mouseDelay
     set mouseDelay [GetMouseDelay]
@@ -415,7 +416,9 @@ proc SwitchLogo {} {
 set ourTitle "WoW Open Box - Opensource MultiBoxing"
 
 proc UISetup {} {
-    global imgObj70 vers stayOnTop pos windowSize settings mouseFollow mouseRaise mouseDelay mouseCoords ourTitle skin bottomText
+    global imgObj70 vers stayOnTop pos windowSize settings \
+         mouseFollow mouseRaise mouseDelay mouseCoords ourTitle skin bottomText \
+         rrOn
     wm title . $ourTitle
     # Get logo
     set err1 [GetLogo]
@@ -458,6 +461,15 @@ proc UISetup {} {
     tooltip .cbCaptureFG "Instead of capturing the game window by name\n($settings(game))\nif checked, capture the current foreground window\nFor this to work you must use the hotkey:\n$settings(hk,capture)"
     grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command "OverlayUpdate; SaveSettings"] [ttk::button .cbocfg -text "Overlay config" -command OverlayConfig]
     tooltip .cboverlay "Show/Hide the overlay info\nHotkey: $settings(hk,overlayToggle)"
+
+    grid [frame .sepRR -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
+    grid [ttk::label .lRR -text "Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
+    grid [ttk::checkbutton .cbRR -text "Round Robin" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
+    tooltip .cbRR "Toggle round robin mode\nHotkey: $settings(hk,rrToggle)"
+    grid [ttk::label .lrrK -text "Round Robin keys"] [entry .eRR -textvariable settings(rrKeys) -width $width]  -padx 4 -sticky ew
+    tooltip .lrrK "Which keys trigger round robin\nType <Return> after change to take effect."
+    bind .lrrK <Return> RRUpdate
+
     grid [frame .sep2 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
     grid [ttk::label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
     grid [ttk::checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
@@ -889,6 +901,9 @@ proc SwapPreviousWindow {} {
 
 proc FocusNextWindow {} {
     global focusWindow maxNumW
+    if {$maxNumW<2} {
+        return
+    }
     # maxNumW is one more than number of windows
     set n [expr {$focusWindow % ($maxNumW-1) + 1}]
     Debug "FocusNextWindow: focusWindow $focusWindow maxNumW $maxNumW -> $n"
@@ -925,7 +940,9 @@ proc UpdateN {n} {
     set raised [Update $wh $lx $ly $lw $lh $lstayOnTop]
     if {$settings(showOverlay)} {
         .o$p.l configure -text $n
-        bind .o$p.l <ButtonPress> [list SetAsMain $n]
+        if {$p!=1} {
+            bind .o$p.l <ButtonPress> [list SetAsMain $n]
+        }
         if {$raised} {
             Debug "OVERLAY raising $p"
             # hacky/shouldn't be necessary/doesn't seem to work 100%
@@ -1433,6 +1450,54 @@ proc SizeOfWindow {tag} {
     return [list $x1 $y1 $w $h]
 }
 
+# --- start of RR ---
+
+proc Periodic {ms cmd} {
+    {*}$cmd
+    after $ms [list after idle [namespace code [info level 0]]]
+}
+
+proc RRToggle {} {
+    global rrOn
+    set rrOn [expr {!$rrOn}]
+    RRUpdate
+}
+
+proc RRUpdate {} {
+    global rrOn rrOnLabel settings
+    Debug "RRupdate $rrOn"
+    if {$rrOn} {
+        Periodic $settings(rrInterval) RRCheck
+        set rrOnLabel "\u27F3"
+    } else {
+        after cancel [after info]
+        set rrOnLabel ""
+    }
+}
+
+set lastRR {}
+proc RRCheck {} {
+    global settings lastRR
+    #Debug "RR Check..."
+    lassign $lastRR lastK lastV
+    foreach k [split $settings(rrKeys) {}] {
+        lassign [twapi::VkKeyScan $k] x code 
+        set state [twapi::GetAsyncKeyState $code] 
+        #Debug "Checking $k -> $code -> [format %x $state]"
+        if {$state != 0 && ($lastK != $k || $lastV != $state)} {
+            set lastRR [list $k $state]
+            Debug "RR for $k [format %x $state]"
+            if {($state & 0x1) == 0} {
+                Debug "Key up... Next window"
+                FocusNextWindow
+                return
+            }
+        }
+    }
+}
+
+# --- end of RR ---
+
 proc OverlayToggle {} {
     global settings
     set settings(showOverlay) [expr {!$settings(showOverlay)}]
@@ -1534,8 +1599,9 @@ proc SetClickThrough {t} {
     Debug "$t : $wh : [twapi::get_window_style $wh]"
 }
 
+set rrOnLabel ""
 proc Overlay {} {
-    global settings
+    global settings rrOnLabel
     set transparentcolor #606060
     ttk::style configure WobOverlayText.Label -font {Arial 48 bold} -foreground white -background $transparentcolor
     set on $settings(showOverlay)
@@ -1557,6 +1623,9 @@ proc Overlay {} {
             ttk::label $t.l -text "$i" -style WobOverlayText.Label -anchor $settings(overlayAnchor)
             if {$i==1} {
                 bind $t.l <ButtonPress> SwapNextWindow
+                ttk::label $t.rr -textvariable rrOnLabel -foreground $settings(overlayFocusColor) \
+                    -style WobOverlayText.Label -anchor c
+                place $t.rr -in $t -relx 0.5 -rely 0.7 -anchor c
             } else {
                 bind $t.l <ButtonPress> [list SetAsMain $i]
             }
@@ -2101,6 +2170,9 @@ array set settings {
     profile "Default"
     profiles {"Default"}
     borderless 1
+    rrKeys "1234567890-= ."
+    rrInterval 50
+    hk,rrToggle "Ctrl-Shift-R"
 }
 
 # globals
@@ -2122,6 +2194,8 @@ if {![info exists pos]} {
     set swappedWindow 1
     # hotkey ok
     set hotkeyOk 1
+    # RR
+    set rrOn 0
 }
 
 LoadSettings
@@ -2168,6 +2242,7 @@ if {$isUpdate} {
     # Do update stuff
     Debug "Update detected ($oldVersion to $vers)"
     set isUpdate 0
+    set rrOn 0
 } else {
     if {[expr {([clock seconds]-$settings(lastUpdateChecked))>24*3600}]} {
         Debug "Last update check $settings(lastUpdateChecked) - updating"
