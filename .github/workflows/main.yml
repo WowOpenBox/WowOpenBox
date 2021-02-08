@@ -39,7 +39,7 @@ jobs:
             echo ::set-output name=PRERELEASE::false
           fi
           sed -i -e "s/^set vers .*$/set vers \"$VERSION\"/" WowOpenBox.tkapp
-          sed -i -b -e "s/OpenMultiBoxing-X.Y.Z.exe/OpenMultiBoxing-$VERSION.exe/" buildkit/rrenable.exe
+          sed -i -b -e "s/OpenMultiBoxing-vX.Y.Z.exe/OpenMultiBoxing-$VERSION.exe/" buildkit/rrenable.exe
         shell: bash
 
       - name: Make the executable
