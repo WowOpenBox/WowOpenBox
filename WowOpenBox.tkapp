@@ -1635,8 +1635,9 @@ proc Overlay {} {
             ttk::label $t.l -text "$i" -style WobOverlayText.Label -anchor $settings(overlayAnchor)
             if {$i==1} {
                 bind $t.l <ButtonPress> SwapNextWindow
-                ttk::label $t.rr -textvariable rrOnLabel -foreground $settings(overlayFocusColor) \
+                ttk::label $t.rr -text "" -textvariable rrOnLabel -foreground $settings(overlayFocusColor) \
                     -style WobOverlayText.Label -anchor c
+                bind $t.rr <ButtonPress> RRToggle
                 place $t.rr -in $t -relx 0.5 -rely 0.7 -anchor c
             } else {
                 bind $t.l <ButtonPress> [list SetAsMain $i]
