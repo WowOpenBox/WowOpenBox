@@ -76,14 +76,24 @@ set SETTINGS_PREFIX "wowopenboxSettings"
 set SETTINGS_SUFFIX ".tcl"
 set SETTINGS_BASE "$SETTINGS_PREFIX$SETTINGS_SUFFIX"
 
+proc HasArg {argName} {
+    global argv
+    expr {[lsearch $argv $argName]!=-1}
+}
+
 if {![info exists wobInitDone]} {
     set wobInitDone 1
     set forceDebug 0
     array set settings {DEBUG 0}
-    if {$argv=="-debug"} {
+    if {[HasArg "-debug"]} {
         set forceDebug 1
         catch {console show}
         Debug "WOB $vers called with -debug"
+    }
+    set hasRR 0
+    if {[HasArg "-rr"]} {
+        set hasRR 1
+        Debug "OMB $vers called with -rr (hopefully from rrenable.exe)"
     }
     # Settings and updated code directory
     # -- App utils - save settings
@@ -418,7 +428,7 @@ set ourTitle "WoW Open Box - Opensource MultiBoxing"
 proc UISetup {} {
     global imgObj70 vers stayOnTop pos windowSize settings \
          mouseFollow mouseRaise mouseDelay mouseCoords ourTitle skin bottomText \
-         rrOn
+         rrOn hasRR
     wm title . $ourTitle
     # Get logo
     set err1 [GetLogo]
@@ -462,13 +472,15 @@ proc UISetup {} {
     grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command "OverlayUpdate; SaveSettings"] [ttk::button .cbocfg -text "Overlay config" -command OverlayConfig]
     tooltip .cboverlay "Show/Hide the overlay info\nHotkey: $settings(hk,overlayToggle)"
 
-    grid [frame .sepRR -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
-    grid [ttk::label .lRR -text "Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
-    grid [ttk::checkbutton .cbRR -text "Round Robin" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
-    tooltip .cbRR "Toggle round robin mode\nHotkey: $settings(hk,rrToggle)"
-    grid [ttk::label .lrrK -text "Round Robin keys"] [entry .eRR -textvariable settings(rrKeys) -width $width]  -padx 4 -sticky ew
-    tooltip .lrrK "Which keys trigger round robin\nType <Return> after change to take effect."
-    bind .lrrK <Return> RRUpdate
+    if {$hasRR} {
+        grid [frame .sepRR -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
+        grid [ttk::label .lRR -text "Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
+        grid [ttk::checkbutton .cbRR -text "Round Robin" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
+        tooltip .cbRR "Toggle round robin mode\nHotkey: $settings(hk,rrToggle)"
+        grid [ttk::label .lrrK -text "Round Robin keys"] [entry .eRR -textvariable settings(rrKeys) -width $width]  -padx 4 -sticky ew
+        tooltip .lrrK "Which keys trigger round robin\nType <Return> after change to take effect."
+        bind .lrrK <Return> RRUpdate
+    }
 
     grid [frame .sep2 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
     grid [ttk::label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
@@ -1464,9 +1476,9 @@ proc RRToggle {} {
 }
 
 proc RRUpdate {} {
-    global rrOn rrOnLabel settings
+    global rrOn rrOnLabel settings hasRR
     Debug "RRupdate $rrOn"
-    if {$rrOn} {
+    if {$rrOn && $hasRR} {
         Periodic $settings(rrInterval) RRCheck
         set rrOnLabel "\u27F3"
     } else {

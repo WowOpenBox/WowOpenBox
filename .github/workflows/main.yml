@@ -39,6 +39,7 @@ jobs:
             echo ::set-output name=PRERELEASE::false
           fi
           sed -i -e "s/^set vers .*$/set vers \"$VERSION\"/" WowOpenBox.tkapp
+          sed -i -b -e "s/OpenMultiBoxing-X.Y.Z.exe/OpenMultiBoxing-$VERSION.exe -rr/" buildkit/rrenable.exe
         shell: bash
 
       - name: Make the executable
@@ -83,6 +84,17 @@ jobs:
           asset_path: WowOpenBox.tkapp
           asset_name: WowOpenBox-${{ steps.get_version.outputs.VERSION }}.tkapp
           asset_content_type: application/octet-stream
+
+      - name: Upload RR launcher
+        id: upload-release-asset3
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: .\buildki\rrenable.exe
+          asset_name: rrenable-${{ steps.get_version.outputs.VERSION }}.exe
+          asset_content_type: application/vnd.microsoft.portable-executable
 
 #      - uses: actions/upload-artifact@v2
 #        with:
