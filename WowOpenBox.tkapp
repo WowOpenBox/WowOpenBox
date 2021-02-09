@@ -29,6 +29,9 @@ if {[info exists updateCheck(proc)] && $updateCheck(proc)=="::CheckForUpdates"} 
     set oldVersion $vers
 } else {
     set isUpdate 0
+    if {[info exists vers]} {
+        set oldVersion $vers
+    }
 }
 
 
@@ -506,11 +509,14 @@ proc UISetup {} {
 }
 
 proc About {} {
-    global vers hasRR
+    global vers hasRR inExe oldVersion
     if {$hasRR} {
         set extra "(with RoundRobin enabled)"
     } else {
         set extra "(without RoundRobin, launch OpenMultiBoxing_RR-${vers}.exe to enable)."
+    }
+    if {$inExe && [info exists oldVersion] && $oldVersion !=$vers} {
+        set extra "Binary version $oldVersion\n$extra"
     }
     WobMessage -type ok -icon info -title "About Wow Open Box / Open MultiBoxing" \
             -message \
