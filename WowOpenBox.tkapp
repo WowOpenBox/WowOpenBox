@@ -26,10 +26,14 @@ catch {array set updateCheck [info frame -1]}
 if {[info exists updateCheck(proc)] && $updateCheck(proc)=="::CheckForUpdates"} {
     puts stderr "Update detected!"
     set isUpdate 1
-    set oldVersion $vers
+    # keep oldVersion as the binary/bootstrap's version even in update
+    if {![info exists oldVersion]} {
+        set oldVersion $vers
+    }
+    set previousVersion $vers
 } else {
     set isUpdate 0
-    if {[info exists vers]} {
+    if {[info exists vers] && ![info exists oldVersion]} {
         set oldVersion $vers
     }
 }
@@ -2276,7 +2280,7 @@ if {$settings(numWindows)==0} {
 
 if {$isUpdate} {
     # Do update stuff
-    Debug "Update detected ($oldVersion to $vers)"
+    Debug "Update detected ($oldVersion to $previousVersion to $vers)"
     set isUpdate 0
 } else {
     if {[expr {([clock seconds]-$settings(lastUpdateChecked))>2*24*3600}]} {
