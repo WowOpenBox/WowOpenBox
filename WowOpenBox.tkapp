@@ -506,10 +506,15 @@ proc UISetup {} {
 }
 
 proc About {} {
-    global vers
+    global vers hasRR
+    if {$hasRR} {
+        set extra "(with RoundRobin enabled)"
+    } else {
+        set extra "(without RoundRobin, launch OpenMultiBoxing_RR-${vers}.exe to enable)."
+    }
     WobMessage -type ok -icon info -title "About Wow Open Box / Open MultiBoxing" \
             -message \
-"WoW Open Box (WOB) / Open MultiBoxing (OMB) $vers\n\nFree, OpenSource, Safe, Rules compliant, Multiboxing Software\n\nLicensed under GPLv3 - No Warranty\nThe GNU General Public License does not permit incorporating this work into proprietary programs.\n\nhttps://openmultiboxing.org https://wowopenbox.org/\n\uA9 2020-2021 MooreaTv <moorea@ymail.com>"
+"WoW Open Box (WOB) / Open MultiBoxing (OMB) $vers\n$extra\n\nFree, OpenSource, Safe, Rules compliant, Multiboxing Software\n\nLicensed under GPLv3 - No Warranty\nThe GNU General Public License does not permit incorporating this work into proprietary programs.\n\nhttps://openmultiboxing.org https://wowopenbox.org/\n\uA9 2020-2021 MooreaTv <moorea@ymail.com>"
 
 }
 
@@ -553,6 +558,7 @@ proc MenuSetup {} {
     .mbar add cascade -label Help -menu .mbar.help
     .mbar.help add command -label "Online help..." -command Help
     .mbar.help add separator 
+    .mbar.help add command -label "Get the newest binary release..." -command Releases
     .mbar.help add command -label "Check for update" -command [list CheckForUpdates 0]
     .mbar.help add command -label About -command About
  }
@@ -817,6 +823,11 @@ proc Foreground {wh} {
 proc Help {} {
     global vers
     twapi::shell_execute -path https://wowopenbox.org/help?v=$vers
+}
+
+proc Releases {} {
+    global vers
+    twapi::shell_execute -path https://github.com/WowOpenBox/WowOpenBox/releases?v=$vers
 }
 
 proc EditSettings {} {
