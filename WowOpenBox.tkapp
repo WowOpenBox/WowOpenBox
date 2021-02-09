@@ -76,6 +76,12 @@ set SETTINGS_PREFIX "wowopenboxSettings"
 set SETTINGS_SUFFIX ".tcl"
 set SETTINGS_BASE "$SETTINGS_PREFIX$SETTINGS_SUFFIX"
 
+# RR init upgrade aware
+set rrOn 0
+if {![info exists hasRR]} {
+    set hasRR 0
+}
+
 proc HasArg {argName} {
     global argv
     expr {[lsearch $argv $argName]!=-1}
@@ -90,10 +96,9 @@ if {![info exists wobInitDone]} {
         catch {console show}
         Debug "WOB $vers called with -debug"
     }
-    set hasRR 0
     if {[HasArg "-rr"]} {
         set hasRR 1
-        Debug "OMB $vers called with -rr (hopefully from rrenable.exe)"
+        Debug "OMB $vers called with -rr (hopefully from OpenMultiBoxing_RR.exe)"
     }
     # Settings and updated code directory
     # -- App utils - save settings
@@ -1470,7 +1475,10 @@ proc Periodic {ms cmd} {
 }
 
 proc RRToggle {} {
-    global rrOn
+    global rrOn hasRR vers
+    if {!$hasRR} {
+        WobError "Round Robin not enabled" "You must start WOB/OMB by launching\n\n   OpenMultiBoxing_RR-${vers}.exe\n\nif you decide to enable RounRobin."
+    }
     set rrOn [expr {!$rrOn}]
     RRUpdate
 }
@@ -2207,8 +2215,6 @@ if {![info exists pos]} {
     set swappedWindow 1
     # hotkey ok
     set hotkeyOk 1
-    # RR
-    set rrOn 0
 }
 
 LoadSettings
@@ -2255,7 +2261,6 @@ if {$isUpdate} {
     # Do update stuff
     Debug "Update detected ($oldVersion to $vers)"
     set isUpdate 0
-    set rrOn 0
 } else {
     if {[expr {([clock seconds]-$settings(lastUpdateChecked))>2*24*3600}]} {
         Debug "Last update check $settings(lastUpdateChecked) - updating"
