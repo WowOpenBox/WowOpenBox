@@ -39,7 +39,7 @@ jobs:
             echo ::set-output name=PRERELEASE::false
           fi
           sed -i -e "s/^set vers .*$/set vers \"$VERSION\"/" WowOpenBox.tkapp
-          sed -i -b -e "s/OpenMultiBoxing-vX.Y.Z.exe/OpenMultiBoxing-$VERSION.exe/" buildkit/rrenable.exe
+          sed -i -b -e "s/OpenMultiBoxing-vX.Y.Z.exe/OpenMultiBoxing-$VERSION.exe/" buildkit/OpenMultiBoxing_RR.exe
         shell: bash
 
       - name: Make the executable
@@ -92,8 +92,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: .\buildkit\rrenable.exe
-          asset_name: rrenable-${{ steps.get_version.outputs.VERSION }}.exe
+          asset_path: .\buildkit\OpenMultiBoxing_RR.exe
+          asset_name: OpenMultiBoxing_RR-${{ steps.get_version.outputs.VERSION }}.exe
           asset_content_type: application/vnd.microsoft.portable-executable
 
 #      - uses: actions/upload-artifact@v2
