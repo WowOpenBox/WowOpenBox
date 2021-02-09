@@ -1,6 +1,6 @@
 ![CI](https://github.com/WowOpenBox/WowOpenBox/workflows/CI/badge.svg)
 # WowOpenBox
-<img src="https://wowopenbox.org/sshot2_0_narrow.png" alt="WOB Screenshot" align="right">
+<img src="https://wowopenbox.org/sshot3_0.png" alt="WOB Screenshot w/ RR" align="right">
 
 Open source, non commercial use software for MultiBoxing World of Warcraft within the rules.
 
@@ -16,8 +16,10 @@ WowOpenBox is optimized for Microsoft Windows 10.
 
 New since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest `.exe` built by the Github CI in [release](https://github.com/WowOpenBox/WowOpenBox/releases).
 
+If you want to use the optional Round Robin feature, also download the `OpenMultiBoxing_RR` exe and run that to get RR.
+
 Alternatively feel free, if you have Tcl/Tk+Twapi already installed (from 
-https://www.magicsplat.com/tcl-installer/index.html#downloads for instance) to use just the source tkapp and run it: double click `WowOpenBox.tkapp` to launch.
+https://www.magicsplat.com/tcl-installer/index.html#downloads for instance) to use just the source tkapp and run it: double click `WowOpenBox.tkapp` to launch (but no RoundRobin that way).
 
 Then start your world of warcraft clients (Classic or Shadowlands) using launcher is fine (that way you don't need to keep typing your password). Before WOB/OMB 2.6 you needed to make sure your game was in "Windowed (Fullscreen)" mode, so they didn't have a title or border but now OpenMultiBoxing will remove the border for you if there is one and they'll be neatly arranged.
 
