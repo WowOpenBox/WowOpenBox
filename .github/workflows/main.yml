@@ -33,6 +33,9 @@ jobs:
         run: |
           VERSION=${GITHUB_REF/refs\/tags\//}
           echo ::set-output name=VERSION::${VERSION}
+          if [ -z "${VERSION}" ]; then
+            exit 0 # not a tag. should not run
+          fi
           if [ -z "${VERSION##*pre*}" ]; then
             echo ::set-output name=PRERELEASE::true
           else
