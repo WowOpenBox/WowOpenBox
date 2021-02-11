@@ -477,7 +477,9 @@ proc UISetup {} {
     grid [listbox .lbw -height 6] -columnspan 2 -sticky ns
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
     grid [ttk::checkbutton .csswapfocus -text "Swap hotkey also focuses" -variable settings(swapAlsoFocus)] -columnspan 2
-    grid [ttk::checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
+    if {!$hasRR} {
+        grid [ttk::checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
+    }
     grid [ttk::checkbutton .cbCaptureFG -text "Capture using foreground window" -variable settings(captureForegroundWindow)] -columnspan 2
     grid [ttk::checkbutton .cbCaptureBorderLess -text "Capture makes windows borderless" -variable settings(borderless)] -columnspan 2
     tooltip .cbCaptureFG "Instead of capturing the game window by name\n($settings(game))\nif checked, capture the current foreground window\nFor this to work you must use the hotkey:\n$settings(hk,capture)"
@@ -887,7 +889,7 @@ array set slot2handle {}
 array set slot2position {}
 
 proc FocusN {n fg} {
-    global slot2handle slot2position focusWindow settings
+    global slot2handle slot2position focusWindow settings hasRR
     if {![info exists slot2handle($n)]} {
        Debug "FocusN $n called but no such window"
        return
@@ -895,10 +897,14 @@ proc FocusN {n fg} {
     set wh $slot2handle($n)
     set p $slot2position($n)
     Debug "FocusN $n called, at position $p - fg is $fg"
-    Focus $wh
-    if {$fg && $settings(focusAlsoFG)} {
-        Debug "Also making $n foreground"
+    if {$hasRR} {
         Foreground $wh
+    } else {
+        Focus $wh
+        if {$fg && $settings(focusAlsoFG)} {
+            Debug "Also making $n foreground"
+            Foreground $wh
+        }
     }
     if {$settings(showOverlay)} {
         set prevFocusPos $slot2position($focusWindow)
@@ -1496,11 +1502,21 @@ proc Periodic {ms cmd} {
 }
 
 proc RRToggle {} {
-    global rrOn hasRR vers
+    global rrOn hasRR vers mouseFollow rrMouse
     if {!$hasRR} {
         WobError "Round Robin not enabled" "You must start WOB/OMB by launching\n\n   OpenMultiBoxing_RR-${vers}.exe\n\nif you decide to enable RounRobin."
     }
     set rrOn [expr {!$rrOn}]
+    if {$rrOn} {
+        set rrMouse $mouseFollow
+        if {$mouseFollow} {
+            set mouseFollow 0
+            UpdateMouseFollow
+        }
+    } elseif {$rrMouse} {
+        set mouseFollow $rrMouse
+        UpdateMouseFollow
+    }
     RRUpdate
 }
 
