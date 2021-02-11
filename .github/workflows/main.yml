@@ -34,7 +34,7 @@ jobs:
           VERSION=${GITHUB_REF/refs\/tags\//}
           echo ::set-output name=VERSION::${VERSION}
           echo "Version=\"$VERSION\""
-          if [ -z "${VERSION}" ]; then
+          if [[ "${VERSION}" == "refs/heads/main" ]]; then
             exit 0 # not a tag. should not run
           fi
           if [ -z "${VERSION##*pre*}" ]; then
