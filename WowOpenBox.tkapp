@@ -692,7 +692,7 @@ proc Forget {n} {
         return
     }
     set wh $slot2handle($n)
-    Rename $wh $settings(game)
+    catch {Rename $wh $settings(game)}
     unset slot2handle($n)
     .b2 configure -text " Capture "
     set n0 [expr {$n-1}]
@@ -703,7 +703,7 @@ proc Forget {n} {
         # but this is "forget" so... that's enough we get back a title and resize
         # if the user which to move the window out of wob/omb
         lassign $savedWindowStyle($wh) st exst
-        twapi::set_window_style $wh $st $exst
+        catch {twapi::set_window_style $wh $st $exst}
     }
 }
 
