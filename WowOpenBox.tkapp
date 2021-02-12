@@ -491,7 +491,9 @@ proc UISetup {} {
         grid [ttk::label .lRR -text "Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
         grid [ttk::checkbutton .cbRR -text "Round Robin" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
         tooltip .cbRR "Toggle round robin mode\nHotkey: $settings(hk,rrToggle)"
-        grid [ttk::label .lrrK -text "Round Robin keys"] [entry .eRR -textvariable settings(rrKeys) -width $width]  -padx 4 -sticky ew
+        grid [ttk::label .lrrK -text "Round Robin keys:"] -padx 4 -columnspan 2 -sticky w
+        grid [entry .eRR -textvariable settings(rrKeyList) -width $width] -columnspan 2 -padx 4 -sticky ew
+        bind .eRR <Return> RRKeysListChange
         tooltip .lrrK "Which keys trigger round robin\nType <Return> after change to take effect."
         bind .lrrK <Return> RRUpdate
     }
@@ -1524,6 +1526,7 @@ proc RRUpdate {} {
     global rrOn rrOnLabel settings hasRR
     Debug "RRupdate $rrOn"
     if {$rrOn && $hasRR} {
+        RRKeysListChange
         Periodic $settings(rrInterval) RRCheck
         set rrOnLabel "\u27F3"
     } else {
@@ -1532,18 +1535,47 @@ proc RRUpdate {} {
     }
 }
 
+proc RRkeyListToCodes {} {
+    global settings
+    twapi::_init_vk_map
+    set res {}
+    set fixedList {}
+    foreach k $settings(rrKeyList) {
+        if {[string length $k] == 1} {
+            lassign [twapi::VkKeyScan $k] x code
+        } else {
+            if {![info exists twapi::vk_map($k)]} {
+                WobError "Invalid RR key" "$k isn't a valid key"
+                continue
+            } else {
+                set code [expr [lindex $twapi::vk_map($k) 0]]
+            }
+        }
+        Debug "RRkey $k -> 0x[format %x $code]"
+        lappend res $code
+        lappend fixedList $k
+    }
+    set settings(rrKeyList) $fixedList
+    return $res
+}
+
+set rrCodes {}
+proc RRKeysListChange {} {
+    global rrCodes
+    set rrCodes [RRkeyListToCodes]
+}
+
 set lastRR {}
 proc RRCheck {} {
-    global settings lastRR
+    global rrCodes lastRR
     #Debug "RR Check..."
-    lassign $lastRR lastK lastV
-    foreach k [split $settings(rrKeys) {}] {
-        lassign [twapi::VkKeyScan $k] x code 
+    lassign $lastRR lastCode lastV
+    foreach code $rrCodes {
         set state [twapi::GetAsyncKeyState $code] 
         #Debug "Checking $k -> $code -> [format %x $state]"
-        if {$state != 0 && ($lastK != $k || $lastV != $state)} {
-            set lastRR [list $k $state]
-            Debug "RR for $k [format %x $state]"
+        if {$state != 0 && ($lastCode != $code || $lastV != $state)} {
+            set lastRR [list $code $state]
+            Debug "RR for $code [format %x $state]"
             if {($state & 0x1) == 0} {
                 Debug "Key up... Next window"
                 FocusNextWindow
@@ -2228,7 +2260,7 @@ array set settings {
     profile "Default"
     profiles {"Default"}
     borderless 1
-    rrKeys "1234567890-= ."
+    rrKeyList "SPACE 1 2 3 4 5 6 7 8 9 0 - = . F10"
     rrInterval 50
     hk,rrToggle "Ctrl-Shift-R"
 }
@@ -2255,6 +2287,8 @@ if {![info exists pos]} {
 }
 
 LoadSettings
+# get rid of deprecated initial RR keys list
+catch {unset settings(rrKeys)}
 
 if {$settings(captureForegroundWindow) || $settings(game) != "World of Warcraft"} {
     set skin 1
