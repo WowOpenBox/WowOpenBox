@@ -342,6 +342,7 @@ proc AfterSettings {} {
     RegisterHotkey "Always on top toggle" hk,stayOnTopToggle StayOnTopToggle
     RegisterHotkey "Overlay toggle" hk,overlayToggle OverlayToggle
     RegisterHotkey "RoundRobin toggle" hk,rrToggle RRToggle
+    RegisterHotkey "Focus main window" hk,focusMain FocusMain
     # Set mouse control to current values
     global mouseFollow mouseRaise mouseDelay
     set mouseDelay [GetMouseDelay]
@@ -353,6 +354,7 @@ proc AfterSettings {} {
 
 proc FocusFollowMouseToggle {} {
     Debug "Follow mouse toggle requested"
+    .mf configure -state enabled
     .mf invoke
 }
 
@@ -489,12 +491,12 @@ proc UISetup {} {
     if {$hasRR} {
         grid [frame .sepRR -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
         grid [ttk::label .lRR -text "Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
-        grid [ttk::checkbutton .cbRR -text "Round Robin" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
-        tooltip .cbRR "Toggle round robin mode\nHotkey: $settings(hk,rrToggle)"
+        grid [ttk::checkbutton .cbRR -text "Round Robin ($settings(hk,rrToggle))" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
+        tooltip .cbRR "Toggle round robin mode\nAlso turns off mouse focus and restore as needed while on\nHotkey: $settings(hk,rrToggle)"
         grid [ttk::label .lrrK -text "Round Robin keys:"] -padx 4 -columnspan 2 -sticky w
         grid [entry .eRR -textvariable settings(rrKeyList) -width $width] -columnspan 2 -padx 4 -sticky ew
         bind .eRR <Return> RRKeysListChange
-        tooltip .lrrK "Which keys trigger round robin\nType <Return> after change to take effect."
+        tooltip .eRR "Which keys trigger round robin\nType <Return> after change to take effect.\nSee help/FAQ for list."
         bind .lrrK <Return> RRUpdate
     }
 
@@ -916,10 +918,18 @@ proc FocusN {n fg} {
     set focusWindow $n
 }
 
+# Focus whichever window is in location/spot 1
+proc FocusMain {} {
+    global slot2position
+    # either 1 or the window currently swapped to 1
+    FocusN $slot2position(1) true
+}
+
 proc StayOnTopToggle {} {
     global focusWindow settings slot2handle
     set settings($focusWindow,stayOnTop) [expr {!$settings($focusWindow,stayOnTop)}]
-    SetStayOnTop $slot2handle($focusWindow) $settings($focusWindow,stayOnTop)
+    catch {SetStayOnTop $slot2handle($focusWindow) $settings($focusWindow,stayOnTop)}
+    Debug "StayOnTopToggle $focusWindow now $settings($focusWindow,stayOnTop)"
 }
 
 proc SwapNextWindow {} {
@@ -1504,34 +1514,39 @@ proc Periodic {ms cmd} {
 }
 
 proc RRToggle {} {
-    global rrOn hasRR vers mouseFollow rrMouse
+    global rrOn hasRR vers
     if {!$hasRR} {
         WobError "Round Robin not enabled" "You must start WOB/OMB by launching\n\n   OpenMultiBoxing_RR-${vers}.exe\n\nif you decide to enable RounRobin."
     }
     set rrOn [expr {!$rrOn}]
-    if {$rrOn} {
-        set rrMouse $mouseFollow
-        if {$mouseFollow} {
-            set mouseFollow 0
-            UpdateMouseFollow
-        }
-    } elseif {$rrMouse} {
-        set mouseFollow $rrMouse
-        UpdateMouseFollow
-    }
     RRUpdate
 }
 
 proc RRUpdate {} {
-    global rrOn rrOnLabel settings hasRR
+    global rrOn rrOnLabel settings hasRR mouseFollow rrMouse
     Debug "RRupdate $rrOn"
+    if {$rrOn} {
+    } elseif {$rrMouse} {
+    }
     if {$rrOn && $hasRR} {
-        RRKeysListChange
-        Periodic $settings(rrInterval) RRCheck
         set rrOnLabel "\u27F3"
+        RRKeysListChange
+        set rrMouse $mouseFollow
+        if {$mouseFollow} {
+            set mouseFollow 0
+            UpdateMouseFollow
+            .mf configure -state disabled
+        }
+        Periodic $settings(rrInterval) RRCheck
     } else {
         after cancel [after info]
         set rrOnLabel ""
+        .mf configure -state enabled
+        if {[info exists rrMouse] && $rrMouse} {
+            set mouseFollow 1
+            UpdateMouseFollow
+        }
+
     }
 }
 
@@ -2263,6 +2278,7 @@ array set settings {
     rrKeyList "SPACE 1 2 3 4 5 6 7 8 9 0 - = . F10"
     rrInterval 50
     hk,rrToggle "Ctrl-Shift-R"
+    hk,focusMain "Ctrl-Shift-1"
 }
 
 # globals
