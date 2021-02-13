@@ -10,6 +10,8 @@ Web homes: https://WowOpenBox.org (for World of Warcraft) and https://OpenMultiB
 
 Github home: https://github.com/WowOpenBox/WowOpenBox#wowopenbox
 
+The binary distribution (and round robin wrapper) is built from https://github.com/WowOpenBox/BuildKit
+
 ## Installation
 
 WowOpenBox is optimized for Microsoft Windows 10.
