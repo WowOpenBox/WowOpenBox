@@ -16,7 +16,7 @@ The binary distribution (and round robin wrapper) is built from https://github.c
 
 WowOpenBox is optimized for Microsoft Windows 10.
 
-New since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest Zip file and extract to your desktop for instance. The binaries are built automatically by the Github CI and can be found in [release](https://github.com/WowOpenBox/WowOpenBox/releases).
+New since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest Zip file and extract to your desktop for instance. The binaries are built automatically by the Github CI and can be found on the [releases page](https://github.com/WowOpenBox/WowOpenBox/releases).
 
 If you want to use the optional Round Robin feature, run the `OpenMultiBoxing_RR` exe wrapper to get RR (it will launch/need the other bigger exe too, in the same folder).
 
