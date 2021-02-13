@@ -16,9 +16,9 @@ The binary distribution (and round robin wrapper) is built from https://github.c
 
 WowOpenBox is optimized for Microsoft Windows 10.
 
-New since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest `.exe` built by the Github CI in [release](https://github.com/WowOpenBox/WowOpenBox/releases).
+New since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest Zip file and extract to your desktop for instance. The binaries are built automatically by the Github CI and can be found in [release](https://github.com/WowOpenBox/WowOpenBox/releases).
 
-If you want to use the optional Round Robin feature, also download the `OpenMultiBoxing_RR` exe and run that to get RR.
+If you want to use the optional Round Robin feature, run the `OpenMultiBoxing_RR` exe wrapper to get RR (it will launch/need the other bigger exe too, in the same folder).
 
 Alternatively feel free, if you have Tcl/Tk+Twapi already installed (from 
 https://www.magicsplat.com/tcl-installer/index.html#downloads for instance) to use just the source tkapp and run it: double click `WowOpenBox.tkapp` to launch (but no RoundRobin that way).
