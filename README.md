@@ -10,7 +10,7 @@ Web homes: https://WowOpenBox.org (for World of Warcraft) and https://OpenMultiB
 
 Github home: https://github.com/WowOpenBox/WowOpenBox#wowopenbox
 
-The binary distribution (and round robin wrapper) is built from https://github.com/WowOpenBox/BuildKit
+The source for the [binary distribution](https://github.com/WowOpenBox/WowOpenBox/releases) (and the round robin wrapper) is built from https://github.com/WowOpenBox/BuildKit (just mentioning that if you're curious, you don't need to look there to **use** WowOpenBox / OpenMultiBoxing)
 
 ## Installation
 
