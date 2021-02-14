@@ -1208,19 +1208,22 @@ proc WindowLayout {} {
     ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to $settings(layoutMaxWindows) -command ChangeNumWindow
     tooltip $tw.s "Select how many windows in your layout."
     ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size\nfor all windows" -command ChangeLayout
+    ttk::checkbutton $tw.cb2 -variable settings(layoutOneRowCol) -text "One row/col\nfor small windows" -command ChangeLayout
     tooltip $tw.cb1 "Check or uncheck to redo the layout with\nwindows of the same size (fastest switch later)\nor not (1 big main window and smaller minions windows)"
     set layoutNumWindowsText "99 windows"
     set width [expr {2+[string length $layoutNumWindowsText]}]
     set layoutNumWindowsText "Layout for\n$settings(numWindows) windows"
-    grid [ttk::label $tw.l1 -textvariable layoutNumWindowsText -width $width -anchor c -justify center] $tw.s - - - $tw.cb1 -sticky we -pady 4 -padx 4
+    grid [ttk::label $tw.l1 -textvariable layoutNumWindowsText -width $width -anchor c -justify center] $tw.s - - $tw.cb1  $tw.cb2 -sticky we -pady 4 -padx 4
     tooltip $tw.l1 "After automatic layout,\ndrag any window to adjust as necessary,\nuse arrow keys for fine pixel adjustment.\nClick on text to toggle stay on top... etc..."
-    ttk::radiobutton $tw.as0 -value "Any" -text "Any" -variable settings(aspectRatio) -command ChangeLayout
-    ttk::radiobutton $tw.as1 -value "5/4" -text "5:4" -variable settings(aspectRatio) -command ChangeLayout
-    ttk::radiobutton $tw.as2 -value "4/3" -text "4:3" -variable settings(aspectRatio) -command ChangeLayout
-    ttk::radiobutton $tw.as3 -value "16/10" -text "16:10" -variable settings(aspectRatio) -command ChangeLayout
-    ttk::radiobutton $tw.as4 -value "16/9" -text "16:9" -variable settings(aspectRatio) -command ChangeLayout
-#    ttk::radiobutton $tw.as5 -value "21/9" -text "21:9" -variable settings(aspectRatio) -command ChangeLayout
-    grid [ttk::label $tw.l2 -text "Aspect ratio:"] $tw.as0  $tw.as1  $tw.as2  $tw.as3  $tw.as4
+    frame $tw.asrf
+    ttk::radiobutton $tw.asrf.ar0 -value "Any" -text "Any" -variable settings(aspectRatio) -command ChangeLayout
+    ttk::radiobutton $tw.asrf.ar1 -value "5/4" -text "5:4" -variable settings(aspectRatio) -command ChangeLayout
+    ttk::radiobutton $tw.asrf.ar2 -value "4/3" -text "4:3" -variable settings(aspectRatio) -command ChangeLayout
+    ttk::radiobutton $tw.asrf.ar3 -value "16/10" -text "16:10" -variable settings(aspectRatio) -command ChangeLayout
+    ttk::radiobutton $tw.asrf.ar4 -value "16/9" -text "16:9" -variable settings(aspectRatio) -command ChangeLayout
+    ttk::radiobutton $tw.asrf.ar5 -value "21/9" -text "21:9" -variable settings(aspectRatio) -command ChangeLayout
+    pack [ttk::label $tw.asrf.l2 -text "Aspect ratio:"] $tw.asrf.ar0  $tw.asrf.ar1  $tw.asrf.ar2  $tw.asrf.ar3  $tw.asrf.ar4  $tw.asrf.ar5 -side left -expand 1
+    grid $tw.asrf -padx 3 -columnspan 6 -sticky we
     grid [canvas $tw.c -relief ridge -bd 2] -columnspan 6 -padx 5 -pady 5
     grid [ttk::label $tw.linfo -textvariable layoutinfo] -columnspan 6
     ttk::menubutton $tw.monIdx -textvariable skipMonitorText -menu $tw.monIdx.menu
@@ -1946,7 +1949,7 @@ proc LayoutOneMonitorOneSize {monitor startAt numWindows ww wh maxW maxH} {
 
 
 proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
-    global monitorInfo aspectRatio
+    global monitorInfo aspectRatio settings
     # B window being a multiple of same size S window:
     #   BBBBS
     #   BBBBS
@@ -1976,20 +1979,14 @@ proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
     set y2 $monitorInfo($monitor,y2)
     set mw $monitorInfo($monitor,width)
     set mh $monitorInfo($monitor,height)
-    if {$numWindows == 3} {
-        # special case
-        #    BB
-        #    ss
-        # layout for 3 windows
-        set bw $mw
-    } elseif {$numWindows == 4} {
-        # another special case
+    if {$settings(layoutOneRowCol)} {
+        # another special case for 3, 4 and 5 and more
         #    BBB
         #    BBB
         #    BBB
         #    sss
         set bw $mw
-        set c 3
+        set c [expr {$numWindows-1}]
     } else {
         set bw [expr {1.0*$mw*$c/($c+1)}]
     }
@@ -2260,6 +2257,7 @@ array set settings {
     ignoreMonitorIdx 0
     avoidTaskbar 1
     layoutOneSize 1
+    layoutOneRowCol 0
     layoutScale "1/8"
     layoutSnap 4
     layoutMaxWindows 32
