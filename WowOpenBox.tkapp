@@ -1985,13 +1985,24 @@ proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
         #    BBB
         #    BBB
         #    sss
-        set bw $mw
         set c [expr {$numWindows-1}]
+        # if aspect ratio is ok to be wider or equal to screen's
+        if {$aspectRatio==0 || $aspectRatio>=1.0*$mw/$mh} {
+            # very wide, row below
+            set bw $mw
+            set bh [expr {1.0*$mh*$c/($c+1)}]
+            Debug "Wide ar $aspectRatio vs screen [expr 1.0*$mw/$mh]: using full width,c $c height $bh"
+        } else {
+            # aspect ratio is set, row to the side
+            set bh $mh
+            set bw [expr {1.0*$mw*$c/($c+1)}]
+            Debug "Not ultra wide: Using full height,c $c width $bw"
+        }
     } else {
         set bw [expr {1.0*$mw*$c/($c+1)}]
+        set bh [expr {1.0*$mh*$c/($c+1)}]
     }
-    # will be int after aspect ratio and multiple of small pass
-    set bh [expr {1.0*$mh*$c/($c+1)}]
+    # bh/bw will be int after aspect ratio and multiple of small pass
     Debug "monitor $mw x $mh -> $bw x $bh"
     lassign [ConstrainWindow 0 0 $bw $bh $aspectRatio] v1 v2 bw bh
     # Make sure big size is divisable by sw exactly
