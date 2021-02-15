@@ -2075,15 +2075,14 @@ proc SetupMove {} {
     $c bind wowWindow <ButtonRelease-1> {
         set snap $settings(layoutSnap)
         Debug "Released: $snap"
-        if {$snap < 2} {
-            return
+        if {$snap >= 2} {
+            lassign [%W coords $selectedRectWindow] x1 y1 x2 y2
+            set nx1 [expr {$snap*round(1.0*$x1/$snap)}]
+            set ny1 [expr {$snap*round(1.0*$y1/$snap)}]
+            Debug "snap to $nx1 $ny1 (from $x1 $y1)"
+            %W move $selectedTag [expr {$nx1-$x1}] [expr {$ny1-$y1}]
+            UpdateLayoutInfo $selectedTag
         }
-        lassign [%W coords $selectedRectWindow] x1 y1 x2 y2
-        set nx1 [expr {$snap*round(1.0*$x1/$snap)}]
-        set ny1 [expr {$snap*round(1.0*$y1/$snap)}]
-        Debug "snap to $nx1 $ny1 (from $x1 $y1)"
-        %W move $selectedTag [expr {$nx1-$x1}] [expr {$ny1-$y1}]
-        UpdateLayoutInfo $selectedTag
     }
     $c bind wowWindow <B1-Motion> {
         set changed_x [expr %x - $atx]
@@ -2131,28 +2130,26 @@ proc SetupMove {} {
         set selectedWindow [%W find withtag current]
         set selectedTag [lindex [%W gettags $selectedWindow] 0]
         Debug "Entered %W $selectedWindow $selectedTag - last $lastResize"
-        if {$lastResize == $selectedTag} {
-            return
+        if {$lastResize != $selectedTag} {
+            %W delete wowResize
+            set lastResize $selectedTag
+            set layoutinfo ""
+            set selectedRectWindow [%W find withtag "$selectedTag&&wowWindow"]
+            lassign [%W coords $selectedTag] x1 y1 x2 y2
+            Debug "coords for small resize $x2 $y2"
+            set x2 [expr {round($x2)}]
+            set y2 [expr {round($y2)}]
+            %W create rectangle [expr {$x2-18}] [expr {$y2-18}] [expr {$x2-2}] [expr {$y2-2}] -fill orange -tags [list  $selectedTag "wowAll" "wowResize" "wowR1"]
+            %W create rectangle [expr {$x2-14}] [expr {$y2-14}] [expr {$x2-2}] [expr {$y2-2}] -fill darkorange -tags [list  $selectedTag "wowAll" "wowResize" "wowR2"]
         }
-        %W delete wowResize
-        set lastResize $selectedTag
-        set layoutinfo ""
-        set selectedRectWindow [%W find withtag "$selectedTag&&wowWindow"]
-        lassign [%W coords $selectedTag] x1 y1 x2 y2
-        Debug "coords for small resize $x2 $y2"
-        set x2 [expr {round($x2)}]
-        set y2 [expr {round($y2)}]
-        %W create rectangle [expr {$x2-18}] [expr {$y2-18}] [expr {$x2-2}] [expr {$y2-2}] -fill orange -tags [list  $selectedTag "wowAll" "wowResize" "wowR1"]
-        %W create rectangle [expr {$x2-14}] [expr {$y2-14}] [expr {$x2-2}] [expr {$y2-2}] -fill darkorange -tags [list  $selectedTag "wowAll" "wowResize" "wowR2"]
     }
     $c bind display <Enter> {
         set layoutinfo ""
         set selectedTag ""
-        if {$lastResize == ""} {
-            return
+        if {$lastResize != ""} {
+            set lastResize ""
+            %W delete wowResize
         }
-        set lastResize ""
-        %W delete wowResize
     }
     bind $c <Enter> {
         Debug "entering canvas %W"
@@ -2166,35 +2163,31 @@ proc SetupMove {} {
     }
     bind $c <Left> {
         Debug "Left for $selectedTag"
-        if {$selectedTag == ""} {
-            return
+        if {$selectedTag != ""} {
+            %W move $selectedTag -$scale 0
+            UpdateLayoutInfo $selectedTag
         }
-        %W move $selectedTag -$scale 0
-        UpdateLayoutInfo $selectedTag
     }
     bind $c <Right> {
         Debug "Right for $selectedTag"
-        if {$selectedTag == ""} {
-            return
+        if {$selectedTag != ""} {
+            %W move $selectedTag $scale 0
+            UpdateLayoutInfo $selectedTag
         }
-        %W move $selectedTag $scale 0
-        UpdateLayoutInfo $selectedTag
     }
     bind $c <Up> {
         Debug "Up for $selectedTag"
-        if {$selectedTag == ""} {
-            return
+        if {$selectedTag != ""} {
+            %W move $selectedTag 0 -$scale
+            UpdateLayoutInfo $selectedTag
         }
-        %W move $selectedTag 0 -$scale
-        UpdateLayoutInfo $selectedTag
     }
     bind $c <Down> {
         Debug "Down for $selectedTag"
-        if {$selectedTag == ""} {
-            return
+        if {$selectedTag != ""} {
+            %W move $selectedTag 0 $scale
+            UpdateLayoutInfo $selectedTag
         }
-        %W move $selectedTag 0 $scale
-        UpdateLayoutInfo $selectedTag
     }
 }
 
