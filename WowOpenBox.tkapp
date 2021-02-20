@@ -2268,7 +2268,7 @@ proc UpdateMouseDelay {} {
 #---- settings and initial setup
 
 # default hotkeys (change/add more in you wowopenboxSettings.tcl)
-for {set i 1} {$i<=9} {incr i} {
+for {set i 1} {$i<=10} {incr i} {
     set settings(hk$i,focus) "Ctrl-F$i"
     set settings(hk$i,swap) "Ctrl-Shift-F$i"
 }
@@ -2307,7 +2307,7 @@ array set settings {
     profile "Default"
     profiles {"Default"}
     borderless 1
-    rrKeyList "SPACE 1 2 3 4 5 6 7 8 9 0 - = . F10"
+    rrKeyList "SPACE 1 2 3 4 5 6 7 8 9 0 - = . F11"
     rrModExcludeList "LCONTROL LSHIFT"
     rrInterval 50
     hk,rrToggle "Ctrl-Shift-R"
