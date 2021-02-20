@@ -124,7 +124,7 @@ if {![info exists wobInitDone]} {
         # We're inside the exe, check for updated code
         Debug "In EXE, checking for code outside: $update_path"
         if {[file readable $update_path]} {
-            if {[catch {source $update_path} err]} {
+            if {[catch {source -encoding utf-8 $update_path} err]} {
                 WobError "WOB/OMB error: update file error" \
                  "Please delete [file nativename $update_path] and restart\n\n$err\n$errorInfo"
             } else {
@@ -209,7 +209,7 @@ proc CheckForUpdates {silent} {
     Debug "Updated $update_path"
     WobMessage  -type ok -icon info -title "Download complete" \
             -message "Backed up previous version as $backup_path - ready to restart with $newVersion"
-    if {[catch {uplevel #0 [list source $update_path]} err]} {
+    if {[catch {uplevel #0 [list source -encoding utf-8 $update_path]} err]} {
        WobError "Update error" "Error in new downloaded script:\n$err"
        return
     }
@@ -272,6 +272,7 @@ proc SaveSettings {args} {
         set pMode 1
         set pf [ProfileFileName $p]
         set f [open $pf w+]
+        fconfigure $f -encoding utf-8
         puts $f "array set settings {"
         foreach i [lsort [array names settings]] {
             if {$i=="profile" || $i=="profiles" || $i=="games"} {
@@ -285,6 +286,7 @@ proc SaveSettings {args} {
     }
     Debug "SaveSettings base $SETTINGS_FILE (from cb $args)"
     set f [open $SETTINGS_FILE w+]
+    fconfigure $f -encoding utf-8
     puts $f "array set settings {"
     foreach i [lsort [array names settings]] {
         #  Debug "saving $i \"$settings($i)\""
@@ -298,7 +300,7 @@ proc LoadProfile {} {
     global settings
     set profile $settings(profile)
     set pf [ProfileFileName $profile]
-    if {[catch {source $pf} err]} {
+    if {[catch {source -encoding utf-8 $pf} err]} {
         puts stderr "Error sourcing profile $pf\n$err"
         WobError "WoW Open Box profile error" \
             "Your $pf has an error: $err"
@@ -314,7 +316,7 @@ proc LoadSettings {} {
         .b1 configure -text "Edit Settings" -command EditSettings
     }
     if {[file exists $SETTINGS_FILE]} {
-        if {[catch {source $SETTINGS_FILE} err]} {
+        if {[catch {source -encoding utf-8 $SETTINGS_FILE} err]} {
             puts stderr "Could not source $SETTINGS_FILE\n$err"
             WobError "WoW Open Box settings error" \
                 "Your $SETTINGS_FILE has an error: $err"
@@ -491,7 +493,7 @@ proc UISetup {} {
 
     if {$hasRR} {
         grid [frame .sepRR -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
-        grid [ttk::label .lRR -text "Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
+        grid [ttk::label .lRR -text "\u27F3 Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
         grid [ttk::checkbutton .cbRR -text "Round Robin ($settings(hk,rrToggle))" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
         tooltip .cbRR "Toggle round robin mode\nAlso turns off mouse focus and restore as needed while on\nHotkey: $settings(hk,rrToggle)"
         grid [ttk::label .lrrK -text "Round Robin keys:"] -padx 4 -columnspan 2 -sticky w
@@ -1534,11 +1536,9 @@ proc RRToggle {} {
 proc RRUpdate {} {
     global rrOn rrOnLabel settings hasRR mouseFollow rrMouse
     Debug "RRupdate $rrOn"
-    if {$rrOn} {
-    } elseif {$rrMouse} {
-    }
+    after cancel [after info]
     if {$rrOn && $hasRR} {
-        set rrOnLabel "\u27F3"
+        set rrOnLabel $settings(rrIndicator,label)
         RRKeysListChange
         set rrMouse $mouseFollow
         if {$mouseFollow} {
@@ -1547,8 +1547,10 @@ proc RRUpdate {} {
             .mf configure -state disabled
         }
         Periodic $settings(rrInterval) RRCheck
+        if {[winfo exists .o1.rr]} {
+            place configure .o1.rr -relx $settings(rrIndicator,x) -rely $settings(rrIndicator,y)
+        }
     } else {
-        after cancel [after info]
         set rrOnLabel ""
         .mf configure -state enabled
         if {[info exists rrMouse] && $rrMouse} {
@@ -1649,7 +1651,7 @@ proc OverlayUpdate {} {
 }
 
 proc OverlayConfig {} {
-    global settings
+    global settings hasRR
     set tw .overlayConfig
     if {[winfo exists $tw]} {
         wm state $tw normal
@@ -1670,7 +1672,19 @@ proc OverlayConfig {} {
     grid [ttk::scale $tw.str  -variable settings(overlayAlpha) -command "OverlayTransparency"] -sticky ew -padx 4 -pady 4 -columnspan 3
     grid [button $tw.color -text "Change Focus Color" -bg $settings(overlayFocusColor) -command OverlayChangeFocusColor] -padx 8 -pady 4 -columnspan 3
     grid [ttk::checkbutton $tw.border -text "Overlay border" -variable settings(overlayShowBorder) -command "Overlay; SaveSettings"] -padx 8 -pady 4 -columnspan 3
-
+    if {$hasRR} {
+        grid [ttk::label $tw.lr1 -text "Round Robin indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
+        grid [ttk::label $tw.lr2 -text "Label:" -anchor e] [entry $tw.re1 -width 5 -textvariable settings(rrIndicator,label)] -sticky ew -padx 6
+        bind $tw.re1 <Return> "RRUpdate; SaveSettings"
+        tooltip $tw.re1 "What is shown when RR is on"
+        grid [ttk::label $tw.lr3 -text "X:" -anchor e] [entry $tw.re2 -width 5 -textvariable settings(rrIndicator,x)] -sticky ew -padx 6
+        bind $tw.re2 <Return> "RRUpdate; SaveSettings"
+        tooltip $tw.re2 "Relative horizontal position: 0 is left 1 is right, 0.5 is center"
+        grid [ttk::label $tw.lr4 -text "Y:" -anchor e] [entry $tw.re3 -width 5 -textvariable settings(rrIndicator,y)] -sticky ew -padx 6
+        bind $tw.re3 <Return> "RRUpdate; SaveSettings"
+        tooltip $tw.re3 "Relative vertical position: 0 is top 1 is bottom, 0.5 is center"
+        grid [ttk::label $tw.lr5 -text "(type <Return> to update)" -anchor n] -pady 6 -columnspan 3
+    }
 }
 
 proc OverlayChangeFocusColor {} {
@@ -1747,7 +1761,7 @@ proc Overlay {} {
                 ttk::label $t.rr -text "" -textvariable rrOnLabel -foreground $settings(overlayFocusColor) \
                     -style WobOverlayText.Label -anchor c
                 bind $t.rr <ButtonPress> RRToggle
-                place $t.rr -in $t -relx 0.5 -rely 0.7 -anchor c
+                place $t.rr -in $t -relx $settings(rrIndicator,x) -rely $settings(rrIndicator,y) -anchor c
             } else {
                 bind $t.l <ButtonPress> [list SetAsMain $i]
             }
@@ -2313,6 +2327,9 @@ array set settings {
     hk,rrToggle "Ctrl-Shift-R"
     hk,focusMain "Ctrl-Shift-W"
     hk,resetAll "Ctrl-Shift-Alt-R"
+    rrIndicator,x 0.5
+    rrIndicator,y 0.7
+    rrIndicator,label "\u27F3"
 }
 
 # globals
