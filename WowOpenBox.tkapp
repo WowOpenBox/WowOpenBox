@@ -748,18 +748,23 @@ proc FindGameWindow {} {
     return $w
 }
 
-proc Resize {w width height} {
-    Debug "Resizing $w to $width x $height"
-    twapi::resize_window $w $width $height
-}
+#proc Resize {w width height} {
+#    Debug "Resizing $w to $width x $height"
+#    twapi::resize_window $w $width $height
+#}
 
 proc Rename {w name} {
     twapi::set_window_text $w $name
 }
 
-proc Move {w x y} {
-    Debug "Moving $w to $x , $y"
-    twapi::move_window $w $x $y
+#proc Move {w x y} {
+#    Debug "Moving $w to $x , $y"
+#    twapi::move_window $w $x $y
+#}
+
+proc MoveAndResize {w x y width height} {
+    # Exact best flags to be determined but this seems a first optimization
+    twapi::SetWindowPos $w 0 $x $y $width $height 0x6604
 }
 
 proc FindExisting {} {
@@ -814,20 +819,15 @@ proc Update {wh x y w h top} {
         SetStayOnTop $wh 0
     }
     if {[info exists lastUpdate($wh)]} {
-        lassign $lastUpdate($wh) px py pw ph
+        set lu $lastUpdate($wh)
     } else {
-        set px {}
-        set py {}
-        set pw -1
-        set ph -1
+        set lu {}
     }
-    if {$pw!=$w || $ph!=$h} {
-        Resize $wh $w $h
+    set new [list $x $y $w $h $top]
+    if {$lu != $new} {
+        MoveAndResize $wh $x $y $w $h
     }
-    if {$px!=$x || $py!=$y} {
-        Move $wh $x $y
-    }
-    set lastUpdate($wh) [list $x $y $w $h $top]
+    set lastUpdate($wh) $new
     # Return if we raised that window (for overlay)
     # Set stay on top last
     if {$top} {
