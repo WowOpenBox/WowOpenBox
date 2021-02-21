@@ -1083,7 +1083,7 @@ proc IsOurs {w} {
 }
 
 proc Capture {} {
-    global nextWindow maxNumW settings stayOnTop
+    global nextWindow maxNumW settings stayOnTop lastUpdate
     if {$settings(captureForegroundWindow)} {
         set w [twapi::get_foreground_window]
         if {[IsDesktop $w]} {
@@ -1116,6 +1116,8 @@ proc Capture {} {
     if {$settings(borderless)} {
         BorderLess $w 0
     }
+    # Need to really update if we captured/forgot before
+    catch {unset lastUpdate($w)}
     Update $w [GetX] [GetY] [GetWidth] [GetHeight] $stayOnTop
     updateListBox $nextWindow $w $wname
 }
