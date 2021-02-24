@@ -481,12 +481,7 @@ proc UISetup {} {
     tooltip .b2 "Capture or update window\nHotkey: $settings(hk,capture)"
     grid [listbox .lbw -height 6] -columnspan 2 -sticky ns
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
-    grid [ttk::checkbutton .csswapfocus -text "Swap hotkey also focuses" -variable settings(swapAlsoFocus)] -columnspan 2
-    if {!$hasRR} {
-        grid [ttk::checkbutton .csfraise -text "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)] -columnspan 2
-    }
     grid [ttk::checkbutton .cbCaptureFG -text "Capture using foreground window" -variable settings(captureForegroundWindow)] -columnspan 2
-    grid [ttk::checkbutton .cbCaptureBorderLess -text "Capture makes windows borderless" -variable settings(borderless)] -columnspan 2
     tooltip .cbCaptureFG "Instead of capturing the game window by name\n($settings(game))\nif checked, capture the current foreground window\nFor this to work you must use the hotkey:\n$settings(hk,capture)"
     grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command "OverlayUpdate; SaveSettings"] [ttk::button .cbocfg -text "Overlay config" -command OverlayConfig]
     tooltip .cboverlay "Show/Hide the overlay info\nHotkey: $settings(hk,overlayToggle)"
@@ -541,7 +536,7 @@ proc About {} {
 }
 
 proc MenuSetup {} {
-    global vers settings
+    global vers settings hasRR
     if {[winfo exists .mbar]} {
         return
     }
@@ -576,6 +571,18 @@ proc MenuSetup {} {
         $m2 add radiobutton -label $p -variable settings(profile) -command LoadProfile
     }
 
+    set m3 .mbar.options
+    menu $m3 -tearoff 0
+    .mbar add cascade -label Options -menu $m3
+    $m3 add checkbutton -label "Swap hotkey also focuses" -variable settings(swapAlsoFocus)
+    if {!$hasRR} {
+        $m3 add checkbutton -label "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)
+    }
+    $m3 add checkbutton -label "Capture makes windows borderless" -variable settings(borderless)
+
+    $m3 add checkbutton -label "Auto Kill \"$settings(autoKillName)\"" -variable settings(autoKillOn)
+
+
     menu .mbar.help -tearoff 0
     .mbar add cascade -label Help -menu .mbar.help
     .mbar.help add command -label "Online help..." -command Help
@@ -584,6 +591,19 @@ proc MenuSetup {} {
     .mbar.help add command -label "Check for update" -command [list CheckForUpdates 0]
     .mbar.help add command -label About -command About
  }
+
+
+proc CheckAutoKill {} {
+    global settings
+    if {!$settings(autoKillOn)} {
+        Debug "Auto kill is off"
+        return
+    }
+    foreach p [twapi::get_process_ids -name $settings(autoKillName)] {
+        Debug "Killing $settings(autoKillName): $p"
+        twapi::end_process $p
+    }
+}
 
 proc mouseTrack {} {
     global mouseTrackOn mouseCoords
@@ -787,6 +807,7 @@ proc FindExisting {} {
         updateListBox $n $w $wname
         UpdateN $n
     }
+    CheckAutoKill
 }
 
 array set lastSOT {}
@@ -1175,6 +1196,7 @@ proc CaptureOrUpdate {} {
         UpdateN $nextWindow
     }
     SaveSettings
+    CheckAutoKill
 }
 
 proc UpdateExcluded {} {
@@ -1800,6 +1822,7 @@ proc ResetAll {} {
         }
     }
     SetAsMain 1
+    CheckAutoKill
 }
 
 proc SaveLayout {} {
@@ -2332,6 +2355,8 @@ array set settings {
     rrIndicator,x 0.5
     rrIndicator,y 0.7
     rrIndicator,label "\u27F3"
+    autoKillName "WowVoiceProxy.exe"
+    autoKillOn 1
 }
 
 # globals
