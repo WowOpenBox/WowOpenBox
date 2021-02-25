@@ -457,12 +457,12 @@ proc UISetup {} {
         }
         grid [ttk::label .logo -text $txt] -rowspan 3
     } else {
-        grid [ttk::label .logo] -rowspan 3 -pady 4
+        grid [ttk::label .logo] -rowspan 3 -pady 6 -padx 12
         bind .logo <ButtonPress> SwitchLogo
         SwitchLogo
     }
-    set labelW 16
-    grid [ttk::button .bH -text "Help" -width $labelW -command Help]  -row 0 -column 1
+    set labelW 18
+    grid [ttk::button .bH -text "Help" -width $labelW -command Help]  -row 0 -column 1 -padx 4
     tooltip .bH "Opens online help page"
     grid [ttk::button .bwl -text "Window Layout" -width $labelW -command WindowLayout] -row 1 -column 1
     tooltip .bwl "View or change the Window Layout"
@@ -505,13 +505,10 @@ proc UISetup {} {
     grid [ttk::label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
     grid [ttk::checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
     tooltip .mf "Toggle focus follow mouse mode\nHotkey: $settings(hk,focusFollowMouse)"
-    grid [ttk::checkbutton .mr -text "Mouse auto foreground window" -variable mouseRaise -command UpdateMouseRaise] -padx 4 -columnspan 2 -sticky w
-    grid [ttk::label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width]  -padx 4 -sticky w
-    tooltip .emd "Focus follow mouse activation delay\nType <Return> after change to take effect."
-    bind .emd <Return> UpdateMouseDelay
-    grid [frame .sep3 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
-    grid [ttk::button .bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry .emt -textvariable mouseCoords -width $width] -padx 4 -sticky w
-    tooltip .bml "Start/Stop mouse tracking\nHotkey: $settings(hk,mouseTrack)"
+#    grid [ttk::label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width]  -padx 4 -sticky w
+#    tooltip .emd "Focus follow mouse activation delay\nType <Return> after change to take effect."
+#    bind .emd <Return> UpdateMouseDelay
+#    grid [frame .sep3 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
     grid [ttk::label .l_bottom -textvariable bottomText -justify center -anchor c] -padx 2 -columnspan 2
     bind .l_bottom <ButtonPress> [list CheckForUpdates 0]
     tooltip .l_bottom "Click to check for update from $vers"
@@ -536,7 +533,7 @@ proc About {} {
 }
 
 proc MenuSetup {} {
-    global vers settings hasRR
+    global vers settings hasRR mouseRaise
     if {[winfo exists .mbar]} {
         return
     }
@@ -573,7 +570,7 @@ proc MenuSetup {} {
 
     set m3 .mbar.options
     menu $m3 -tearoff 0
-    .mbar add cascade -label Options -menu $m3
+    .mbar add cascade -label Option -menu $m3
     $m3 add checkbutton -label "Swap hotkey also focuses" -variable settings(swapAlsoFocus)
     if {!$hasRR} {
         $m3 add checkbutton -label "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)
@@ -581,16 +578,33 @@ proc MenuSetup {} {
     $m3 add checkbutton -label "Capture makes windows borderless" -variable settings(borderless)
 
     $m3 add checkbutton -label "Auto Kill \"$settings(autoKillName)\"" -variable settings(autoKillOn)
-
+    $m3 add checkbutton -label "Mouse auto foreground window" -variable mouseRaise -command UpdateMouseRaise
 
     menu .mbar.help -tearoff 0
     .mbar add cascade -label Help -menu .mbar.help
     .mbar.help add command -label "Online help..." -command Help
-    .mbar.help add separator 
+    .mbar.help add separator
+    .mbar.help add command -label "Track mouse..." -command MouseTracking
+    .mbar.help add separator
     .mbar.help add command -label "Get the newest binary release..." -command Releases
     .mbar.help add command -label "Check for update" -command [list CheckForUpdates 0]
     .mbar.help add command -label About -command About
  }
+
+proc MouseTracking {} {
+    global settings
+    set tw .mouseTracking
+    if {[winfo exists $tw]} {
+        wm state $tw normal
+        raise $tw
+        return
+    }
+    toplevel $tw
+    wm title $tw "WOB/OMB Mouse Tracking"
+    grid [ttk::button $tw.bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry $tw.emt -textvariable mouseCoords -width 14] -padx 4 -sticky w
+    tooltip $tw.bml "Start/Stop mouse tracking\nHotkey: $settings(hk,mouseTrack)"
+    StartStopMouseTrack
+}
 
 
 proc CheckAutoKill {} {
@@ -647,12 +661,12 @@ proc StartStopMouseTrack {} {
         . configure -cursor arrow
         after cancel $mouseTrackOn
         set mouseTrackOn ""
-        .bml configure -text "Track mouse"
+        .mouseTracking.bml configure -text "Track mouse"
     } else {
         Debug "Starting mouse tracking"
         . configure -cursor crosshair
         mouseTrack
-        .bml configure -text "Stop tracking"
+        .mouseTracking.bml configure -text "Stop tracking"
     }
 }
 
@@ -2290,8 +2304,11 @@ proc SetMouseRaise {v} {
 # -- sync with widget values
 
 proc UpdateMouseFollow {} {
-    global mouseFollow
+    global mouseFollow settings
     SetFocusFollowMouse $mouseFollow
+    if {$mouseFollow} {
+        SetMouseDelay $settings(mouseDelay)
+    }
 }
 
 proc UpdateMouseRaise {} {
@@ -2357,6 +2374,7 @@ array set settings {
     rrIndicator,label "\u27F3"
     autoKillName "WowVoiceProxy.exe"
     autoKillOn 1
+    mouseDelay 0
 }
 
 # globals
@@ -2415,7 +2433,7 @@ if {![winfo exists .logo]} {
 # --- main / tweak me ---
 puts "WowOpenBox - OpenMultiBoxing $vers started..."
 FindExisting
-set bottomText "WowOpenBox, OpenMultiBoxing $vers\n\uA9 2020 MooreaTv <moorea@ymail.com>"
+set bottomText "WowOpenBox, OpenMultiBoxing $vers"
 wm state . normal
 if {$settings(numWindows)==0} {
     Debug "No layout setup, opening layout"
