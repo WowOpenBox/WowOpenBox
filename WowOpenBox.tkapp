@@ -908,6 +908,10 @@ proc RegisterHotkey {msg var callback} {
     global settings
     set hk $settings($var)
     Debug "RegisterHotkey $hk $msg $var $callback"
+    if {$hk == ""} {
+        # #71 if hotkey is empty, skip it
+        return
+    }
     if {[catch {twapi::register_hotkey $hk [list HandleHotKey $msg $callback]} err]} {
         puts "hotkey error $hk for $msg: $err"
         WobError "WoW Open Box HotKey error" \
