@@ -614,8 +614,21 @@ proc CheckAutoKill {} {
         return
     }
     foreach p [twapi::get_process_ids -name $settings(autoKillName)] {
-        Debug "Killing $settings(autoKillName): $p"
-        twapi::end_process $p
+        set path [twapi::get_process_path $p]
+        Debug "Killing $settings(autoKillName): $p ($path)"
+        set newPath $path.bak
+        if {[file exists $path]} {
+            if {[catch {file rename -force $path $newPath} err]} {
+                WobError "AutoKill rename error" "$err"
+            }
+            Debug "Renamed $path to $newPath"
+        }
+        Debug "Result: [twapi::end_process $p -wait 200 -force -exitcode -1]"
+        # We could also delete it but... lets not for now
+        #if {[file exists $newPath]} {
+        #    file delete $newPath
+        #    Debug "Deleted $newPath"
+        #}
     }
 }
 
