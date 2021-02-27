@@ -1,6 +1,6 @@
 ![CI](https://github.com/WowOpenBox/WowOpenBox/workflows/CI/badge.svg)
 # WowOpenBox
-<img src="https://wowopenbox.org/sshot3_0.png" alt="WOB Screenshot w/ RR" align="right">
+<img src="https://wowopenbox.org/sshot3_5.png" alt="WOB Screenshot w/ RR" align="right">
 
 Open source, non commercial use software for MultiBoxing World of Warcraft within the rules.
 
