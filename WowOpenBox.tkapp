@@ -107,6 +107,15 @@ if {![info exists wobInitDone]} {
         set hasRR 1
         Debug "OMB $vers called with -rr (hopefully from OpenMultiBoxing_RR.exe)"
     }
+    # TOS compliance - do it first so the binary can't possibly be used for broadcasting
+    if {[catch {
+        rename twapi::SendInput {}
+        rename twapi::Twapi_SendUnicode {}
+        rename twapi::SetCursorPos {}
+        rename twapi::BlockInput {}
+    } err]} {
+        Debug "Error in removing primitive: $err"
+    }
     # Settings and updated code directory
     # -- App utils - save settings
     set script_path [file normalize [info script]]
@@ -1591,13 +1600,26 @@ proc RRToggle {} {
     RRUpdate
 }
 
+# Read/reset all keys so we don't pile up keydown when RR is off
+proc RRreadAllKeys {} {
+    global rrCodes rrExcludes
+    foreach code $rrExcludes {
+        twapi::GetAsyncKeyState $code
+    }
+    foreach code $rrCodes {
+        twapi::GetAsyncKeyState $code
+    }
+}
+
 proc RRUpdate {} {
-    global rrOn rrOnLabel settings hasRR mouseFollow rrMouse
+    global rrOn rrOnLabel settings hasRR mouseFollow rrMouse rrLastCode
     Debug "RRupdate $rrOn"
     after cancel [after info]
+    set rrLastCode {}
     if {$rrOn && $hasRR} {
         set rrOnLabel $settings(rrIndicator,label)
         RRKeysListChange
+        RRreadAllKeys
         set rrMouse $mouseFollow
         if {$mouseFollow} {
             set mouseFollow 0
@@ -1615,8 +1637,8 @@ proc RRUpdate {} {
             set mouseFollow 1
             UpdateMouseFollow
         }
-
     }
+    Debug "Reset all RR key states"
 }
 
 proc RRkeyListToCodes {keyList} {
@@ -1650,11 +1672,10 @@ proc RRKeysListChange {} {
     lassign [RRkeyListToCodes $settings(rrModExcludeList)] rrExcludes settings(rrModExcludeList)
 }
 
-set lastRR {}
+set rrLastCode {}
 proc RRCheck {} {
-    global rrCodes rrExcludes lastRR
+    global rrCodes rrExcludes rrLastCode
     #Debug "RR Check..."
-    lassign $lastRR lastCode lastV
     foreach code $rrExcludes {
         set state [twapi::GetAsyncKeyState $code] 
         if {$state != 0} {
@@ -1662,17 +1683,22 @@ proc RRCheck {} {
             return
         }
     }
+    # Watch for reset of last key
+    if {$rrLastCode != ""} {
+        if {[twapi::GetAsyncKeyState $rrLastCode]==0} {
+            Debug "Key $rrLastCode now reset... Next window"
+            set rrLastCode {}
+            FocusNextWindow
+        }
+        return
+    }
     foreach code $rrCodes {
         set state [twapi::GetAsyncKeyState $code] 
         #Debug "Checking $k -> $code -> [format %x $state]"
-        if {$state != 0 && ($lastCode != $code || $lastV != $state)} {
-            set lastRR [list $code $state]
+        if {$state != 0} {
+            set rrLastCode $code
             Debug "RR for $code [format %x $state]"
-            if {($state & 0x1) == 0} {
-                Debug "Key up... Next window"
-                FocusNextWindow
-                return
-            }
+            return
         }
     }
 }
