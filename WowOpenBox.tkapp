@@ -1275,11 +1275,12 @@ proc WindowLayout {} {
     tooltip $tw.s "Select how many windows in your layout."
     ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size\nfor all windows" -command ChangeLayout
     ttk::checkbutton $tw.cb2 -variable settings(layoutOneRowCol) -text "One row/col\nfor small windows" -command ChangeLayout
+    ttk::checkbutton $tw.cb3 -variable settings(layoutStacked) -text "All Stacked" -command ChangeLayout
     tooltip $tw.cb1 "Check or uncheck to redo the layout with\nwindows of the same size (fastest switch later)\nor not (1 big main window and smaller minions windows)"
     set layoutNumWindowsText "99 windows"
     set width [expr {2+[string length $layoutNumWindowsText]}]
     set layoutNumWindowsText "Layout for\n$settings(numWindows) windows"
-    grid [ttk::label $tw.l1 -textvariable layoutNumWindowsText -width $width -anchor c -justify center] $tw.s - - $tw.cb1  $tw.cb2 -sticky we -pady 4 -padx 4
+    grid [ttk::label $tw.l1 -textvariable layoutNumWindowsText -width $width -anchor c -justify center] $tw.s - $tw.cb1  $tw.cb2 $tw.cb3 -sticky we -pady 4 -padx 4
     tooltip $tw.l1 "After automatic layout,\ndrag any window to adjust as necessary,\nuse arrow keys for fine pixel adjustment.\nClick on text to toggle stay on top... etc..."
     frame $tw.asrf
     ttk::radiobutton $tw.asrf.ar0 -value "Any" -text "Any" -variable settings(aspectRatio) -command ChangeLayout
@@ -1352,7 +1353,6 @@ proc AddRemoveExcluded {i} {
     }
     UpdateExcluded
 }
-
 
 proc SetUpMonitors {} {
     global settings monitorInfo scale skipMonitorText ignoreMonitorIdx scaleText
@@ -1798,7 +1798,11 @@ proc Overlay {} {
     set transparentcolor #606060
     ttk::style configure WobOverlayText.Label -font {Arial 48 bold} -foreground white -background $transparentcolor
     set on $settings(showOverlay)
-    for {set i 1} {$i<=$settings(numWindows)} {incr i} {
+    set lastOverlay $settings(numWindows)
+    if {$settings(layoutStacked)} {
+        set lastOverlay 1
+    }
+    for {set i 1} {$i<=$lastOverlay} {incr i} {
         if {![info exists settings($i,posXY)]} {
             Debug "Numwindows $settings(numWindows) is higher than configured windows... error for $i"
             return
@@ -1829,12 +1833,12 @@ proc Overlay {} {
         }
         lassign $settings($i,posXY) x y
         lassign $settings($i,size) w h
-        wm geometry $t ${w}x$h+$x+$y
         if {$on} {
             wm state $t normal
         } else {
             wm state $t withdrawn
         }
+        wm geometry $t ${w}x$h+$x+$y
     }
     while {[winfo exists .o$i]} {
         wm state .o$i withdrawn
@@ -1902,7 +1906,19 @@ proc ChangeLayout {args} {
     }
     $c delete wowAll
     Debug "*** ChangeLayout $args for $n - onesize $layoutOneSize"
-    if {$n<=$monitorInfo(n)} {
+    if {$settings(layoutStacked)} {
+        # biggest monitor
+        set mIdx [lindex [lindex $monitorInfo(mlist) end] 0]
+        set x1 $monitorInfo($mIdx,x1)
+        set y1 $monitorInfo($mIdx,y1)
+        set x2 $monitorInfo($mIdx,x2)
+        set y2 $monitorInfo($mIdx,y2)
+        lassign [ConstrainWindow $x1 $y1 $x2 $y2 $aspectRatio] x1 y1 x2 y2
+        Debug "Stacked layout on $mIdx $x1 $y1 $x2 $y2"
+        for {set i 1} {$i<=$n} {incr i} {
+            SetWindowOnCanvas $i $x1 $y1 $x2 $y2
+        }
+    } elseif {$n<=$monitorInfo(n)} {
         Debug "One Wow per monitor"
         for {set i 0} {$i<$n} {incr i} {
             set x1 $monitorInfo($i,x1)
@@ -2369,6 +2385,7 @@ array set settings {
     avoidTaskbar 1
     layoutOneSize 1
     layoutOneRowCol 0
+    layoutStacked 0
     layoutScale "1/8"
     layoutSnap 4
     layoutMaxWindows 32
