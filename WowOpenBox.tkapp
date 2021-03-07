@@ -347,7 +347,7 @@ proc AfterSettings {} {
         set settings(rrInterval) 5
     }
     RegisterHotkey "Capture" hk,capture CaptureOrUpdate
-    RegisterHotkey "Start/Stop mouse tracking" hk,mouseTrack StartStopMouseTrack
+    RegisterHotkey "Start/Stop mouse tracking" hk,mouseTrack MouseTracking
     RegisterHotkey "Focus next window" hk,focusNextWindow FocusNextWindow
     RegisterHotkey "Focus previous window" hk,focusPreviousWindow FocusPreviousWindow
     RegisterHotkey "Swap next window" hk,swapNextWindow SwapNextWindow
@@ -609,6 +609,7 @@ proc MouseTracking {} {
     if {[winfo exists $tw]} {
         wm state $tw normal
         raise $tw
+        StartStopMouseTrack
         return
     }
     toplevel $tw
