@@ -367,6 +367,25 @@ proc AfterSettings {} {
     Debug "Settings (re)Loaded."
 }
 
+proc RevertMouseFollow {} {
+    global mouseDelay settings
+    if {!$settings(mouseFocusOffAtExit)} {
+        return
+    }
+    Debug "restoring mouse delay $mouseDelay"
+    SetMouseDelay $mouseDelay
+    SetFocusFollowMouse 0
+}
+
+catch {rename exit _real_exit}
+wm protocol . WM_DELETE_WINDOW exit
+
+proc exit {{status 0}} {
+    Debug "Exit $status called"
+    RevertMouseFollow
+    _real_exit $status
+}
+
 proc FocusFollowMouseToggle {} {
     Debug "Follow mouse toggle requested"
     .mf configure -state enabled
@@ -591,6 +610,8 @@ proc MenuSetup {} {
 
     $m3 add checkbutton -label "Auto Kill \"$settings(autoKillName)\"" -variable settings(autoKillOn)
     $m3 add checkbutton -label "Mouse auto foreground window" -variable mouseRaise -command UpdateMouseRaise
+    $m3 add checkbutton -label "Turn off focus follow mouse on exit" -variable settings(mouseFocusOffAtExit)
+    $m3 add checkbutton -label "Turn on focus follow mouse at startup" -variable settings(mouseFocusOnAtStart)
 
     menu .mbar.help -tearoff 0
     .mbar add cascade -label Help -menu .mbar.help
@@ -2440,6 +2461,8 @@ array set settings {
     autoKillName "WowVoiceProxy.exe"
     autoKillOn 1
     mouseDelay 0
+    mouseFocusOffAtExit 1
+    mouseFocusOnAtStart 0
 }
 
 # globals
@@ -2514,4 +2537,10 @@ if {$isUpdate} {
         Debug "Last update check $settings(lastUpdateChecked) - updating"
         after 1000 {CheckForUpdates 1}
     }
+}
+
+# startup auto mouse ove
+if {$settings(mouseFocusOnAtStart)} {
+    set mouseFollow 1
+    UpdateMouseFollow
 }
