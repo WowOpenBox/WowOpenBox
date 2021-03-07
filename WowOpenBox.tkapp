@@ -613,6 +613,13 @@ proc MenuSetup {} {
     $m3 add checkbutton -label "Turn off focus follow mouse on exit" -variable settings(mouseFocusOffAtExit)
     $m3 add checkbutton -label "Turn on focus follow mouse at startup" -variable settings(mouseFocusOnAtStart)
 
+    $m3 add separator
+    $m3 add radiobutton -label "Auto reset focus to main: Off" -value 0 -variable settings(autoResetFocusToMain)
+    $m3 add radiobutton -label "Auto reset focus to main: after 0.5 sec" -value 0.5 -variable settings(autoResetFocusToMain)
+    $m3 add radiobutton -label "Auto reset focus to main: after 1 sec" -value 1 -variable settings(autoResetFocusToMain)
+    $m3 add radiobutton -label "Auto reset focus to main: after 2 sec" -value 2 -variable settings(autoResetFocusToMain)
+    $m3 add radiobutton -label "Auto reset focus to main: after 3 sec" -value 3 -variable settings(autoResetFocusToMain)
+
     menu .mbar.help -tearoff 0
     .mbar add cascade -label Help -menu .mbar.help
     .mbar.help add command -label "Online help..." -command Help
@@ -1050,7 +1057,11 @@ proc SwapPreviousWindow {} {
 }
 
 proc FocusNextWindow {} {
-    global focusWindow maxNumW
+    global focusWindow maxNumW settings resetTaskId
+    if {[info exists resetTaskId]} {
+        after cancel $resetTaskId
+        unset resetTaskId
+    }
     if {$maxNumW<2} {
         return
     }
@@ -1058,6 +1069,9 @@ proc FocusNextWindow {} {
     set n [expr {$focusWindow % ($maxNumW-1) + 1}]
     Debug "FocusNextWindow: focusWindow $focusWindow maxNumW $maxNumW -> $n"
     CheckWindow [list FocusN $n true] $n
+    if {$settings(autoResetFocusToMain)>0} {
+        set resetTaskId [after [expr {round(1000.*$settings(autoResetFocusToMain))}] FocusMain]
+    }
 }
 
 proc FocusPreviousWindow {} {
@@ -1608,9 +1622,10 @@ proc SizeOfWindow {tag} {
 
 # --- start of RR ---
 
-proc Periodic {ms cmd} {
+proc Periodic {varName ms cmd} {
+    global $varName
     {*}$cmd
-    after $ms [list after idle [namespace code [info level 0]]]
+    set $varName [after $ms [list after idle [namespace code [info level 0]]]]
 }
 
 proc RRToggle {} {
@@ -1634,9 +1649,12 @@ proc RRreadAllKeys {} {
 }
 
 proc RRUpdate {} {
-    global rrOn rrOnLabel settings hasRR mouseFollow rrMouse rrLastCode
+    global rrOn rrOnLabel settings hasRR mouseFollow rrMouse rrLastCode rrTaskId
     Debug "RRupdate $rrOn"
-    after cancel [after info]
+    if {[info exists rrTaskId]} {
+        after cancel $rrTaskId
+        unset rrTaskId
+    }
     set rrLastCode {}
     if {$rrOn && $hasRR} {
         set rrOnLabel $settings(rrIndicator,label)
@@ -1648,7 +1666,7 @@ proc RRUpdate {} {
             UpdateMouseFollow
             .mf configure -state disabled
         }
-        Periodic $settings(rrInterval) RRCheck
+        Periodic rrTaskId $settings(rrInterval) RRCheck
         if {[winfo exists .o1.rr]} {
             place configure .o1.rr -relx $settings(rrIndicator,x) -rely $settings(rrIndicator,y)
         }
@@ -2452,6 +2470,7 @@ array set settings {
     rrKeyList "SPACE 1 2 3 4 5 6 7 8 9 0 - = . F11"
     rrModExcludeList "RCONTROL RSHIFT"
     rrInterval 5
+    autoResetFocusToMain 1
     hk,rrToggle "Ctrl-Shift-R"
     hk,focusMain "Ctrl-Shift-W"
     hk,resetAll "Ctrl-Shift-Alt-R"
