@@ -372,6 +372,9 @@ proc RevertMouseFollow {} {
     if {!$settings(mouseFocusOffAtExit)} {
         return
     }
+    if {![info exists mouseDelay]} {
+        set mouseDelay 200
+    }
     Debug "restoring mouse delay $mouseDelay"
     SetMouseDelay $mouseDelay
     SetFocusFollowMouse 0
