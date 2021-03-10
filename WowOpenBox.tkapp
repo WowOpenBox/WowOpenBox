@@ -478,7 +478,7 @@ set ourTitle "WoW Open Box - Opensource MultiBoxing"
 
 proc UISetup {} {
     global imgObj70 vers stayOnTop pos windowSize settings \
-         mouseFollow mouseRaise mouseDelay mouseCoords ourTitle skin bottomText \
+         mouseFollow mouseRaise mouseDelay ourTitle skin bottomText \
          rrOn hasRR
     wm title . $ourTitle
     # Get logo
@@ -622,6 +622,8 @@ proc MenuSetup {} {
     $m3 add radiobutton -label "Auto reset focus to main: after 1 sec" -value 1 -variable settings(autoResetFocusToMain)
     $m3 add radiobutton -label "Auto reset focus to main: after 2 sec" -value 2 -variable settings(autoResetFocusToMain)
     $m3 add radiobutton -label "Auto reset focus to main: after 3 sec" -value 3 -variable settings(autoResetFocusToMain)
+    $m3 add separator
+    $m3 add checkbutton -label "Pause when mouse is outside windows" -variable settings(mouseOutsideWindowsPauses)
 
     menu .mbar.help -tearoff 0
     .mbar add cascade -label Help -menu .mbar.help
@@ -635,7 +637,7 @@ proc MenuSetup {} {
  }
 
 proc MouseTracking {} {
-    global settings
+    global settings mouseArea mouseCoords
     set tw .mouseTracking
     if {[winfo exists $tw]} {
         wm state $tw normal
@@ -647,6 +649,7 @@ proc MouseTracking {} {
     wm title $tw "WOB/OMB Mouse Tracking"
     grid [ttk::button $tw.bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry $tw.emt -textvariable mouseCoords -width 14] -padx 4 -sticky w
     tooltip $tw.bml "Start/Stop mouse tracking\nHotkey: $settings(hk,mouseTrack)"
+    grid [ttk::label $tw.la -text "Coords in area"] [entry $tw.ema -textvariable mouseArea -width 14] -padx 4 -sticky w
     StartStopMouseTrack
 }
 
@@ -676,9 +679,94 @@ proc CheckAutoKill {} {
     }
 }
 
+proc IsIn {x y n} {
+    global settings
+    lassign $settings($n,posXY) wx1 wy1
+    lassign $settings($n,size) ww wh
+    set wx2 [expr {$wx1+$ww}]
+    set wy2 [expr {$wy1+$wh}]
+    expr {$x>=$wx1 && $x<=$wx2 && $y>=$wy1 && $y <=$wy2}
+}
+
+proc CoordsIn {mouseCoords} {
+    global settings
+    lassign $mouseCoords x y
+    for {set n 1} {$n<=$settings(numWindows)} {incr n 1} {
+        if {[IsIn $x $y $n]} {
+            return $n
+        }
+    }
+    return 0
+}
+
+proc MouseIsIn {} {
+    CoordsIn [twapi::get_mouse_location]
+}
+
+proc MouseArea {mouseCoords} {
+    global settings
+    set n [CoordsIn $mouseCoords]
+    if {$n} {
+        return "Window $n"
+    } else {
+        return "Not in 1-$settings(numWindows)"
+    }
+}
+
+set prevMouseArea 0
+set prevRR 0
+set prevMF 0
+set prevOL 0
+
+proc PauseOutside {} {
+    global settings prevMouseArea prevRR prevMF prevOL hasRR rrOn mouseFollow
+    if {$settings(mouseWatchInterval)} {
+        after $settings(mouseWatchInterval) PauseOutside
+    }
+    if {!$settings(mouseOutsideWindowsPauses)} {
+        return
+    }
+    set n [MouseIsIn]
+    if {$n != $prevMouseArea} {
+        Debug "Change of window from $prevMouseArea to $n"
+        if {$n==0} {
+            if {$hasRR && $rrOn} {
+                RRToggle
+                set prevRR 1
+            }
+            if {$mouseFollow} {
+                set mouseFollow 0
+                UpdateMouseFollow
+                set prevMF 1
+            }
+            if {$settings(showOverlay)} {
+                OverlayToggle
+                set prevOL 1
+            }
+        } elseif {$prevMouseArea==0} {
+            Debug "Restoring $prevRR $prevMF $prevOL"
+            if {$prevRR} {
+                RRToggle
+            }
+            if {$prevMF} {
+                set mouseFollow 1
+                UpdateMouseFollow
+            }
+            if {$prevOL} {
+                OverlayToggle
+            }
+            set prevRR 0
+            set prevMF 0
+            set prevOL 0
+        }
+    }
+    set prevMouseArea $n
+}
+
 proc mouseTrack {} {
-    global mouseTrackOn mouseCoords
+    global mouseTrackOn mouseCoords mouseArea
     set mouseCoords [twapi::get_mouse_location]
+    set mouseArea [MouseArea $mouseCoords]
     set mouseTrackOn [after 100 mouseTrack]
 }
 
@@ -1625,12 +1713,6 @@ proc SizeOfWindow {tag} {
 
 # --- start of RR ---
 
-proc Periodic {varName ms cmd} {
-    global $varName
-    {*}$cmd
-    set $varName [after $ms [list after idle [namespace code [info level 0]]]]
-}
-
 proc RRToggle {} {
     global rrOn hasRR vers
     if {!$hasRR} {
@@ -1669,7 +1751,7 @@ proc RRUpdate {} {
             UpdateMouseFollow
             .mf configure -state disabled
         }
-        Periodic rrTaskId $settings(rrInterval) RRCheck
+        set rrTaskId [after $settings(rrInterval) RRCheck]
         if {[winfo exists .o1.rr]} {
             place configure .o1.rr -relx $settings(rrIndicator,x) -rely $settings(rrIndicator,y)
         }
@@ -1717,7 +1799,8 @@ proc RRKeysListChange {} {
 
 set rrLastCode {}
 proc RRCheck {} {
-    global rrCodes rrExcludes rrLastCode
+    global rrCodes rrExcludes rrLastCode rrTaskId settings
+    set rrTaskId [after $settings(rrInterval) RRCheck]
     #Debug "RR Check..."
     foreach code $rrExcludes {
         set state [twapi::GetAsyncKeyState $code] 
@@ -2485,6 +2568,8 @@ array set settings {
     mouseDelay 0
     mouseFocusOffAtExit 1
     mouseFocusOnAtStart 0
+    mouseWatchInterval 50
+    mouseOutsideWindowsPauses 1
 }
 
 # globals
@@ -2566,3 +2651,5 @@ if {$settings(mouseFocusOnAtStart)} {
     set mouseFollow 1
     UpdateMouseFollow
 }
+# Mouse tracking/auto pause (todo: handle reload)
+PauseOutside
