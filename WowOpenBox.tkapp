@@ -8,15 +8,11 @@
 #  Releases detail/changes are on https://github.com/WowOpenBox/WowOpenBox/releases
 #
 package require Tk
-package require twapi
 package require http
-package require twapi_crypto
-http::register https 443 ::twapi::tls_socket
 package require tooltip
-package require tkdnd
 namespace import tooltip::tooltip
 # tkk native
-ttk::style theme use winnative
+#ttk::style theme use aqua
 
 # start not showing top level for error dialogs
 wm state . withdrawn
@@ -603,6 +599,15 @@ proc GetY {} {
 }
 
 # --- Windows API: https://twapi.magicsplat.com/v4.4/ui.html
+
+namespace eval twapi {
+    proc find_windows {args} {
+    }
+    proc register_hotkey {args} {
+    }
+    proc get_system_parameters_info {args} {
+    }
+}
 
 proc FindGameWindow {} {
     global settings
