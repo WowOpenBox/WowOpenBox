@@ -679,8 +679,16 @@ proc CheckAutoKill {} {
     }
 }
 
+proc ValidWindowSettingsN {n} {
+    global settings
+    expr {[info exists settings($n,posXY)]&&[info exists settings($n,size)]}
+}
+
 proc IsIn {x y n} {
     global settings
+    if {![ValidWindowSettingsN $n]} {
+        return false
+    }
     lassign $settings($n,posXY) wx1 wy1
     lassign $settings($n,size) ww wh
     set wx2 [expr {$wx1+$ww}]
