@@ -708,7 +708,12 @@ proc CoordsIn {mouseCoords} {
 }
 
 proc MouseIsIn {} {
-    CoordsIn [twapi::get_mouse_location]
+    if {[catch {twapi::get_mouse_location} coords]} {
+        # expected in lock screen etc
+        #Debug "Can't get mouse coords: $coords"
+        return 0
+    }
+    CoordsIn $coords
 }
 
 proc MouseArea {mouseCoords} {
