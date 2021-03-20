@@ -959,8 +959,23 @@ proc GetY {} {
 
 proc FindGameWindow {} {
     global settings
-    set w [twapi::find_windows -text $settings(game) -visible true -single]
-    return $w
+    # consider doing exact match with ^ $ or...
+    set wList [twapi::find_windows -text $settings(game) -visible true]
+    if {[llength $wList]<=1} {
+        return [lindex $wList 0]
+    }
+    set minTime 0
+    foreach w $wList {
+        set pid [twapi::get_window_process $w]
+        set time [lindex [twapi::get_process_info $pid -createtime] 1]
+        Debug "Game $w pid $w time $time"
+        if {$minTime==0 || $time<$minTime} {
+            set minTime $time
+            set minW $w
+        }
+    }
+    Debug "Found first started w $w : $minTime"
+    return $minW
 }
 
 #proc Resize {w width height} {
