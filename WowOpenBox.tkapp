@@ -628,13 +628,12 @@ proc MenuSetup {} {
     if {!$hasRR} {
         $m3 add checkbutton -label "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)
     }
+    $m3 add checkbutton -label "Auto Capture Game windows" -variable settings(autoCapture)
     $m3 add checkbutton -label "Capture makes windows borderless" -variable settings(borderless)
-
     $m3 add checkbutton -label "Auto Kill \"$settings(autoKillName)\"" -variable settings(autoKillOn)
     $m3 add checkbutton -label "Mouse auto foreground window" -variable mouseRaise -command UpdateMouseRaise
     $m3 add checkbutton -label "Turn off focus follow mouse on exit" -variable settings(mouseFocusOffAtExit)
     $m3 add checkbutton -label "Turn on focus follow mouse at startup" -variable settings(mouseFocusOnAtStart)
-
     $m3 add separator
     $m3 add radiobutton -label "Auto reset focus to main: Off" -value 0 -variable settings(autoResetFocusToMain)
     $m3 add radiobutton -label "Auto reset focus to main: after 0.5 sec" -value 0.5 -variable settings(autoResetFocusToMain)
@@ -751,9 +750,14 @@ set prevMF 0
 set prevOL 0
 
 proc PauseOutside {} {
-    global settings prevMouseArea prevRR prevMF prevOL hasRR rrOn mouseFollow
+    global settings prevMouseArea prevRR prevMF prevOL hasRR rrOn mouseFollow nextWindow
     if {$settings(mouseWatchInterval)} {
         after $settings(mouseWatchInterval) PauseOutside
+    }
+    if {$settings(autoCapture) && ($nextWindow<=$settings(numWindows))} {
+        if {[FindGameWindow] != ""} {
+            Capture
+        }
     }
     if {!$settings(mouseOutsideWindowsPauses)} {
         return
@@ -2687,6 +2691,7 @@ array set settings {
     mouseFocusOnAtStart 0
     mouseWatchInterval 50
     mouseOutsideWindowsPauses 1
+    autoCapture 1
 }
 
 # globals
