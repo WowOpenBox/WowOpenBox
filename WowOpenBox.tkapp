@@ -3,7 +3,7 @@
 #  (contact the author if you need a different license)
 #
 #  The GNU General Public License does not permit incorporating this work
-#  into proprietary programs. 
+#  into proprietary programs.
 #
 #  Releases detail/changes are on https://github.com/WowOpenBox/WowOpenBox/releases
 #
@@ -545,8 +545,8 @@ proc UISetup {} {
         menu $rrC.rrMenuB.menu -tearoff 0
         RRCustomMenu
         tooltip $rrC.rrMenuB "Select which window(s) are excluded from custom rotation"
-        ttk::checkbutton $rrC.rrCKC -text "Up" -variable settings(rrCustomOnKeyUp)
-        tooltip $rrC.rrCKC "Whether to trigger on key Up or Down"
+        ttk::checkbutton $rrC.rrCKC -state disabled -text "Up" -variable settings(rrCustomOnKeyUp)
+        tooltip $rrC.rrCKC "Whether to trigger on key Up or Down (wip)"
         pack [ttk::label $rrC.lrrK3 -text "2nd rotation keys:" -anchor w] $rrC.rrMenuB $rrC.rrCKC -anchor w -side left -expand 1
         grid $rrC -padx 4 -columnspan 2 -sticky ew
         grid [entry .eRR3 -textvariable settings(rrKeyListCustom) -width $width] -columnspan 2 -padx 4 -sticky ew
@@ -812,10 +812,10 @@ proc BorderLess {w resize} {
         set savedWindowStyle($w) $stL
     }
     lassign $stL style exstyle
-    # style & 
+    # style &
     # ~(WS_CAPTION | WS_THICKFRAME)
-    #   0x00C00000L  0x00040000L 
-    # exstyle & 
+    #   0x00C00000L  0x00040000L
+    # exstyle &
     # ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE)
     #    0x00000001L          0x00000100L         0x00000200L       0x00020000L
     lassign [twapi::get_window_client_area_size $w] w1 h1
@@ -1116,7 +1116,7 @@ array set slot2handle {}
 # wow windows handle slots - on screen/current position
 array set slot2position {}
 
-proc FocusN {n fg} {
+proc FocusN {n fg {update 1}} {
     global slot2handle slot2position focusWindow settings hasRR
     if {![info exists slot2handle($n)]} {
        Debug "FocusN $n called but no such window"
@@ -1139,7 +1139,9 @@ proc FocusN {n fg} {
         .o$prevFocusPos.l configure -foreground white
         .o$p.l configure -foreground $settings(overlayFocusColor)
     }
-    set focusWindow $n
+    if {$update} {
+        set focusWindow $n
+    }
 }
 
 # Focus whichever window is in location/spot 1
@@ -1179,18 +1181,46 @@ proc SwapPreviousWindow {} {
     SetAsMain $n
 }
 
-proc FocusNextWindow {} {
-    global focusWindow maxNumW settings resetTaskId
+proc NextCustomWindow {} {
+    global customWindow maxNumW rrCustom slot2position
+    set mainSlot $slot2position(1)
+    if {!$rrCustom(0)} {
+        set mainSlot 0
+    }
+    set n $customWindow
+    # Avoid infinite loop trying to find impossible next custom window
+    for {set i 0} {$i<=$maxNumW} {incr i} {
+        set n [expr {$n % ($maxNumW-1) + 1}]
+        # check for main
+        if {$n==$mainSlot} {
+            continue
+        }
+        if {!$rrCustom($n)} {
+            Debug "Next custom window is $n"
+            set customWindow $n
+            return $n
+        }
+    }
+    WobError "Custom RR Error" "Invalid Custom Rotation, All windows are disabled!"
+    return 1
+}
+
+proc FocusNextWindow {{custom 0}} {
+    global focusWindow customWindow maxNumW settings resetTaskId
     if {[info exists resetTaskId]} {
         after cancel $resetTaskId
         unset resetTaskId
     }
-    if {$maxNumW<2} {
+    if {$maxNumW<3} {
         return
     }
-    # maxNumW is one more than number of windows
-    set n [expr {$focusWindow % ($maxNumW-1) + 1}]
-    Debug "FocusNextWindow: focusWindow $focusWindow maxNumW $maxNumW -> $n"
+    if {$custom} {
+        set n [NextCustomWindow]
+    } else {
+        # maxNumW is one more than number of windows
+        set n [expr {$focusWindow % ($maxNumW-1) + 1}]
+    }
+    Debug "FocusNextWindow: custom $custom, focusWindow $focusWindow maxNumW $maxNumW -> $n"
     CheckWindow [list FocusN $n true] $n
     if {$settings(autoResetFocusToMain)>0} {
         set resetTaskId [after [expr {round(1000.*$settings(autoResetFocusToMain))}] FocusMain]
@@ -1829,20 +1859,23 @@ proc RRkeyListToCodes {keyList} {
 set rrCodes {}
 set rrExcludes {}
 set rrExcludes {}
+set rrCodesCustom {}
 proc RRKeysListChange {} {
-    global settings rrCodes rrExcludes
+    global settings rrCodes rrExcludes rrCodesCustom
     lassign [RRkeyListToCodes $settings(rrKeyListAll)] rrCodes settings(rrKeyListAll)
-    lassign [RRkeyListToCodes $settings(rrKeyListCustom)] rrCodes settings(rrKeyListCustom)
+    lassign [RRkeyListToCodes $settings(rrKeyListCustom)] rrCodesCustom settings(rrKeyListCustom)
     lassign [RRkeyListToCodes $settings(rrModExcludeList)] rrExcludes settings(rrModExcludeList)
 }
 
 set rrLastCode {}
+set rrLastCustom 0
+
 proc RRCheck {} {
-    global rrCodes rrExcludes rrLastCode rrTaskId settings
+    global rrCodes rrCodesCustom rrExcludes rrLastCode rrLastCustom rrTaskId settings
     set rrTaskId [after $settings(rrInterval) RRCheck]
     #Debug "RR Check..."
     foreach code $rrExcludes {
-        set state [twapi::GetAsyncKeyState $code] 
+        set state [twapi::GetAsyncKeyState $code]
         if {$state != 0} {
             # modifier held; return
             return
@@ -1851,18 +1884,28 @@ proc RRCheck {} {
     # Watch for reset of last key
     if {$rrLastCode != ""} {
         if {[twapi::GetAsyncKeyState $rrLastCode]==0} {
-            Debug "Key $rrLastCode now reset... Next window"
+            Debug "Key $rrLastCode now reset... Next window - custom $rrLastCustom"
             set rrLastCode {}
-            FocusNextWindow
+            FocusNextWindow $rrLastCustom
         }
         return
     }
+    # custom rotation, keyUp normal mode
+    foreach code $rrCodesCustom {
+        set state [twapi::GetAsyncKeyState $code]
+        if {$state != 0} {
+            set rrLastCode $code
+            set rrLastCustom 1
+            return
+        }
+    }
     foreach code $rrCodes {
-        set state [twapi::GetAsyncKeyState $code] 
+        set state [twapi::GetAsyncKeyState $code]
         #Debug "Checking $k -> $code -> [format %x $state]"
         if {$state != 0} {
             set rrLastCode $code
-            Debug "RR for $code [format %x $state]"
+            set rrLastCustom 0
+            #Debug "RR for $code [format %x $state]"
             return
         }
     }
@@ -2661,6 +2704,8 @@ if {![info exists pos]} {
     set maxNumW 1
     # currently focused windows (at least as far as WOB is concerned)
     set focusWindow 1
+    # custom rotation focused window
+    set customWindow 1
     # last swapped window
     set swappedWindow 1
     # hotkey ok
