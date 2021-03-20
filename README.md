@@ -21,7 +21,7 @@ The source for the [binary distribution](https://github.com/WowOpenBox/WowOpenBo
   - Focus next/previous/specific windows with hotkeys.
   - Optional Round robin: after you press configurable keys, focus switches to the next window automatically.
 - Free, OpenSource and the [Safest](https://github.com/WowOpenBox/WowOpenBox/wiki/FAQ#i-heard-wob-is-safer-than-jmb-how-so) option available: WOB respects Blizzard's new directive to not do any software input broadcasting. Multiboxing legitimately with peace of mind.
-- Online help, menus and tooltips on most UI element to help discovering features.
+- Online [help](https://wowopenbox.org/help), menus and tooltips on most UI element to help discovering features.
 
 ## Installation
 
