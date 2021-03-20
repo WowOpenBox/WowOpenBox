@@ -14,13 +14,13 @@ The source for the [binary distribution](https://github.com/WowOpenBox/WowOpenBo
 
 ## Main features
 
-- Window Layout wizard and manual tweaking; get your game windows exactly how you want to play.
-- Instant swapping of windows; with keyboard hotkeys for fast switching to the next window.
-- Many additional options to switch focus
-  - Focus follow mouse: turns on/off windows accessibility feature so you just hover a window to make it receive keys
-  - Swap focus next/previous/specific window hotkeys
-  - Optional Round robin: after you press a key, focus switches to the next window automatically
-- Free, OpenSource and the Safest option available - WOB respects Blizzard's new directive to not do any software input broadcasting. Multiboxing legitimately with peace of mind.
+- Window Layout wizard and manual tweaking; get your game windows exactly how you want them to be to play.
+- Instant swapping of windows; with keyboard hotkeys for fast switching to the next or any specific window.
+- Many additional options to switch which window your keys are going to:
+  - Focus follow mouse: turns on/off the Windows&tm; accessibility feature so you just hover a window to make it receive keys
+  - Focus next/previous/specific windows with hotkeys.
+  - Optional Round robin: after you press configurable keys, focus switches to the next window automatically.
+- Free, OpenSource and the [Safest](https://github.com/WowOpenBox/WowOpenBox/wiki/FAQ#i-heard-wob-is-safer-than-jmb-how-so) option available: WOB respects Blizzard's new directive to not do any software input broadcasting. Multiboxing legitimately with peace of mind.
 - Online help, menus and tooltips on most UI element to help discovering features.
 
 ## Installation
