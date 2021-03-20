@@ -20,7 +20,7 @@ The source for the [binary distribution](https://github.com/WowOpenBox/WowOpenBo
   - Focus follow mouse: turns on/off windows accessibility feature so you just hover a window to make it receive keys
   - Swap focus next/previous/specific window hotkeys
   - Optional Round robin: after you press a key, focus switches to the next window automatically
-- Free, OpenSource and the Safest option available.
+- Free, OpenSource and the Safest option available - WOB respects Blizzard's new directive to not do any software input broadcasting. Multiboxing legitimately with peace of mind.
 - Online help, menus and tooltips on most UI element to help discovering features.
 
 ## Installation
