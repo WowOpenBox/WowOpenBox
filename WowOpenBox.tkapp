@@ -1951,7 +1951,10 @@ proc RRCustomUpdateSettings {} {
 }
 
 proc RRCustomMenu {} {
-    global settings rrCustom
+    global settings rrCustom hasRR
+    if {!$hasRR} {
+        return
+    }
     RRCustomToArray
     set m .rrC.rrMenuB.menu
     $m delete 0 99
