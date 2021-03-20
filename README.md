@@ -12,6 +12,17 @@ Github home: https://github.com/WowOpenBox/WowOpenBox#wowopenbox
 
 The source for the [binary distribution](https://github.com/WowOpenBox/WowOpenBox/releases) (and the round robin wrapper) is built from https://github.com/WowOpenBox/BuildKit (just mentioning that if you're curious, you don't need to look there to **use** WowOpenBox / OpenMultiBoxing)
 
+## Main features
+
+- Window Layout wizard and manual tweaking; get your game windows exactly how you want to play.
+- Instant swapping of windows; with keyboard hotkeys for fast switching to the next window.
+- Many additional options to switch focus
+  - Focus follow mouse: turns on/off windows accessibility feature so you just hover a window to make it receive keys
+  - Swap focus next/previous/specific window hotkeys
+  - Optional Round robin: after you press a key, focus switches to the next window automatically
+- Free, OpenSource and the Safest option available.
+- Online help, menus and tooltips on most UI element to help discovering features.
+
 ## Installation
 
 WowOpenBox is optimized for Microsoft Windows 10.
@@ -20,7 +31,9 @@ New since version 2.2 we made a compact all in one .exe binary distribution. Jus
 
 If you want to use the optional Round Robin feature, run the `OpenMultiBoxing_RR` exe wrapper to get RR (it will launch/need the other bigger exe too, in the same folder).
 
-Then start your world of warcraft clients (Classic or Shadowlands) using launcher is fine (that way you don't need to keep typing your password). Before WOB/OMB 2.6 you needed to make sure your game was in "Windowed (Fullscreen)" mode, so they didn't have a title or border but now OpenMultiBoxing will remove the border for you if there is one and they'll be neatly arranged.
+Go through the Window Layout Wizard to pick how many game windows you plan on playing with and their layout, save and apply.
+
+Then start your game windows (e.g World of Warcraft, Classic or Shadowlands) using battle.net launcher is fine (that way you don't need to keep typing your password). Wob since version 4.1 will automatically capture and place the windows in their respective position for you (you can turn that option off in the Option menu)
 
 ![WOB Window Layout GUI Screenshot](https://wowopenbox.org/sshotWindowLayout.png?src=github)
 
