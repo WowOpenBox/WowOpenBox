@@ -346,6 +346,12 @@ proc AfterSettings {} {
     if {$settings(rrInterval) == 50} {
         set settings(rrInterval) 5
     }
+    if {[info exists settings(rrKeyList)]} {
+        # convert to space separated from tcl list
+        set settings(rrKeyListAll) [join $settings(rrKeyList) " "]
+        set settings(rrModExcludeList) [join $settings(rrModExcludeList) " "]
+        unset settings(rrKeyList)
+    }
     RegisterHotkey "Capture" hk,capture CaptureOrUpdate
     RegisterHotkey "Start/Stop mouse tracking" hk,mouseTrack MouseTracking
     RegisterHotkey "Focus next window" hk,focusNextWindow FocusNextWindow
@@ -525,14 +531,27 @@ proc UISetup {} {
         grid [ttk::label .lRR -text "\u27F3 Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
         grid [ttk::checkbutton .cbRR -text "Round Robin ($settings(hk,rrToggle))" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
         tooltip .cbRR "Toggle round robin mode\nAlso turns off mouse focus and restore as needed while on\nHotkey: $settings(hk,rrToggle)"
-        grid [ttk::label .lrrK -text "Round Robin keys:"] -padx 4 -columnspan 2 -sticky w
-        grid [entry .eRR -textvariable settings(rrKeyList) -width $width] -columnspan 2 -padx 4 -sticky ew
+        grid [ttk::label .lrrK -text "Round Robin 'All' keys:"] -padx 4 -columnspan 2 -sticky w
+        grid [entry .eRR -textvariable settings(rrKeyListAll) -width $width] -columnspan 2 -padx 4 -sticky ew
         bind .eRR <Return> RRKeysListChange
-        tooltip .eRR "Which keys trigger round robin\nType <Return> after change to take effect.\nSee help/FAQ for list."
+        tooltip .eRR "Which keys trigger round robin for all windows\nType <Return> after change to take effect.\nSee help/FAQ for list."
         grid [ttk::label .lrrK2 -text "No Round Robin when:"] -padx 4 -columnspan 2 -sticky w
         grid [entry .eRR2 -textvariable settings(rrModExcludeList) -width $width] -columnspan 2 -padx 4 -sticky ew
         tooltip .eRR2 "Which modifiers pause round robin while held\nType <Return> after change to take effect.\nSee help/FAQ for list."
         bind .eRR2 <Return> RRKeysListChange
+        set rrC .rrC
+        frame $rrC
+        ttk::menubutton $rrC.rrMenuB -text "Skips" -menu $rrC.rrMenuB.menu
+        menu $rrC.rrMenuB.menu -tearoff 0
+        RRCustomMenu
+        tooltip $rrC.rrMenuB "Select which window(s) are excluded from custom rotation"
+        ttk::checkbutton $rrC.rrCKC -text "Up" -variable settings(rrCustomOnKeyUp)
+        tooltip $rrC.rrCKC "Whether to trigger on key Up or Down"
+        pack [ttk::label $rrC.lrrK3 -text "2nd rotation keys:" -anchor w] $rrC.rrMenuB $rrC.rrCKC -anchor w -side left -expand 1
+        grid $rrC -padx 4 -columnspan 2 -sticky ew
+        grid [entry .eRR3 -textvariable settings(rrKeyListCustom) -width $width] -columnspan 2 -padx 4 -sticky ew
+        tooltip .eRR3 "Which keys trigger custom rotation round robin\nType <Return> after change to take effect.\nSee help/FAQ for list."
+        bind .eRR3 <Return> RRKeysListChange
     }
 
     grid [frame .sep2 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
@@ -1362,6 +1381,7 @@ proc updateListBox {n w wname} {
     if {$n>$settings(numWindows)} {
         set settings(numWindows) $n
         Overlay
+        RRCustomMenu
     }
     set nextWindow [expr {$n+1}]
     set maxNumW $nextWindow
@@ -1783,8 +1803,13 @@ proc RRkeyListToCodes {keyList} {
     twapi::_init_vk_map
     set res {}
     set fixedList {}
-    foreach k $keyList {
-        if {[string length $k] == 1} {
+    foreach k [split $keyList " "] {
+        set len [string length $k]
+        if {$len == 0} {
+            # skip extra spaces
+            continue
+        }
+        if {$len == 1} {
             lassign [twapi::VkKeyScan $k] x code
         } else {
             if {![info exists twapi::vk_map($k)]} {
@@ -1798,7 +1823,7 @@ proc RRkeyListToCodes {keyList} {
         lappend res $code
         lappend fixedList $k
     }
-    return [list $res $fixedList]
+    return [list $res [join $fixedList " "]]
 }
 
 set rrCodes {}
@@ -1806,7 +1831,8 @@ set rrExcludes {}
 set rrExcludes {}
 proc RRKeysListChange {} {
     global settings rrCodes rrExcludes
-    lassign [RRkeyListToCodes $settings(rrKeyList)] rrCodes settings(rrKeyList)
+    lassign [RRkeyListToCodes $settings(rrKeyListAll)] rrCodes settings(rrKeyListAll)
+    lassign [RRkeyListToCodes $settings(rrKeyListCustom)] rrCodes settings(rrKeyListCustom)
     lassign [RRkeyListToCodes $settings(rrModExcludeList)] rrExcludes settings(rrModExcludeList)
 }
 
@@ -1839,6 +1865,37 @@ proc RRCheck {} {
             Debug "RR for $code [format %x $state]"
             return
         }
+    }
+}
+
+
+proc RRCustomToArray {} {
+    global settings rrCustom
+    catch {unset rrCustom}
+    array set rrCustom {}
+    foreach w $settings(rrCustomExcludeList) {
+        set rrCustom($w) 1
+    }
+}
+
+proc RRCustomUpdateSettings {} {
+    global settings rrCustom
+    set settings(rrCustomExcludeList) {}
+    foreach {k v} [array get rrCustom] {
+        if {$v} {
+            lappend settings(rrCustomExcludeList) $k
+        }
+    }
+}
+
+proc RRCustomMenu {} {
+    global settings rrCustom
+    RRCustomToArray
+    set m .rrC.rrMenuB.menu
+    $m delete 0 99
+    $m add checkbutton -label "Main" -variable rrCustom(0) -command RRCustomUpdateSettings
+    for {set i 1} {$i<=$settings(numWindows)} {incr i} {
+        $m add checkbutton -label "WOB $i" -variable rrCustom($i) -command RRCustomUpdateSettings
     }
 }
 
@@ -2064,6 +2121,7 @@ proc ChangeLayout {args} {
     set layoutOneSize $settings(layoutOneSize)
     set n [expr round($settings(numWindows))]
     set settings(numWindows) $n
+    RRCustomMenu
     set layoutNumWindowsText "Layout for\n$n windows"
     set c .layout.c
     if {![winfo exists $c]} {
@@ -2566,7 +2624,10 @@ array set settings {
     profile "Default"
     profiles {"Default"}
     borderless 1
-    rrKeyList "SPACE 1 2 3 4 5 6 7 8 9 0 - = . F11"
+    rrKeyListAll "SPACE 1 2 3 4 5 6 7 8 9 0 - ="
+    rrKeyListCustom ". [ ] F11"
+    rrCustomOnKeyUp 1
+    rrCustomExcludeList 0
     rrModExcludeList "RCONTROL RSHIFT"
     rrInterval 5
     autoResetFocusToMain 1
@@ -2607,8 +2668,6 @@ if {![info exists pos]} {
 }
 
 LoadSettings
-# get rid of deprecated initial RR keys list
-catch {unset settings(rrKeys)}
 
 if {$settings(captureForegroundWindow) || $settings(game) != "World of Warcraft"} {
     set skin 1
