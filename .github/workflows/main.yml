@@ -53,7 +53,7 @@ jobs:
           Add-Content -Path OpenMultiBoxing.vfs\tclkit.inf -Value "ProductVersion ""${{ steps.get_version.outputs.VERSION }}""" -PassThru
           tclkit\tclkit.exe sdx\sdx.kit wrap OpenMultiBoxing -runtime runtime.exe
           Rename-Item OpenMultiBoxing OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.exe
-          Compress-Archive -Path OpenMultiBoxing*-${{ steps.get_version.outputs.VERSION }}.exe ..\README.txt ..\launchwow.bat -DestinationPath OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.zip
+          Compress-Archive -Path OpenMultiBoxing*-${{ steps.get_version.outputs.VERSION }}.exe -Path ..\README.txt -Path ..\launchwow.bat -DestinationPath OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.zip
 
 
       - name: Create Release
