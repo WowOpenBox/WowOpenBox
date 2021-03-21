@@ -585,6 +585,43 @@ proc About {} {
 
 }
 
+#### Start of clipboard management ####
+# A bit more secure than notepad clipboard copy/paste option
+
+set clipboardValue {}
+
+proc ClearClipboard {} {
+    global clipboardValue
+    set clipboardValue {}
+    clipboard clear
+}
+
+proc SetClipboard {} {
+    global clipboardValue
+    clipboard clear
+    clipboard append -- $clipboardValue
+}
+
+proc ClipboardManager {} {
+    global clipboardValue
+    set tw .clip
+    if {[winfo exists $tw]} {
+        wm state $tw normal
+        raise $tw
+        return
+    }
+    toplevel $tw
+    bind $tw <Destroy> ClearClipboard
+    #wm protocol $tw WM_DELETE_WINDOW ClearClipboard
+    wm title $tw "WOB/OMB Secure Copy Paste"
+    grid [ttk::label $tw.la -text "Secure text"] [entry $tw.e  -show "*" -textvariable clipboardValue -width 14] -padx 4 -sticky ew
+    grid [ttk::button $tw.copy -width 14 -text "Copy" -command SetClipboard] [ttk::button $tw.clear -width 14 -text "Clear" -command ClearClipboard] -padx 4 -sticky ew
+    tooltip $tw.copy "Copy hidden text"
+    tooltip $tw.clear "Clear clipboard and hidden text"
+}
+
+#### end of clipboard management ####
+
 proc MenuSetup {} {
     global vers settings hasRR mouseRaise
     if {[winfo exists .mbar]} {
@@ -601,6 +638,8 @@ proc MenuSetup {} {
     $m1 add command -label "Edit raw settings..." -command EditSettings
     $m1 add command -label "Save settings" -command SaveSettings
     $m1 add command -label "Reload settings" -command LoadSettings
+    $m1 add separator
+    $m1 add command -label "Clipboard copy/paster..." -command ClipboardManager
     $m1 add separator
     $m1 add command -label "Save and Exit" -command "SaveSettings; exit 0"
     $m1 add command -label "Exit" -command "exit 0"
@@ -634,6 +673,7 @@ proc MenuSetup {} {
     $m3 add checkbutton -label "Mouse auto foreground window" -variable mouseRaise -command UpdateMouseRaise
     $m3 add checkbutton -label "Turn off focus follow mouse on exit" -variable settings(mouseFocusOffAtExit)
     $m3 add checkbutton -label "Turn on focus follow mouse at startup" -variable settings(mouseFocusOnAtStart)
+    $m3 add checkbutton -label "Auto open clipboard at startup" -variable settings(clipboardAtStart) -command {if {$settings(clipboardAtStart)} ClipboardManager}
     $m3 add separator
     $m3 add radiobutton -label "Auto reset focus to main: Off" -value 0 -variable settings(autoResetFocusToMain)
     $m3 add radiobutton -label "Auto reset focus to main: after 0.5 sec" -value 0.5 -variable settings(autoResetFocusToMain)
@@ -2710,6 +2750,7 @@ array set settings {
     mouseWatchInterval 50
     mouseOutsideWindowsPauses 1
     autoCapture 1
+    clipboardAtStart 0
 }
 
 # globals
@@ -2790,6 +2831,9 @@ if {$isUpdate} {
 if {$settings(mouseFocusOnAtStart)} {
     set mouseFollow 1
     UpdateMouseFollow
+}
+if {$settings(clipboardAtStart)} {
+    ClipboardManager
 }
 # Mouse tracking/auto pause (todo: handle reload)
 PauseOutside
