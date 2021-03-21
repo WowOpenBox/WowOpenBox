@@ -42,7 +42,7 @@ jobs:
           else
             echo ::set-output name=PRERELEASE::false
           fi
-          sed -i -e "s/^set vers .*$/set vers \"$VERSION\"/" WowOpenBox.tkapp
+          sed -e "s/^set vers .*$/set vers \"$VERSION\"/" < WowOpenBox.tcl > WowOpenBox.tkapp
           sed -b -e "s/OpenMultiBoxing-vX.Y.Z.exe/OpenMultiBoxing-$VERSION.exe/" buildkit/OpenMultiBoxing_RR.exe > buildkit/OpenMultiBoxing_RR-$VERSION.exe
         shell: bash
 
@@ -53,7 +53,7 @@ jobs:
           Add-Content -Path OpenMultiBoxing.vfs\tclkit.inf -Value "ProductVersion ""${{ steps.get_version.outputs.VERSION }}""" -PassThru
           tclkit\tclkit.exe sdx\sdx.kit wrap OpenMultiBoxing -runtime runtime.exe
           Rename-Item OpenMultiBoxing OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.exe
-          Compress-Archive -Path OpenMultiBoxing*-${{ steps.get_version.outputs.VERSION }}.exe -DestinationPath OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.zip
+          Compress-Archive -Path OpenMultiBoxing*-${{ steps.get_version.outputs.VERSION }}.exe ..\README.txt ..\launchwow.bat -DestinationPath OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.zip
 
 
       - name: Create Release
