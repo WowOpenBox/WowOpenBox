@@ -527,6 +527,7 @@ proc UISetup {} {
     tooltip .cbCaptureFG "Instead of capturing the game window by name\n($settings(game))\nif checked, capture the current foreground window\nFor this to work you must use the hotkey:\n$settings(hk,capture)"
     grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command "OverlayUpdate; SaveSettings"] [ttk::button .cbocfg -text "Overlay config" -command OverlayConfig]
     tooltip .cboverlay "Show/Hide the overlay info\nHotkey: $settings(hk,overlayToggle)"
+    tooltip .cbocfg "Opens the overlay config which let's you configure\nborder, color, positions, etc... for the overlay"
 
     if {$hasRR} {
         grid [frame .sepRR -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
@@ -607,7 +608,7 @@ proc SetClipboard {} {
 }
 
 proc ClipboardManager {} {
-    global clipboardValue
+    global clipboardValue rrOn hasRR
     set tw .clip
     if {[winfo exists $tw]} {
         wm state $tw normal
@@ -617,6 +618,9 @@ proc ClipboardManager {} {
     toplevel $tw
     wm title $tw "WOB/OMB Secure Copy Paste"
     grid [ttk::label $tw.la -text "Secure text"] [entry $tw.e  -show "*" -textvariable clipboardValue -width 14] -padx 4 -sticky ew
+    if {$hasRR} {
+        bind $tw.e <FocusIn> "set rrOn 0; RRUpdate"
+    }
     grid [ttk::button $tw.copy -width 14 -text "Copy" -command SetClipboard] [ttk::button $tw.clear -width 14 -text "Clear" -command ClearClipboard] -padx 4 -sticky ew
     tooltip $tw.copy "Copy hidden text"
     tooltip $tw.clear "Clear clipboard and hidden text"
@@ -791,18 +795,20 @@ set prevMouseArea 0
 set prevRR 0
 set prevMF 0
 set prevOL 0
+set pauseSchedule {}
 
-proc PauseOutside {} {
-    global settings prevMouseArea prevRR prevMF prevOL hasRR rrOn mouseFollow nextWindow
+proc PeriodicChecks {} {
+    global settings prevMouseArea prevRR prevMF prevOL hasRR rrOn mouseFollow nextWindow pauseSchedule
+    after cancel $pauseSchedule
+    set pauseSchedule {}
     if {$settings(autoCapture) && ($nextWindow<=$settings(numWindows))} {
-        if {[FindGameWindow] != ""} {
-            # if we found games the user mistakenly clicked or left clicked the capture
-            set settings(captureForegroundWindow) 0
-            Capture
+        set w [FindGameWindow]
+        if {$w != ""} {
+            AutoCapture $w
         }
     }
     if {$settings(mouseWatchInterval)} {
-        after $settings(mouseWatchInterval) PauseOutside
+        set pauseSchedule [after $settings(mouseWatchInterval) PeriodicChecks]
     }
     if {!$settings(mouseOutsideWindowsPauses)} {
         return
@@ -1407,8 +1413,26 @@ proc IsOurs {w} {
     return false
 }
 
+# TODO: count errors and stop instead of spinning after a while
+
+proc AutoCapture {w} {
+    global nextWindow settings stayOnTop lastUpdate
+    set wname "WOB $nextWindow"
+    if {[catch {
+        if {$settings(borderless)} {
+            BorderLess $w 0
+        }
+        Rename $w $wname
+    } err]} {
+        Debug "Auto capture error: $err for $w - will try later"
+        puts stderr "Auto capture error: $err for $w - will try later"
+        return
+    }
+    PostCapture $w $wname
+}
+
 proc Capture {} {
-    global nextWindow maxNumW settings stayOnTop lastUpdate
+    global nextWindow settings stayOnTop lastUpdate
     if {$settings(captureForegroundWindow)} {
         set w [twapi::get_foreground_window]
         if {[IsDesktop $w]} {
@@ -1435,12 +1459,17 @@ proc Capture {} {
         }
     }
     set wname "WOB $nextWindow"
-    Rename $w $wname
     # We are resizing just after so no need to do it twice,
     # but otherwise it is needed for the inner size of wow to be correct
     if {$settings(borderless)} {
         BorderLess $w 0
     }
+    Rename $w $wname
+    PostCapture $w $wname
+}
+
+proc PostCapture {w wname} {
+    global nextWindow stayOnTop lastUpdate
     # Need to really update if we captured/forgot before
     catch {unset lastUpdate($w)}
     Update $w [GetX] [GetY] [GetWidth] [GetHeight] $stayOnTop
@@ -2819,14 +2848,18 @@ if {![winfo exists .logo]} {
     SaveSettings
 }
 
+proc Defer {time cmd} {
+    after idle [list after $time $cmd]
+}
+
 # --- main / tweak me ---
 puts "WowOpenBox - OpenMultiBoxing $vers started..."
-FindExisting
+Defer 100 FindExisting
 set bottomText "WowOpenBox, OpenMultiBoxing $vers"
 wm state . normal
 if {$settings(numWindows)==0} {
     Debug "No layout setup, opening layout"
-    after 250 {.bwl invoke}
+    Defer 250 {.bwl invoke}
 }
 
 if {$isUpdate} {
@@ -2836,7 +2869,7 @@ if {$isUpdate} {
 } else {
     if {[expr {([clock seconds]-$settings(lastUpdateChecked))>2*24*3600}]} {
         Debug "Last update check $settings(lastUpdateChecked) - updating"
-        after 1000 {CheckForUpdates 1}
+        Defer 1000 {CheckForUpdates 1}
     }
 }
 
@@ -2846,7 +2879,7 @@ if {$settings(mouseFocusOnAtStart)} {
     UpdateMouseFollow
 }
 if {$settings(clipboardAtStart)} {
-    after 250 ClipboardManager
+    Defer 250 ClipboardManager
 }
-# Mouse tracking/auto pause (todo: handle reload)
-PauseOutside
+# Mouse tracking/auto pause and auto capture
+Defer 350 PeriodicChecks
