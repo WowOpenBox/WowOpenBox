@@ -613,13 +613,12 @@ proc ClipboardManager {} {
         return
     }
     toplevel $tw
-    bind $tw <Destroy> ClearClipboard
-    #wm protocol $tw WM_DELETE_WINDOW ClearClipboard
     wm title $tw "WOB/OMB Secure Copy Paste"
     grid [ttk::label $tw.la -text "Secure text"] [entry $tw.e  -show "*" -textvariable clipboardValue -width 14] -padx 4 -sticky ew
     grid [ttk::button $tw.copy -width 14 -text "Copy" -command SetClipboard] [ttk::button $tw.clear -width 14 -text "Clear" -command ClearClipboard] -padx 4 -sticky ew
     tooltip $tw.copy "Copy hidden text"
     tooltip $tw.clear "Clear clipboard and hidden text"
+    bind $tw.clear <Destroy> ClearClipboard
 }
 
 #### end of clipboard management ####
@@ -798,6 +797,8 @@ proc PauseOutside {} {
     }
     if {$settings(autoCapture) && ($nextWindow<=$settings(numWindows))} {
         if {[FindGameWindow] != ""} {
+            # if we found games the user mistakenly clicked or left clicked the capture
+            set settings(captureForegroundWindow) 0
             Capture
         }
     }
@@ -1244,6 +1245,10 @@ proc SwapPreviousWindow {} {
 
 proc NextCustomWindow {} {
     global customWindow maxNumW rrCustom slot2position
+    if {![info exists rrCustom(0)]} {
+        # updgrade without menu setup
+        WobError "Restart needed" "You just upgraded but need to restart WOB! No state will be lost if you do! Thanks!"
+    }
     set mainSlot $slot2position(1)
     if {!$rrCustom(0)} {
         set mainSlot 0
@@ -2835,7 +2840,7 @@ if {$settings(mouseFocusOnAtStart)} {
     UpdateMouseFollow
 }
 if {$settings(clipboardAtStart)} {
-    ClipboardManager
+    after 250 ClipboardManager
 }
 # Mouse tracking/auto pause (todo: handle reload)
 PauseOutside
