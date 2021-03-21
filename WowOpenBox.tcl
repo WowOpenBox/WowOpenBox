@@ -391,6 +391,8 @@ wm protocol . WM_DELETE_WINDOW exit
 
 proc exit {{status 0}} {
     Debug "Exit $status called"
+    after cancel [after info]
+    catch {destroy .clip}
     RevertMouseFollow
     _real_exit $status
 }
@@ -792,15 +794,15 @@ set prevOL 0
 
 proc PauseOutside {} {
     global settings prevMouseArea prevRR prevMF prevOL hasRR rrOn mouseFollow nextWindow
-    if {$settings(mouseWatchInterval)} {
-        after $settings(mouseWatchInterval) PauseOutside
-    }
     if {$settings(autoCapture) && ($nextWindow<=$settings(numWindows))} {
         if {[FindGameWindow] != ""} {
             # if we found games the user mistakenly clicked or left clicked the capture
             set settings(captureForegroundWindow) 0
             Capture
         }
+    }
+    if {$settings(mouseWatchInterval)} {
+        after $settings(mouseWatchInterval) PauseOutside
     }
     if {!$settings(mouseOutsideWindowsPauses)} {
         return
@@ -1008,8 +1010,12 @@ proc FindGameWindow {} {
         return [lindex $wList 0]
     }
     set minTime 0
+    set minW ""
     foreach w $wList {
-        set pid [twapi::get_window_process $w]
+        if {[catch {twapi::get_window_process $w} pid]} {
+            Debug "Api error for get_window_process $w: $pid"
+            continue
+        }
         set time [lindex [twapi::get_process_info $pid -createtime] 1]
         Debug "Game $w pid $w time $time"
         if {$minTime==0 || $time<$minTime} {
