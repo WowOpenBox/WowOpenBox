@@ -592,8 +592,10 @@ set clipboardValue {}
 
 proc ClearClipboard {} {
     global clipboardValue
+    Debug "Clearing clipboard!"
     set clipboardValue {}
     clipboard clear
+    clipboard append -- ""
 }
 
 proc SetClipboard {} {
