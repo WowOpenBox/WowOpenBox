@@ -1418,7 +1418,10 @@ proc IsOurs {w} {
 # TODO: count errors and stop instead of spinning after a while
 
 proc AutoCapture {w} {
-    global nextWindow settings stayOnTop lastUpdate
+    global nextWindow settings stayOnTop lastUpdate slot2handle
+    for {} {[info exists slot2handle($nextWindow)]} {incr nextWindow} {
+        Debug "Skipping existing nextwindow $nextWindow"
+    }
     set wname "WOB $nextWindow"
     if {[catch {
         if {$settings(borderless)} {
