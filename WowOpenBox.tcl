@@ -31,6 +31,8 @@ if {[info exists updateCheck(proc)] && $updateCheck(proc)=="::CheckForUpdates"} 
         set oldVersion $vers
     }
     set previousVersion $vers
+    # cancel all background tasks
+    after cancel [after info]
 } else {
     set isUpdate 0
     if {[info exists vers] && ![info exists oldVersion]} {
@@ -798,10 +800,10 @@ set prevOL 0
 set pauseSchedule {}
 
 proc PeriodicChecks {} {
-    global settings prevMouseArea prevRR prevMF prevOL hasRR rrOn mouseFollow nextWindow pauseSchedule
+    global settings prevMouseArea prevRR prevMF prevOL hasRR rrOn mouseFollow maxNumW pauseSchedule
     after cancel $pauseSchedule
     set pauseSchedule {}
-    if {$settings(autoCapture) && ($nextWindow<=$settings(numWindows))} {
+    if {$settings(autoCapture) && ($maxNumW<=$settings(numWindows))} {
         set w [FindGameWindow]
         if {$w != ""} {
             AutoCapture $w
@@ -2868,7 +2870,7 @@ if {$isUpdate} {
     set isUpdate 0
 } else {
     if {[expr {([clock seconds]-$settings(lastUpdateChecked))>2*24*3600}]} {
-        Debug "Last update check $settings(lastUpdateChecked) - updating"
+        Debug "Last update check $settings(lastUpdateChecked) - checking for updates in 1s"
         Defer 1000 {CheckForUpdates 1}
     }
 }
