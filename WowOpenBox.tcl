@@ -1014,9 +1014,6 @@ proc FindGameWindow {} {
     global settings
     # consider doing exact match with ^ $ or...
     set wList [twapi::find_windows -text $settings(game) -visible true]
-    if {[llength $wList]<=1} {
-        return [lindex $wList 0]
-    }
     set minTime 0
     set minW ""
     foreach w $wList {
@@ -1024,14 +1021,22 @@ proc FindGameWindow {} {
             Debug "Api error for get_window_process $w: $pid"
             continue
         }
-        set time [lindex [twapi::get_process_info $pid -createtime] 1]
-        Debug "Game $w pid $w time $time"
+        set info [twapi::get_process_info $pid -name -createtime]
+        set exe [lindex $info 1]
+        set time [lindex $info 3]
+        Debug "Game $w pid $w exe $exe time $time"
+        if {[lsearch -exact $settings(dontCaptureList) $exe]!=-1} {
+            Debug "Not capturing $exe $w found in $settings(dontCaptureList)"
+            continue
+        }
         if {$minTime==0 || $time<$minTime} {
             set minTime $time
             set minW $w
         }
     }
-    Debug "Found first started w $w : $minTime"
+    if {$minW != ""} {
+        Debug "Found first started w $minW : $minTime"
+    }
     return $minW
 }
 
@@ -2798,6 +2803,7 @@ array set settings {
     mouseOutsideWindowsPauses 1
     autoCapture 1
     clipboardAtStart 0
+    dontCaptureList {explorer.exe}
 }
 
 # globals
