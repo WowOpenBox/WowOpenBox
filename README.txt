@@ -9,7 +9,8 @@ Source code and newest releases on https://github.com/WowOpenBox/WowOpenBox
 
 Website https://wowopenbox.org/
 
-Extract all the files into any same same folder. Run the _RR exe for round-robin.
+Extract all the files into any same normal folder (not Program Files or system folders).
+Run the _RR exe for round-robin.
 
 Right click edit and configure launchwow.bat to match your desires, if you prefer
 that to using Battle.net launcher (see links above for tradeoffs). Make multiple copies

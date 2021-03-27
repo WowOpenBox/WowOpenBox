@@ -296,7 +296,11 @@ proc SaveSettings {args} {
         close $f
     }
     Debug "SaveSettings base $SETTINGS_FILE (from cb $args)"
-    set f [open $SETTINGS_FILE w+]
+    if {[catch {open $SETTINGS_FILE w+} f]} {
+        WobError "Error saving settings" \
+            "Unable to save settings: $f\n\nPlease do not put OpenMultiBoxing*.exe\nin a system/special/protected folder\nput them on your Desktop instead for instance."
+        return
+    }
     fconfigure $f -encoding utf-8
     puts $f "array set settings {"
     foreach i [lsort [array names settings]] {
@@ -1374,6 +1378,10 @@ proc SetAsMainInt {n} {
     set p $slot2position($n)
     if {$p==1} {
         Debug "SetAsMain $n already in slot 1"
+        return
+    }
+    if {![info exists slot2position(1)]} {
+        Debug "SetAsMain $n no WOB1 to swap with"
         return
     }
     set p1 $slot2position(1)
