@@ -787,6 +787,18 @@ proc MouseIsIn {} {
     CoordsIn $coords
 }
 
+proc MouseIsInWob {} {
+    if {[catch {twapi::get_mouse_location} coords]} {
+        # expected in lock screen etc
+        #Debug "Can't get mouse coords: $coords"
+        return 0
+    }
+    lassign $coords x y
+    set w [twapi::get_window_at_location $x $y]
+    IsOneOfOursCache $w
+}
+
+
 proc MouseArea {mouseCoords} {
     global settings
     set n [CoordsIn $mouseCoords]
@@ -819,7 +831,7 @@ proc PeriodicChecks {} {
     if {!$settings(mouseOutsideWindowsPauses)} {
         return
     }
-    set n [MouseIsIn]
+    set n [MouseIsInWob]
     if {$n != $prevMouseArea} {
         Debug "Change of window from $prevMouseArea to $n"
         if {$n==0} {
@@ -928,7 +940,11 @@ proc CheckWindow {cmd n} {
         return
     }
     Debug "Error processing $cmd for $n: $err"
-    catch {unset slot2handle($n)}
+    if {[info exists slot2handle($n)]} {
+        set w slot2handle($n)
+        unset slot2handle($n)
+        catch {unset windowHandleCache($w)}
+    }
     .b2 configure -text " Capture "
     set n0 [expr {$n-1}]
     .lbw delete $n0
@@ -966,13 +982,14 @@ proc ContextMenu {n x y} {
 }
 
 proc Forget {n} {
-    global slot2handle slot2position settings savedWindowStyle
+    global slot2handle slot2position settings savedWindowStyle windowHandleCache
     if {![info exists slot2handle($n)]} {
         Debug "Nothing to forget for $n"
         return
     }
     set wh $slot2handle($n)
     catch {Rename $wh $settings(game)}
+    set windowHandleCache($wh) 0
     unset slot2handle($n)
     .b2 configure -text " Capture "
     set n0 [expr {$n-1}]
@@ -1410,22 +1427,43 @@ proc IsDesktop {w} {
     expr {$id==0x10010}
 }
 
+array set windowHandleCache {}
+array unset windowHandleCache
 
+proc IsOneOfOursCache {w} {
+    global windowHandleCache
+    if {![info exists windowHandleCache($w)]} {
+        set windowHandleCache($w) [IsOurs $w]
+    }
+    return $windowHandleCache($w)
+}
+
+
+# now 3 states: game window is 1, our UI is 2, neither is 0
 proc IsOurs {w} {
     global slot2handle
+    if {[IsDesktop $w]} {
+        return 0
+    }
     set thisAppWH [twapi::get_parent_window [twapi::tkpath_to_hwnd .]]
     if {$w==$thisAppWH} {
-        Debug "Trying to capture our own main window... $w"
-        return true
+        Debug "Found $w to be our own main window"
+        return 2
     }
+#    set thisAppWH [twapi::get_parent_window [twapi::tkpath_to_hwnd .]]
+#    if {$w==$thisAppWH} {
+#        Debug "Found $w to be our own main window"
+#        return 2
+#    }
     foreach {n wh} [array get slot2handle] {
         if {$w==$wh} {
-            Debug "Trying to capture our own WOB $n... $w"
-            return true
+            Debug "Found $w to capture our own WOB $n"
+            return 1
         }
     }
-    Debug "Requesting capture of $w which is not $thisAppWH nor one of the WOB windows"
-    return false
+    set parent [twapi::get_parent_window $w]
+    Debug "Found $w to be neither $thisAppWH nor one of the WOB windows, recursing to $parent"
+    IsOurs $parent
 }
 
 # TODO: count errors and stop instead of spinning after a while
@@ -1457,7 +1495,7 @@ proc Capture {} {
             Debug "Not capturing desktop window"
             return
         }
-        if {[IsOurs $w]} {
+        if {[IsOneOfOursCache $w]} {
             WobError "WoW Open Box Error" "Can't capture foreground window: it's (already) ours!"
             return
         }
@@ -1495,7 +1533,8 @@ proc PostCapture {w wname} {
 }
 
 proc updateListBox {n w wname} {
-    global slot2handle slot2position nextWindow maxNumW settings
+    global slot2handle slot2position nextWindow maxNumW settings windowHandleCache 
+    set windowHandleCache($w) 1
     set slot2handle($n) $w
     set slot2position($n) $n
     if {[info exists settings(hk$n,focus)]} {
@@ -2234,9 +2273,10 @@ proc Overlay {} {
 }
 
 proc ResetAll {} {
-    global settings lastUpdate lastSOT slot2position
+    global settings lastUpdate lastSOT slot2position windowHandleCache
     array unset lastUpdate
     array unset lastSOT
+    array unset windowHandleCache
     Debug "Reset all called!"
     for {set i $settings(numWindows)} {$i>=1} {incr i -1} {
         # reset initial position
