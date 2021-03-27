@@ -55,9 +55,9 @@ proc EnableDisableWindows {enable} {
     if {$enable} {
         catch {tk busy forget .layout}
         catch {tk busy forget .overlayConfig}
-        tk busy forget .
+        catch {tk busy forget .}
     } else {
-        tk busy hold .
+        catch {tk busy hold .}
         catch {tk busy hold .overlayConfig}
         catch {tk busy hold .layout}
         update
@@ -247,6 +247,7 @@ proc NewProfile {} {
     grid $t.e - -sticky news -padx 4 -pady 4
     grid $t.ok $t.cancel -padx 4 -pady 4
     focus $t.e
+    UpdateHandles
     vwait doneDialog
     destroy $t
     EnableDisableWindows 1
@@ -271,7 +272,10 @@ proc ProfileFileName {profile} {
 }
 
 proc SaveSettings {args} {
-    global SETTINGS_FILE settings app_dir
+    global SETTINGS_FILE settings app_dir isPaused prevOL
+    if {$isPaused && $prevOL} {
+        set settings(showOverlay) 1
+    }
     set p $settings(profile)
     if {$p!="Default"} {
         Debug "SaveSettings for profile $p"
@@ -631,6 +635,7 @@ proc ClipboardManager {} {
     tooltip $tw.copy "Copy hidden text"
     tooltip $tw.clear "Clear clipboard and hidden text"
     bind $tw.clear <Destroy> ClearClipboard
+    UpdateHandles
 }
 
 #### end of clipboard management ####
@@ -721,6 +726,7 @@ proc MouseTracking {} {
     grid [ttk::button $tw.bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry $tw.emt -textvariable mouseCoords -width 14] -padx 4 -sticky w
     tooltip $tw.bml "Start/Stop mouse tracking\nHotkey: $settings(hk,mouseTrack)"
     grid [ttk::label $tw.la -text "Coords in area"] [entry $tw.ema -textvariable mouseArea -width 14] -padx 4 -sticky w
+    UpdateHandles
     StartStopMouseTrack
 }
 
@@ -787,6 +793,20 @@ proc MouseIsIn {} {
     CoordsIn $coords
 }
 
+proc ShouldPause {} {
+    if {[catch {twapi::get_mouse_location} coords]} {
+        # expected in lock screen etc
+        #Debug "Can't get mouse coords: $coords"
+        return 1
+    }
+    lassign $coords x y
+    set w [twapi::get_window_at_location $x $y]
+    set isOurs [IsOurs $w]
+    #Debug "For $x $y : $w : $isOurs"
+    expr {$isOurs<2}
+}
+
+
 proc MouseArea {mouseCoords} {
     global settings
     set n [CoordsIn $mouseCoords]
@@ -797,14 +817,11 @@ proc MouseArea {mouseCoords} {
     }
 }
 
-set prevMouseArea 0
-set prevRR 0
-set prevMF 0
-set prevOL 0
+set isPaused 0
 set pauseSchedule {}
 
 proc PeriodicChecks {} {
-    global settings prevMouseArea prevRR prevMF prevOL hasRR rrOn mouseFollow maxNumW pauseSchedule
+    global settings isPaused prevRR prevMF prevOL hasRR rrOn mouseFollow maxNumW pauseSchedule
     after cancel $pauseSchedule
     set pauseSchedule {}
     if {$settings(autoCapture) && ($maxNumW<=$settings(numWindows))} {
@@ -819,10 +836,13 @@ proc PeriodicChecks {} {
     if {!$settings(mouseOutsideWindowsPauses)} {
         return
     }
-    set n [MouseIsIn]
-    if {$n != $prevMouseArea} {
-        Debug "Change of window from $prevMouseArea to $n"
-        if {$n==0} {
+    set shouldPause [ShouldPause]
+    if {$shouldPause != $isPaused} {
+        Debug "Change of window from $isPaused to $shouldPause"
+        if {$shouldPause} {
+            set prevRR 0
+            set prevMF 0
+            set prevOL 0
             if {$hasRR && $rrOn} {
                 RRToggle
                 set prevRR 1
@@ -836,9 +856,9 @@ proc PeriodicChecks {} {
                 OverlayToggle
                 set prevOL 1
             }
-        } elseif {$prevMouseArea==0} {
+        } else {
             Debug "Restoring $prevRR $prevMF $prevOL"
-            if {$prevRR} {
+            if {$prevRR && !$rrOn} {
                 RRToggle
             }
             if {$prevMF} {
@@ -846,14 +866,12 @@ proc PeriodicChecks {} {
                 UpdateMouseFollow
             }
             if {$prevOL} {
-                OverlayToggle
+                set settings(showOverlay) 1
+                OverlayUpdate
             }
-            set prevRR 0
-            set prevMF 0
-            set prevOL 0
         }
     }
-    set prevMouseArea $n
+    set isPaused $shouldPause
 }
 
 proc mouseTrack {} {
@@ -928,7 +946,11 @@ proc CheckWindow {cmd n} {
         return
     }
     Debug "Error processing $cmd for $n: $err"
-    catch {unset slot2handle($n)}
+    if {[info exists slot2handle($n)]} {
+        set w slot2handle($n)
+        unset slot2handle($n)
+        UpdateHandles
+    }
     .b2 configure -text " Capture "
     set n0 [expr {$n-1}]
     .lbw delete $n0
@@ -974,6 +996,7 @@ proc Forget {n} {
     set wh $slot2handle($n)
     catch {Rename $wh $settings(game)}
     unset slot2handle($n)
+    UpdateHandles
     .b2 configure -text " Capture "
     set n0 [expr {$n-1}]
     .lbw delete $n0
@@ -1410,22 +1433,87 @@ proc IsDesktop {w} {
     expr {$id==0x10010}
 }
 
-
-proc IsOurs {w} {
-    global slot2handle
-    set thisAppWH [twapi::get_parent_window [twapi::tkpath_to_hwnd .]]
-    if {$w==$thisAppWH} {
-        Debug "Trying to capture our own main window... $w"
-        return true
-    }
-    foreach {n wh} [array get slot2handle] {
-        if {$w==$wh} {
-            Debug "Trying to capture our own WOB $n... $w"
-            return true
+proc TopLevelWindow {w} {
+    set n 0
+    #Debug "Calling TopLevelWindow $w"
+    while 1 {
+        set parent [twapi::get_parent_window $w]
+        if {$parent == "" || $parent == $w || [IsDesktop $parent]} {
+            return $w
+        }
+        #Debug "Finding Toplevel $w recursing to $parent"
+        set w $parent
+        incr n
+        if {$n>20} {
+            error "Unexpected to take over 20 parent to find toplevel for $w, $parent"
         }
     }
-    Debug "Requesting capture of $w which is not $thisAppWH nor one of the WOB windows"
-    return false
+    #Debug "Done -> $w (parent $parent)"
+    return $w
+}
+
+
+proc Defer {time cmd} {
+    after idle [list after $time $cmd]
+}
+
+# All our windows (to not capture and to handle pause/overlay hide)
+array set ourWindowHandles {}
+# value is 3 for game window
+# 2 for UI like overlay and wizard and overlay config
+# 1 for main UI (no RR/overlay)
+# non existant/0 is other windows
+# so anything <= 1 should not show overlay, do RR,...
+
+proc UpdateHandles {} {
+    update
+    after idle UpdateOurWindowHandles
+}
+
+proc UpdateOurWindowHandles {} {
+    global ourWindowHandles slot2handle
+    array unset ourWindowHandles
+    array set topw {}
+    foreach w [winfo children .] {
+        set topw([winfo toplevel $w]) 1
+    }
+    array set wid {}
+    set notReady 0
+    foreach w [array names topw] {
+        set wh [twapi::tkpath_to_hwnd $w]
+        set tl [TopLevelWindow $wh]
+        if {$tl==$wh} {
+            # not ready
+            set notReady 1
+        }
+        Debug "$w -> $wh -> $tl"
+        set val 2
+        if {$w==".clip" || $w==".newProfile"} {
+            Debug "Found $w to pause"
+            set val 1
+        }
+        set ourWindowHandles($tl) $val
+    }
+    foreach {n wh} [array get slot2handle] {
+        set ourWindowHandles($wh) 3
+    }
+    Debug "Done refreshing window ids - retry $notReady"
+    if {$notReady} {
+        Defer 100 UpdateOurWindowHandles
+    }
+}
+
+# now 4 states: game window and overlay/misc UI is 1 and 2, our main UI 3, neither is 0
+proc IsOurs {w} {
+    global ourWindowHandles
+    if {[IsDesktop $w]} {
+        return 0
+    }
+    set tl [TopLevelWindow $w]
+    if {[info exists ourWindowHandles($tl)]} {
+        return $ourWindowHandles($tl)
+    }
+    return 0
 }
 
 # TODO: count errors and stop instead of spinning after a while
@@ -1498,6 +1586,7 @@ proc updateListBox {n w wname} {
     global slot2handle slot2position nextWindow maxNumW settings
     set slot2handle($n) $w
     set slot2position($n) $n
+    UpdateHandles
     if {[info exists settings(hk$n,focus)]} {
         Debug "Setting focus hotkey for $n / $wname: $settings(hk$n,focus)"
         RegisterHotkey "Focus window $n" hk$n,focus [list FocusN $n true]
@@ -2098,6 +2187,8 @@ proc OverlayUpdate {} {
 proc OverlayConfig {} {
     global settings hasRR
     set tw .overlayConfig
+    set settings(showOverlay) 1
+    OverlayUpdate
     if {[winfo exists $tw]} {
         wm state $tw normal
         raise $tw
@@ -2130,6 +2221,7 @@ proc OverlayConfig {} {
         tooltip $tw.re3 "Relative vertical position: 0 is top 1 is bottom, 0.5 is center"
         grid [ttk::label $tw.lr5 -text "(type <Return> to update)" -anchor n] -pady 6 -columnspan 3
     }
+    UpdateHandles
 }
 
 proc OverlayChangeFocusColor {} {
@@ -2231,6 +2323,7 @@ proc Overlay {} {
         wm state .o$i withdrawn
         incr i
     }
+    UpdateHandles
 }
 
 proc ResetAll {} {
@@ -2247,6 +2340,7 @@ proc ResetAll {} {
         }
     }
     SetAsMain 1
+    UpdateHandles
     CheckAutoKill
 }
 
@@ -2697,6 +2791,7 @@ proc SetupMove {} {
             UpdateLayoutInfo $selectedTag
         }
     }
+    UpdateHandles
 }
 
 
@@ -2865,10 +2960,6 @@ if {![winfo exists .logo]} {
     updateIndex
     # Save settings once
     SaveSettings
-}
-
-proc Defer {time cmd} {
-    after idle [list after $time $cmd]
 }
 
 # --- main / tweak me ---
