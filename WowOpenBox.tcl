@@ -1,4 +1,4 @@
-#  WowOpenBox / OpenMultiboxing by MooreaTV <moorea@ymail.com> (c) 2020-2021 All rights reserved
+﻿#  WowOpenBox / OpenMultiboxing by MooreaTV <moorea@ymail.com> (c) 2020-2021 All rights reserved
 #  Open Source Software licensed under GPLv3 - No Warranty
 #  (contact the author if you need a different license)
 #
@@ -541,7 +541,7 @@ proc UISetup {} {
 
     if {$hasRR} {
         grid [frame .sepRR -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
-        grid [ttk::label .lRR -text "\u27F3 Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
+        grid [ttk::label .lRR -text "⟳ Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
         grid [ttk::checkbutton .cbRR -text "Round Robin ($settings(hk,rrToggle))" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
         tooltip .cbRR "Toggle round robin mode\nAlso turns off mouse focus and restore as needed while on\nHotkey: $settings(hk,rrToggle)"
         grid [ttk::label .lrrK -text "Round Robin 'All' keys:"] -padx 4 -columnspan 2 -sticky w
@@ -568,7 +568,7 @@ proc UISetup {} {
     }
 
     grid [frame .sep2 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
-    grid [ttk::label .l6 -text "Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
+    grid [ttk::label .l6 -text "🖰 Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
     grid [ttk::checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
     tooltip .mf "Toggle focus follow mouse mode\nHotkey: $settings(hk,focusFollowMouse)"
 #    grid [ttk::label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width]  -padx 4 -sticky w
@@ -2034,6 +2034,7 @@ proc RRUpdate {} {
             UpdateMouseFollow
         }
     }
+    AddMouseToRRLabel
     Debug "Reset all RR key states"
 }
 
@@ -2213,14 +2214,17 @@ proc OverlayConfig {} {
         grid [ttk::label $tw.lr2 -text "Label:" -anchor e] [entry $tw.re1 -width 5 -textvariable settings(rrIndicator,label)] -sticky ew -padx 6
         bind $tw.re1 <Return> "RRUpdate; SaveSettings"
         tooltip $tw.re1 "What is shown when RR is on"
-        grid [ttk::label $tw.lr3 -text "X:" -anchor e] [entry $tw.re2 -width 5 -textvariable settings(rrIndicator,x)] -sticky ew -padx 6
-        bind $tw.re2 <Return> "RRUpdate; SaveSettings"
-        tooltip $tw.re2 "Relative horizontal position: 0 is left 1 is right, 0.5 is center"
-        grid [ttk::label $tw.lr4 -text "Y:" -anchor e] [entry $tw.re3 -width 5 -textvariable settings(rrIndicator,y)] -sticky ew -padx 6
-        bind $tw.re3 <Return> "RRUpdate; SaveSettings"
-        tooltip $tw.re3 "Relative vertical position: 0 is top 1 is bottom, 0.5 is center"
-        grid [ttk::label $tw.lr5 -text "(type <Return> to update)" -anchor n] -pady 6 -columnspan 3
     }
+    grid [ttk::label $tw.lm1 -text "Mouse Focus indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
+    grid [ttk::label $tw.lm2 -text "Label:" -anchor e] [entry $tw.me1 -width 5 -textvariable settings(mfIndicator,label)] -sticky ew -padx 6
+    tooltip $tw.me1 "What is shown when Focus Follow Mouse is on"
+    grid [ttk::label $tw.lr3 -text "X:" -anchor e] [entry $tw.re2 -width 5 -textvariable settings(rrIndicator,x)] -sticky ew -padx 6
+    bind $tw.re2 <Return> "RRUpdate; SaveSettings"
+    tooltip $tw.re2 "Relative horizontal position: 0 is left 1 is right, 0.5 is center"
+    grid [ttk::label $tw.lr4 -text "Y:" -anchor e] [entry $tw.re3 -width 5 -textvariable settings(rrIndicator,y)] -sticky ew -padx 6
+    bind $tw.re3 <Return> "RRUpdate; SaveSettings"
+    tooltip $tw.re3 "Relative vertical position: 0 is top 1 is bottom, 0.5 is center"
+    grid [ttk::label $tw.lr5 -text "(type <Return> to update)" -anchor n] -pady 6 -columnspan 3
     UpdateHandles
 }
 
@@ -2300,7 +2304,7 @@ proc Overlay {} {
             if {$i==1} {
                 bind $t.l <ButtonPress> SwapNextWindow
                 ttk::label $t.rr -text "" -textvariable rrOnLabel -foreground $settings(overlayFocusColor) \
-                    -style WobOverlayText.Label -anchor c
+                    -style WobOverlayText.Label -justify center -anchor c
                 bind $t.rr <ButtonPress> RRToggle
                 place $t.rr -in $t -relx $settings(rrIndicator,x) -rely $settings(rrIndicator,y) -anchor c
             } else {
@@ -2823,12 +2827,23 @@ proc SetMouseRaise {v} {
 
 # -- sync with widget values
 
+proc AddMouseToRRLabel {} {
+    global settings mouseFollow rrOnLabel
+    set left [lindex [split $rrOnLabel \n] 0]
+    if {$mouseFollow} {
+        set rrOnLabel "$left\n$settings(mfIndicator,label)"
+    } else {
+        set rrOnLabel "$left"
+    }
+}
+
 proc UpdateMouseFollow {} {
     global mouseFollow settings
     SetFocusFollowMouse $mouseFollow
     if {$mouseFollow} {
         SetMouseDelay $settings(mouseDelay)
     }
+    AddMouseToRRLabel
 }
 
 proc UpdateMouseRaise {} {
@@ -2896,7 +2911,8 @@ array set settings {
     hk,resetAll "Ctrl-Shift-Alt-R"
     rrIndicator,x 0.5
     rrIndicator,y 0.7
-    rrIndicator,label "\u27F3"
+    rrIndicator,label ⟳
+    mfIndicator,label 🐭
     autoKillName "WowVoiceProxy.exe"
     autoKillOn 1
     mouseDelay 0
