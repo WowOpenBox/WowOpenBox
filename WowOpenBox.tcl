@@ -654,6 +654,33 @@ proc ClipboardManager {} {
 
 #### end of clipboard management ####
 
+proc CloseAllGames {{andExit 0}} {
+    global slot2handle slot2position nextWindow maxNumW
+    set extraMsg ""
+    if {$andExit} {
+        set extraMsg " and Exit WOB/OMB"
+    }
+    set r [WobMessage -type yesno -title "Close All$extraMsg?" -icon warning -default no\
+        -message "Are you sure you want to (force) close all the game windows$extraMsg?\n\nYou will lose all unsaved progress!"]
+    if {$r!="yes"} {
+        Debug "Close All not confirmed"
+        return
+    }
+    Debug "Close all confirmed"
+    foreach {n w} [array get slot2handle] {
+        twapi::close_window $w
+    }
+    if {$andExit} {
+        exit 0
+    }
+    # reset for recapture
+    array unset slot2handle
+    array unset slot2position
+    .lbw delete 0 end
+    set nextWindow 1
+    set maxNumW 1
+}
+
 proc MenuSetup {} {
     global vers settings hasRR mouseRaise
     if {[winfo exists .mbar]} {
@@ -672,6 +699,9 @@ proc MenuSetup {} {
     $m1 add command -label "Reload settings" -command LoadSettings
     $m1 add separator
     $m1 add command -label "Clipboard copy/paster..." -command ClipboardManager
+    $m1 add separator
+    $m1 add command -label "Close all games..." -command CloseAllGames
+    $m1 add command -label "Close all games and Exit..." -command "CloseAllGames 1"
     $m1 add separator
     $m1 add command -label "Save and Exit" -command "SaveSettings; exit 0"
     $m1 add command -label "Exit" -command "exit 0"
