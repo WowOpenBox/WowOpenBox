@@ -668,7 +668,7 @@ proc CloseAllGames {{andExit 0}} {
     }
     Debug "Close all confirmed"
     foreach {n w} [array get slot2handle] {
-        twapi::close_window $w
+        catch {twapi::close_window $w}
     }
     if {$andExit} {
         exit 0
