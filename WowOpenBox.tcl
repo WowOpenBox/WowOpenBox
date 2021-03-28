@@ -1950,8 +1950,7 @@ proc SetWindowOnCanvas {id x1 y1 x2 y2} {
         set hasPin $settings($id,stayOnTop)
     }
     if {$hasPin} {
-        # really 📌 which should be U+1F4CC but... hack to get it out of tcl:
-        set pin "\ud83d\udccc"
+        set pin "📌"
         set sot($id) 1
         after idle "$c raise $tag; $c itemconfigure $tag&&wowWindow -fill #ffcc00"
     } else {
@@ -1969,8 +1968,7 @@ proc UpdateWindowText {tag w h} {
     regsub {^wow} $tag {} id
     set pin ""
     if {$sot($id)} {
-        # really 📌 which should be U+1F4CC but... hack to get it out of tcl:
-        set pin "\ud83d\udccc"
+        set pin "📌"
         after idle "$c raise $tag; $c itemconfigure $tag&&wowWindow -fill #ffcc00"
     } else {
         after idle "$c itemconfigure $tag&&wowWindow -fill #ffd633"
