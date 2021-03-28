@@ -643,14 +643,13 @@ proc ClipboardManager {} {
     toplevel $tw
     wm title $tw "WOB/OMB Secure Copy Paste"
     grid [ttk::label $tw.la -text "Secure text"] [entry $tw.e  -show "*" -textvariable clipboardValue -width 14] -padx 4 -sticky ew
-    if {$hasRR} {
-        bind $tw.e <FocusIn> "set rrOn 0; RRUpdate"
-    }
     grid [ttk::button $tw.copy -width 14 -text "Copy" -command SetClipboard] [ttk::button $tw.clear -width 14 -text "Clear" -command ClearClipboard] -padx 4 -sticky ew
     tooltip $tw.copy "Copy hidden text"
     tooltip $tw.clear "Clear clipboard and hidden text"
     bind $tw.clear <Destroy> ClearClipboard
+    grid [ttk::label $tw.help -text "Type in the entry box, only *s will show,\nClick Copy, then Ctrl-V as many times to paste,\nClose this popup or click Clear to erase."] -padx 4 -pady 6 -columnspan 2
     UpdateHandles
+    focus $tw.e
 }
 
 #### end of clipboard management ####
