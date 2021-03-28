@@ -1488,7 +1488,7 @@ proc UpdateOurWindowHandles {} {
         }
         Debug "$w -> $wh -> $tl"
         set val 2
-        if {$w==".clip" || $w==".newProfile"} {
+        if {$w=="." || $w==".clip" || $w==".newProfile"} {
             Debug "Found $w to pause"
             set val 1
         }
