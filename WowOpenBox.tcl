@@ -2197,7 +2197,7 @@ proc OverlayConfig {} {
     }
     toplevel $tw
     wm title $tw "Wow Open Box Overlay Configuration"
-    grid [ttk::label $tw.l1 -text "Pick the location of the overlay:"] -columnspan 3
+    grid [ttk::label $tw.l1 -text "Pick the location of the window number overlay:"] -columnspan 3
     grid [ttk::button $tw.b1 -text "\u2b76" -command "OverlayAnchor nw"] [ttk::button $tw.b2 -text "\u2b71" -command "OverlayAnchor n"] [ttk::button $tw.b3 -text "\u2b77" -command "OverlayAnchor ne"]
     grid [ttk::button $tw.b4 -text "\u2b70" -command "OverlayAnchor w"] [ttk::button $tw.b5 -text "\uB7" -command "OverlayAnchor c"] [ttk::button $tw.b6 -text "\u2b72" -command "OverlayAnchor e"]
     grid [ttk::button $tw.b7 -text "\u2b79" -command "OverlayAnchor sw"] [ttk::button $tw.b8 -text "\u2b73" -command "OverlayAnchor s"] [ttk::button $tw.b9 -text "\u2b78" -command "OverlayAnchor se"]
@@ -2218,6 +2218,10 @@ proc OverlayConfig {} {
     grid [ttk::label $tw.lm1 -text "Mouse Focus indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
     grid [ttk::label $tw.lm2 -text "Label:" -anchor e] [entry $tw.me1 -width 5 -textvariable settings(mfIndicator,label)] -sticky ew -padx 6
     tooltip $tw.me1 "What is shown when Focus Follow Mouse is on"
+    bind $tw.me1 <Return> "AddMouseToRRLabel; SaveSettings"
+    if {$hasRR} {
+        grid [ttk::label $tw.lp1 -text "⟳ and 🖰 indicators position:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
+    }
     grid [ttk::label $tw.lr3 -text "X:" -anchor e] [entry $tw.re2 -width 5 -textvariable settings(rrIndicator,x)] -sticky ew -padx 6
     bind $tw.re2 <Return> "RRUpdate; SaveSettings"
     tooltip $tw.re2 "Relative horizontal position: 0 is left 1 is right, 0.5 is center"
