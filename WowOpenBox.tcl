@@ -430,9 +430,10 @@ proc updateIndex {args} {
         .l2 configure -text "Next window :"
     }
     if {[info exists slot2handle($nextWindow)]} {
-        .b2 configure -text " Update "
+        .b2 configure -text " Update " -state enabled
     } else {
         .b2 configure -text " Capture "
+        UpdateForegroundMode
     }
 }
 
@@ -533,8 +534,9 @@ proc UISetup {} {
     tooltip .b2 "Capture or update window\nHotkey: $settings(hk,capture)"
     grid [listbox .lbw -height 6] -columnspan 2 -sticky ns
     bind .lbw <<ListboxSelect>> [list selectChanged %W]
-    grid [ttk::checkbutton .cbCaptureFG -text "Capture using foreground window" -variable settings(captureForegroundWindow)] -columnspan 2
-    tooltip .cbCaptureFG "Instead of capturing the game window by name\n($settings(game))\nif checked, capture the current foreground window\nFor this to work you must use the hotkey:\n$settings(hk,capture)"
+    grid [ttk::checkbutton .cbCaptureFG -text "Capture using foreground window" -command UpdateForegroundMode -variable settings(captureForegroundWindow)] -columnspan 2
+    tooltip .cbCaptureFG "Instead of capturing the game window by name\n($settings(game))\nif checked, capture the current foreground window\nFor this to work you must use the hotkey:\n$settings(hk,capture)\n\nUse the Game menu to turn this on"
+    UpdateForegroundMode
     grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command "OverlayUpdate; SaveSettings"] [ttk::button .cbocfg -text "Overlay config" -command OverlayConfig]
     tooltip .cboverlay "Show/Hide the overlay info\nHotkey: $settings(hk,overlayToggle)"
     tooltip .cbocfg "Opens the overlay config which let's you configure\nborder, color, positions, etc... for the overlay"
@@ -580,6 +582,19 @@ proc UISetup {} {
     tooltip .l_bottom "Click to check for update from $vers"
     grid rowconfigure . 9 -weight 1
     grid columnconfigure . 1 -weight 1
+}
+
+proc UpdateForegroundMode {} {
+    global settings
+    if {$settings(captureForegroundWindow)} {
+        .cbCaptureFG configure -state enabled
+        if {[string match "*Capture*" [.b2 configure -text]]} {
+            .b2 configure -state disabled
+        }
+    } else {
+        .b2 configure -state enabled
+        .cbCaptureFG configure -state disabled
+    }
 }
 
 proc About {} {
@@ -669,7 +684,7 @@ proc MenuSetup {} {
         $mG add radiobutton -label $g -variable settings(game)
     }
     $mG add separator
-    $mG add checkbutton -label "Add (capture focused window mode)" -variable settings(captureForegroundWindow)
+    $mG add checkbutton -label "Add (capture focused window mode)" -variable settings(captureForegroundWindow) -command UpdateForegroundMode
 
     set m2 .mbar.profile
     menu $m2 -tearoff 0
@@ -940,7 +955,7 @@ proc focusIn {w args} {
 }
 
 proc CheckWindow {cmd n} {
-    global slot2handle slot2position
+    global slot2handle slot2position settings
     if {![catch $cmd err]} {
         Debug "Ok $cmd for $n"
         return
@@ -952,6 +967,7 @@ proc CheckWindow {cmd n} {
         UpdateHandles
     }
     .b2 configure -text " Capture "
+    UpdateForegroundMode
     set n0 [expr {$n-1}]
     .lbw delete $n0
     .lbw insert $n0 " WOB $n (lost)"
@@ -998,6 +1014,7 @@ proc Forget {n} {
     unset slot2handle($n)
     UpdateHandles
     .b2 configure -text " Capture "
+    UpdateForegroundMode
     set n0 [expr {$n-1}]
     .lbw delete $n0
     .lbw insert $n0 " WOB $n (removed)"
@@ -1470,8 +1487,12 @@ proc UpdateHandles {} {
     after idle UpdateOurWindowHandles
 }
 
+# first defer is 100ms (2x mouse interval)
+set handleRetryCount 2
+set handleErrorShown 0
+
 proc UpdateOurWindowHandles {} {
-    global ourWindowHandles slot2handle
+    global ourWindowHandles slot2handle settings handleRetryCount handleErrorShown vers
     array unset ourWindowHandles
     array set topw {}
     foreach w [winfo children .] {
@@ -1482,9 +1503,14 @@ proc UpdateOurWindowHandles {} {
     foreach w [array names topw] {
         set wh [twapi::tkpath_to_hwnd $w]
         set tl [TopLevelWindow $wh]
+        if {$w==".ctx"} {
+            Debug "Ignoring $w $wh $tl"
+            continue
+        }
         if {$tl==$wh} {
             # not ready
             set notReady 1
+            set notReadyCause "$w $wh $tl"
         }
         Debug "$w -> $wh -> $tl"
         set val 2
@@ -1497,10 +1523,21 @@ proc UpdateOurWindowHandles {} {
     foreach {n wh} [array get slot2handle] {
         set ourWindowHandles($wh) 3
     }
-    Debug "Done refreshing window ids - retry $notReady"
+    Debug "Done refreshing window ids - retry #$handleRetryCount $notReady"
     if {$notReady} {
-        Defer 100 UpdateOurWindowHandles
+        if {$handleRetryCount<=92} {
+            Defer [expr {$handleRetryCount*$settings(mouseWatchInterval)}] UpdateOurWindowHandles
+            incr handleRetryCount 10
+            return
+        }
+        if {$handleErrorShown} {
+            Debug "Already shown error $handleRetryCount: $notReadyCause"
+        } else {
+            set handleErrorShown 1
+            WobError "UpdateHandles Error" "Unable to complete updates after $handleRetryCount.\n\nPlease screenshot this and report this bug.\n\nCode: $notReadyCause\n\n$vers"
+        }
     }
+    set handleRetryCount 2
 }
 
 # now 4 states: game window and overlay/misc UI is 1 and 2, our main UI 3, neither is 0
@@ -1583,10 +1620,10 @@ proc PostCapture {w wname} {
 }
 
 proc updateListBox {n w wname} {
-    global slot2handle slot2position nextWindow maxNumW settings
+    global ourWindowHandles slot2handle slot2position nextWindow maxNumW settings
     set slot2handle($n) $w
     set slot2position($n) $n
-    UpdateHandles
+    set ourWindowHandles($w) 3
     if {[info exists settings(hk$n,focus)]} {
         Debug "Setting focus hotkey for $n / $wname: $settings(hk$n,focus)"
         RegisterHotkey "Focus window $n" hk$n,focus [list FocusN $n true]
@@ -1608,7 +1645,7 @@ proc updateListBox {n w wname} {
         .lbw see $n0
         .lbw selection set $n0
         # todo: handle update/capture in one place
-        .b2 configure -text " Update "
+        .b2 configure -text " Update " -state enabled
         return
     }
     # jump by more than 1
