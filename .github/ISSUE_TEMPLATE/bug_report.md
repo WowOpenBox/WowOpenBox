@@ -29,8 +29,16 @@ Are you using the _RR exe?
 **Game:**
 Which Game are you playing? (Classic? Shadowlands?...)
 
+Attach graphic and advanced graphic settings screenshots if relevant
+
 **Settings:**
 Drag you wowopenboxSettings.tcl file here to attach it
+
+**Error details:**
+If you got an application error with details, please copy paste it here 
+(or screen shot if can't copy)
+
+If the message isn't in English please translate to english
 
 
 **Additional context**
