@@ -1413,7 +1413,7 @@ proc UpdateN {n} {
     }
     Debug "Update for $n in pos $p : $lx,$ly ${lw}x$lh - $lstayOnTop"
     set raised [Update $wh $lx $ly $lw $lh $lstayOnTop]
-    if {$settings(showOverlay)} {
+    if {$settings(showOverlay) && [winfo exists .o$p]} {
         .o$p.l configure -text $n
         if {$p!=1} {
             bind .o$p.l <ButtonPress> [list SetAsMain $n]
@@ -1512,7 +1512,6 @@ array set ourWindowHandles {}
 # so anything <= 1 should not show overlay, do RR,...
 
 proc UpdateHandles {} {
-    update
     after idle UpdateOurWindowHandles
 }
 
@@ -2229,7 +2228,11 @@ proc OverlayToggle {} {
 proc OverlayUpdate {} {
     global settings focusWindow
     set on $settings(showOverlay)
-    for {set i 1} {$i<=$settings(numWindows)} {incr i} {
+    set lastOverlay $settings(numWindows)
+    if {$settings(layoutStacked)} {
+        set lastOverlay 1
+    }
+    for {set i 1} {$i<=$lastOverlay} {incr i} {
         set t .o$i
         if {![winfo exists $t]} {
             Debug "Overlay for $i doesn't exist..."
@@ -3051,6 +3054,7 @@ puts "WowOpenBox - OpenMultiBoxing $vers started..."
 Defer 100 FindExisting
 set bottomText "WowOpenBox, OpenMultiBoxing $vers"
 wm state . normal
+Defer 150 {raise .}
 if {$settings(numWindows)==0} {
     Debug "No layout setup, opening layout"
     Defer 250 {.bwl invoke}
@@ -3073,7 +3077,7 @@ if {$settings(mouseFocusOnAtStart)} {
     UpdateMouseFollow
 }
 if {$settings(clipboardAtStart)} {
-    Defer 250 ClipboardManager
+    Defer 200 ClipboardManager
 }
 # Mouse tracking/auto pause and auto capture
 Defer 350 PeriodicChecks
