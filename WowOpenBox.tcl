@@ -2315,7 +2315,8 @@ proc OverlayConfig {} {
     grid [ttk::label $tw.l2 -text "Overlay transparency:"] -columnspan 3
     grid [ttk::scale $tw.str  -variable settings(overlayAlpha) -command "OverlayTransparency"] -sticky ew -padx 4 -pady 4 -columnspan 3
     grid [button $tw.color -text "Change Focus Color" -bg $settings(overlayFocusColor) -command OverlayChangeFocusColor] -padx 8 -pady 4 -columnspan 3
-    grid [ttk::checkbutton $tw.border -text "Overlay border" -variable settings(overlayShowBorder) -command "Overlay; SaveSettings"] -padx 8 -pady 4 -columnspan 3
+    grid [ttk::checkbutton $tw.border -text "Overlay border" -variable settings(overlayShowBorder) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
+    grid [ttk::checkbutton $tw.clickable -text "Clickable overlay" -variable settings(overlayClickable) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
     if {$hasRR} {
         grid [ttk::label $tw.lr1 -text "Round Robin indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
         grid [ttk::label $tw.lr2 -text "Label:" -anchor e] [entry $tw.re1 -width 5 -textvariable settings(rrIndicator,label)] -sticky ew -padx 6
@@ -2400,16 +2401,16 @@ proc Overlay {} {
     if {$settings(layoutStacked)} {
         set lastOverlay 1
     }
+    set relief flat
+    if {$settings(overlayShowBorder)} {
+        set relief ridge
+    }
     for {set i 1} {$i<=$lastOverlay} {incr i} {
         if {![info exists settings($i,posXY)]} {
             Debug "Numwindows $settings(numWindows) is higher than configured windows... error for $i"
             return
         }
         set t .o$i
-        set relief flat
-        if {$settings(overlayShowBorder)} {
-            set relief ridge
-        }
         if {![winfo exists $t]} {
             toplevel $t -bd 2 -relief $relief
             wm overrideredirect $t 1
@@ -2417,17 +2418,28 @@ proc Overlay {} {
             $t configure -bg $transparentcolor
             ttk::label $t.l -text "$i" -style WobOverlayText.Label -anchor $settings(overlayAnchor)
             if {$i==1} {
-                bind $t.l <ButtonPress> SwapNextWindow
                 ttk::label $t.rr -text "" -textvariable rrOnLabel -foreground $settings(overlayFocusColor) \
                     -style WobOverlayText.Label -justify center -anchor c
-                bind $t.rr <ButtonPress> RRToggle
                 place $t.rr -in $t -relx $settings(rrIndicator,x) -rely $settings(rrIndicator,y) -anchor c
-            } else {
-                bind $t.l <ButtonPress> [list SetAsMain $i]
             }
             pack $t.l -fill both -expand 1
         } else {
             $t configure -relief $relief
+        }
+        if {$settings(overlayClickable)} {
+            if {$i==1} {
+                bind $t.l <ButtonPress> SwapNextWindow
+                bind $t.rr <ButtonPress> RRToggle
+            } else {
+                bind $t.l <ButtonPress> [list SetAsMain $i]
+            }
+        } else {
+            if {$i==1} {
+                bind $t.l <ButtonPress> {}
+                bind $t.rr <ButtonPress> {}
+            } else {
+                bind $t.l <ButtonPress> {}
+            }
         }
         lassign $settings($i,posXY) x y
         lassign $settings($i,size) w h
@@ -3007,6 +3019,7 @@ array set settings {
     overlayAlpha 0.7
     overlayAnchor n
     overlayShowBorder 1
+    overlayClickable 1
     game "World of Warcraft"
     games {"World of Warcraft" "EVE" "Star Wars\u2122: The Old Republic\u2122"}
     captureForegroundWindow 0
