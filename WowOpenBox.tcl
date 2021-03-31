@@ -348,6 +348,7 @@ proc LoadProfile {} {
     # Otherwise can be reset when switching from Profile N back to Default
     set settings(profile) $profile
     AfterSettings
+    ResetAll
 }
 
 proc LoadSettings {} {
