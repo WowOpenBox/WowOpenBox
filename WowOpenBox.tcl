@@ -1322,8 +1322,12 @@ proc FocusN {n fg {update 1}} {
     }
     if {$settings(showOverlay)} {
         set prevFocusPos $slot2position($focusWindow)
-        .o$prevFocusPos.l configure -foreground white
-        .o$p.l configure -foreground $settings(overlayFocusColor)
+        if {[winfo exists .o$prevFocusPos]} {
+            .o$prevFocusPos.l configure -foreground white
+        }
+        if {[winfo exists .o$p]} {
+            .o$p.l configure -foreground $settings(overlayFocusColor)
+        }
     }
     if {$update} {
         set focusWindow $n
