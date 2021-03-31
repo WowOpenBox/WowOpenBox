@@ -271,6 +271,27 @@ proc ProfileFileName {profile} {
     return $path
 }
 
+proc RefreshProfiles {} {
+    global app_dir SETTINGS_PREFIX SETTINGS_SUFFIX settings
+    set settings(profiles) [list "Default"]
+    foreach fn [glob [file join $app_dir "${SETTINGS_PREFIX}*${SETTINGS_SUFFIX}"]] {
+        # suffix starts with a . so \ it
+        set p ""
+        regexp "^.*${SETTINGS_PREFIX}(.*)\\${SETTINGS_SUFFIX}$" $fn all p
+        Debug "Found file $fn -> $p"
+        if {$p==""} {
+            continue
+        }
+        lappend settings(profiles) $p
+    }
+    if {[lsearch -exact $settings(profiles) $settings(profile)] == -1} {
+        WobMessage "Profile $settings(profile) not found; resetting to Default"
+        set settings(profile) "Default"
+    }
+    UpdateProfilesMenu
+    LoadProfile
+}
+
 proc SaveSettings {args} {
     global SETTINGS_FILE settings app_dir isPaused prevOL
     if {$isPaused && $prevOL} {
@@ -322,7 +343,7 @@ proc LoadProfile {} {
     if {[catch {source -encoding utf-8 $pf} err]} {
         puts stderr "Error sourcing profile $pf\n$err"
         WobError "WoW Open Box profile error" \
-            "Your $pf has an error: $err"
+            "Your $pf has an error: $err\nYou can remove it and use Refresh Profiles in the menu."
     }
     # Otherwise can be reset when switching from Profile N back to Default
     set settings(profile) $profile
@@ -379,6 +400,7 @@ proc AfterSettings {} {
     set mouseDelay [GetMouseDelay]
     set mouseFollow [GetFocusFollowMouse]
     set mouseRaise [GetMouseRaise]
+    LoadLayout
     Overlay
     Debug "Settings (re)Loaded."
 }
@@ -681,6 +703,17 @@ proc CloseAllGames {{andExit 0}} {
     set maxNumW 1
 }
 
+proc UpdateProfilesMenu {} {
+    global settings
+    set m2 .mbar.profile
+    $m2 delete 0 end
+    foreach p $settings(profiles) {
+        $m2 add radiobutton -label $p -variable settings(profile) -command LoadProfile
+    }
+    $m2 add separator
+    $m2 add command -label "Refresh Profiles" -command RefreshProfiles
+}
+
 proc MenuSetup {} {
     global vers settings hasRR mouseRaise
     if {[winfo exists .mbar]} {
@@ -718,9 +751,7 @@ proc MenuSetup {} {
     set m2 .mbar.profile
     menu $m2 -tearoff 0
     .mbar add cascade -label Profile -menu $m2
-    foreach p $settings(profiles) {
-        $m2 add radiobutton -label $p -variable settings(profile) -command LoadProfile
-    }
+    UpdateProfilesMenu
 
     set m3 .mbar.options
     menu $m3 -tearoff 0
@@ -1719,6 +1750,11 @@ proc UpdateExcluded {} {
     }
 }
 
+proc UpdateLayoutNumWindows {} {
+    global settings layoutNumWindowsText
+    set layoutNumWindowsText "Layout for\n$settings(numWindows) windows"
+}
+
 proc ChangeNumWindow {v} {
     global settings
     set n [expr round($v)]
@@ -1726,7 +1762,6 @@ proc ChangeNumWindow {v} {
         return
     }
     set settings(numWindows) $n
-    set layoutNumWindowsText "Layout for $n windows"
     ChangeLayout
 }
 
@@ -1751,7 +1786,7 @@ proc WindowLayout {} {
     tooltip $tw.cb1 "Check or uncheck to redo the layout with\nwindows of the same size (fastest switch later)\nor not (1 big main window and smaller minions windows)"
     set layoutNumWindowsText "99 windows"
     set width [expr {2+[string length $layoutNumWindowsText]}]
-    set layoutNumWindowsText "Layout for\n$settings(numWindows) windows"
+    UpdateLayoutNumWindows
     grid [ttk::label $tw.l1 -textvariable layoutNumWindowsText -width $width -anchor c -justify center] $tw.s - $tw.cb1  $tw.cb2 $tw.cb3 -sticky we -pady 4 -padx 4
     tooltip $tw.l1 "After automatic layout,\ndrag any window to adjust as necessary,\nuse arrow keys for fine pixel adjustment.\nClick on text to toggle stay on top... etc..."
     frame $tw.asrf
@@ -2007,6 +2042,11 @@ proc UpdateWindowText {tag w h} {
 proc LoadLayout {} {
     global settings scale
     set c .layout.c
+    if {![winfo exists $c]} {
+        # called from LoadSettings for instance but layout window is not up
+        return
+    }
+    UpdateLayoutNumWindows
     $c delete wowAll
     set n $settings(numWindows)
     if {$n==0 || $n==""} {
@@ -2450,13 +2490,13 @@ proc InitAspectRatio {} {
 }
 
 proc ChangeLayout {args} {
-    global settings monitorInfo scale aspectRatio sot stayOnTop layoutNumWindowsText
+    global settings monitorInfo scale aspectRatio sot stayOnTop
     InitAspectRatio
     set layoutOneSize $settings(layoutOneSize)
     set n [expr round($settings(numWindows))]
     set settings(numWindows) $n
     RRCustomMenu
-    set layoutNumWindowsText "Layout for\n$n windows"
+    UpdateLayoutNumWindows
     set c .layout.c
     if {![winfo exists $c]} {
         return
