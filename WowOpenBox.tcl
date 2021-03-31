@@ -2351,6 +2351,10 @@ proc OverlayChangeFocusColor {} {
     if {[winfo exist $f]} {
         $f configure -foreground $color
     }
+    set f .o1.rr
+    if {[winfo exist $f]} {
+        $f configure -foreground $color
+    }
     SaveSettings
 }
 
