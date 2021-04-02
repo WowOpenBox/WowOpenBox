@@ -109,6 +109,10 @@ if {![info exists wobInitDone]} {
         set hasRR 1
         Debug "OMB $vers called with -rr (hopefully from OpenMultiBoxing_RR.exe)"
     }
+    if {[HasArg "-profile"]} {
+        set initProfile [lindex $argv end]
+        Debug "WOB requested profile '$initProfile'"
+    }
     # TOS compliance - do it first so the binary can't possibly be used for broadcasting
     if {[catch {
         rename twapi::SendInput {}
@@ -345,6 +349,8 @@ proc LoadProfile {} {
         puts stderr "Error sourcing profile $pf\n$err"
         WobError "WoW Open Box profile error" \
             "Your $pf has an error: $err\nYou can remove it and use Refresh Profiles in the menu."
+        set settings(profile) "Default"
+        return
     }
     # Otherwise can be reset when switching from Profile N back to Default
     set settings(profile) $profile
@@ -3143,6 +3149,12 @@ if {![info exists pos]} {
 }
 
 LoadSettings
+if {[info exists initProfile]} {
+    Debug "Loading cmd line initProfile $initProfile"
+    set settings(profile) $initProfile
+    unset initProfile
+    LoadProfile
+}
 
 if {$settings(captureForegroundWindow) || $settings(game) != "World of Warcraft"} {
     set skin 1
