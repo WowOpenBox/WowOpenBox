@@ -1792,7 +1792,7 @@ proc UpdateExcluded {} {
 
 proc UpdateLayoutNumWindows {} {
     global settings layoutNumWindowsText
-    set layoutNumWindowsText "Layout for\n$settings(numWindows) windows"
+    set layoutNumWindowsText "Layout for $settings(numWindows) windows"
 }
 
 proc ChangeNumWindow {v} {
@@ -1817,17 +1817,23 @@ proc WindowLayout {} {
     UpdateExcluded
     toplevel $tw
     wm title $tw "Wow Open Box Window Layout"
+    ttk::checkbutton $tw.cbA -variable settings(layoutAuto) -text "Auto" -command ChangeLayout
+    tooltip $tw.cbA "Automatically regenerate the layout on any change\nwhen checked. Uncheck for manual layout"
+    ttk::checkbutton $tw.cbT -variable settings(layoutTop) -text "Prefer Top" -command ChangeLayout
+    tooltip $tw.cbT "Checked if you prefer small windows on top of the main window"
     set numWindowsFloat $settings(numWindows)
     ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to $settings(layoutMaxWindows) -command ChangeNumWindow
     tooltip $tw.s "Select how many windows in your layout."
-    ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size\nfor all windows" -command ChangeLayout
-    ttk::checkbutton $tw.cb2 -variable settings(layoutOneRowCol) -text "One row/col\nfor small windows" -command ChangeLayout
+    ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size for all" -command ChangeLayout
+    ttk::checkbutton $tw.cb2 -variable settings(layoutOneRowCol) -text "One row/col for small windows" -command ChangeLayout
     ttk::checkbutton $tw.cb3 -variable settings(layoutStacked) -text "All Stacked" -command ChangeLayout
     tooltip $tw.cb1 "Check or uncheck to redo the layout with\nwindows of the same size (fastest switch later)\nor not (1 big main window and smaller minions windows)"
-    set layoutNumWindowsText "99 windows"
+    set layoutNumWindowsText "Layout for 99 windows"
     set width [expr {2+[string length $layoutNumWindowsText]}]
     UpdateLayoutNumWindows
-    grid [ttk::label $tw.l1 -textvariable layoutNumWindowsText -width $width -anchor c -justify center] $tw.s - $tw.cb1  $tw.cb2 $tw.cb3 -sticky we -pady 4 -padx 4
+    grid x x x x $tw.cb2 - x -padx 8 -sticky we
+    grid $tw.cbA -column 0 -row 0 -sticky {}
+    grid [ttk::label $tw.l1 -textvariable layoutNumWindowsText -width $width -anchor c -justify center] $tw.s - $tw.cb1  $tw.cbT $tw.cb3 -sticky we -padx 8
     tooltip $tw.l1 "After automatic layout,\ndrag any window to adjust as necessary,\nuse arrow keys for fine pixel adjustment.\nClick on text to toggle stay on top... etc..."
     frame $tw.asrf
     ttk::radiobutton $tw.asrf.ar0 -value "Any" -text "Any" -variable settings(aspectRatio) -command ChangeLayout
@@ -1836,9 +1842,9 @@ proc WindowLayout {} {
     ttk::radiobutton $tw.asrf.ar3 -value "16/10" -text "16:10" -variable settings(aspectRatio) -command ChangeLayout
     ttk::radiobutton $tw.asrf.ar4 -value "16/9" -text "16:9" -variable settings(aspectRatio) -command ChangeLayout
     ttk::radiobutton $tw.asrf.ar5 -value "21/9" -text "21:9" -variable settings(aspectRatio) -command ChangeLayout
-    pack [ttk::label $tw.asrf.l2 -text "Aspect ratio:"] $tw.asrf.ar0  $tw.asrf.ar1  $tw.asrf.ar2  $tw.asrf.ar3  $tw.asrf.ar4  $tw.asrf.ar5 -side left -expand 1
-    grid $tw.asrf -padx 3 -columnspan 6 -sticky we
-    grid [canvas $tw.c -relief ridge -bd 2] -columnspan 6 -padx 5 -pady 5
+    pack [ttk::label $tw.asrf.l2 -text "Aspect ratio:" -anchor w -justify left] $tw.asrf.ar0  $tw.asrf.ar1  $tw.asrf.ar2  $tw.asrf.ar3  $tw.asrf.ar4  $tw.asrf.ar5 -side left -expand 1
+    grid $tw.asrf -padx 3 -pady 6 -columnspan 6 -sticky we
+    grid [canvas $tw.c -relief ridge -bd 2] -columnspan 6 -padx 5
     grid [ttk::label $tw.linfo -textvariable layoutinfo] -columnspan 6
     ttk::menubutton $tw.monIdx -textvariable skipMonitorText -menu $tw.monIdx.menu
     tooltip $tw.monIdx "Select the monitor(s) to exclude from the automatic layout."
@@ -1873,7 +1879,7 @@ proc WindowLayout {} {
         [ttk::button $tw.bsave -text " Save and Apply " -command SaveLayout -style WobBoldButton.TButton] -sticky ns -padx 4 -pady 4
     tooltip $tw.bsave "Saves the currently shown layout into permanent settings\nand apply it to any captured WoW windows.\nClose the window without clicking to keep your previous Layout."
     tooltip  $tw.cstayontop "Whether newly laid out window will have\nStay On Top set or not as starting value."
-    grid rowconfigure $tw 2 -weight 1
+    grid rowconfigure $tw 3 -weight 1
     for {set i 0} {$i<6} {incr i} {
         grid columnconfigure $tw $i -weight 1
     }
@@ -1909,7 +1915,7 @@ proc SetUpMonitors {} {
         return 0
     }
     destroy $tw.c
-    grid [canvas $tw.c -relief ridge -bd 2] -row 2 -columnspan 6 -padx 5 -pady 5
+    grid [canvas $tw.c -relief ridge -bd 2] -row 3 -columnspan 6 -padx 5
     set displayInfo [twapi::get_multiple_display_monitor_info]
     Debug "displayInfo = $displayInfo"
     set n 0
@@ -2560,6 +2566,9 @@ proc ChangeLayout {args} {
     if {![winfo exists $c]} {
         return
     }
+    if {!$settings(layoutAuto)} {
+        return
+    }
     $c delete wowAll
     Debug "*** ChangeLayout $args for $n - onesize $layoutOneSize"
     if {$settings(layoutStacked)} {
@@ -2787,7 +2796,11 @@ proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
     set bh [expr {int($sh*$c)}]
     Debug "Using $bw x $bh for big window"
     set xw1 [expr {$x1+$bw}]
-    SetWindowOnCanvas $startAt $x1 $y1 $xw1 [expr {$y1+$bh}]
+    set yy1 $y1
+    if {$settings(layoutTop)} {
+        set yy1 [expr {$y1+$sh}]
+    }
+    SetWindowOnCanvas $startAt $x1 $yy1 $xw1 [expr {$yy1+$bh}]
     incr numWindows -1
     incr startAt 1
     set xw2 [expr {$xw1+$sw}]
@@ -2798,7 +2811,11 @@ proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
         incr startAt 1
         incr numWindows -1
     }
-    set yw1 [expr {$y1+$bh}]
+    if {$settings(layoutTop)} {
+        set yw1 $y1
+    } else {
+        set yw1 [expr {$y1+$bh}]
+    }
     set yw2 [expr {$yw1+$sh}]
     set xw1 $x1
     for {} {$numWindows>0} {incr numWindows -1} {
@@ -2866,6 +2883,7 @@ proc SetupMove {} {
         %W move $selectedTag $changed_x $changed_y
         set atx %x
         set aty %y
+        set settings(layoutAuto) 0
         UpdateLayoutInfo $selectedTag
     }
     $c bind wowResize <B1-Motion> {
@@ -2896,6 +2914,7 @@ proc SetupMove {} {
         %W coords $selectedTag&&wowR1 [expr {$nx2-18}] [expr {$ny2-18}] [expr {$nx2-2}] [expr {$ny2-2}]
         %W coords $selectedTag&&wowR2 [expr {$nx2-14}] [expr {$ny2-14}] [expr {$nx2-2}] [expr {$ny2-2}]
         lassign [SizeOfWindow $selectedTag] x1 y1 w h
+        set settings(layoutAuto) 0
         UpdateWindowText $selectedTag $w $h
         UpdateLayoutInfo $selectedTag
     }
@@ -3054,9 +3073,11 @@ array set settings {
     layoutOneSize 1
     layoutOneRowCol 0
     layoutStacked 0
-    layoutScale "1/8"
+    layoutScale "1/6"
     layoutSnap 4
     layoutMaxWindows 32
+    layoutAuto 1
+    layoutTop 0
     showOverlay 1
     overlayFocusColor "#ff0080"
     overlayAlpha 0.7
