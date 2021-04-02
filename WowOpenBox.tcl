@@ -1303,7 +1303,7 @@ array set slot2handle {}
 array set slot2position {}
 
 proc FocusN {n fg {update 1}} {
-    global slot2handle slot2position focusWindow settings hasRR
+    global slot2handle slot2position focusWindow lastFocusWindow settings hasRR
     if {![info exists slot2handle($n)]} {
        Debug "FocusN $n called but no such window"
        return
@@ -1321,7 +1321,7 @@ proc FocusN {n fg {update 1}} {
         }
     }
     if {$settings(showOverlay)} {
-        set prevFocusPos $slot2position($focusWindow)
+        set prevFocusPos $slot2position($lastFocusWindow)
         if {[winfo exists .o$prevFocusPos]} {
             .o$prevFocusPos.l configure -foreground white
         }
@@ -1329,6 +1329,7 @@ proc FocusN {n fg {update 1}} {
             .o$p.l configure -foreground $settings(overlayFocusColor)
         }
     }
+    set lastFocusWindow $n
     if {$update} {
         set focusWindow $n
     }
@@ -1342,10 +1343,10 @@ proc FocusMain {} {
 }
 
 proc StayOnTopToggle {} {
-    global focusWindow settings slot2handle
-    set settings($focusWindow,stayOnTop) [expr {!$settings($focusWindow,stayOnTop)}]
-    catch {SetStayOnTop $slot2handle($focusWindow) $settings($focusWindow,stayOnTop)}
-    Debug "StayOnTopToggle $focusWindow now $settings($focusWindow,stayOnTop)"
+    global lastFocusWindow settings slot2handle
+    set settings($lastFocusWindow,stayOnTop) [expr {!$settings($lastFocusWindow,stayOnTop)}]
+    catch {SetStayOnTop $slot2handle($lastFocusWindow) $settings($lastFocusWindow,stayOnTop)}
+    Debug "StayOnTopToggle $lastFocusWindow now $settings($lastFocusWindow,stayOnTop)"
 }
 
 proc SwapNextWindow {} {
@@ -1378,29 +1379,38 @@ proc NextCustomWindow {} {
         WobError "Restart needed" "You just upgraded but need to restart WOB! No state will be lost if you do! Thanks!"
     }
     set mainSlot $slot2position(1)
+    set mainCheck $mainSlot
     if {!$rrCustom(0)} {
-        set mainSlot 0
+        set mainCheck 0
     }
     set n $customWindow
     # Avoid infinite loop trying to find impossible next custom window
-    for {set i 0} {$i<=$maxNumW} {incr i} {
+    set excl 0
+    for {set i 1} {$i<$maxNumW} {incr i} {
         set n [expr {$n % ($maxNumW-1) + 1}]
+        incr excl $rrCustom($n)
         # check for main
-        if {$n==$mainSlot} {
+        if {$n==$mainCheck} {
             continue
         }
-        if {!$rrCustom($n)} {
-            Debug "Next custom window is $n"
+        # Ok to use if Main isn't skipped and this is Main currently
+        if {!$rrCustom($n) || (!$mainCheck && $mainSlot==$n)} {
+            Debug "Next custom window is $n because $rrCustom($n) $mainCheck $mainSlot"
             set customWindow $n
             return $n
         }
     }
-    WobError "Custom RR Error" "Invalid Custom Rotation, All windows are disabled!"
-    return 1
+    # only complain if it would never work; not if say main is excluded; only Wob2 is allowed yet
+    # wob2 is the one in main
+    Debug "Nothing found $excl $maxNumW staying on $customWindow"
+    if {$excl==$maxNumW-1} {
+        WobError "Custom RR Error" "Invalid Custom Rotation, All windows are disabled!"
+    }
+    return $customWindow
 }
 
 proc FocusNextWindow {{custom 0}} {
-    global focusWindow customWindow maxNumW settings resetTaskId
+    global focusWindow customWindow maxNumW settings resetTaskId lastFocusWindow
     if {[info exists resetTaskId]} {
         after cancel $resetTaskId
         unset resetTaskId
@@ -1415,7 +1425,14 @@ proc FocusNextWindow {{custom 0}} {
         set n [expr {$focusWindow % ($maxNumW-1) + 1}]
     }
     Debug "FocusNextWindow: custom $custom, focusWindow $focusWindow maxNumW $maxNumW -> $n"
-    CheckWindow [list FocusN $n true] $n
+    if {$n!=$lastFocusWindow} {
+        # Don't update here as it could be custom
+        CheckWindow [list FocusN $n true 0] $n
+    }
+    if {!$custom} {
+        # always update even if we were already on the spot (so we move out of it next)
+        set focusWindow $n
+    }
     if {$settings(autoResetFocusToMain)>0} {
         set resetTaskId [after [expr {round(1000.*$settings(autoResetFocusToMain))}] FocusMain]
     }
@@ -2271,7 +2288,7 @@ proc OverlayToggle {} {
 }
 
 proc OverlayUpdate {} {
-    global settings focusWindow
+    global settings lastFocusWindow
     set on $settings(showOverlay)
     set lastOverlay $settings(numWindows)
     if {$settings(layoutStacked)} {
@@ -2284,7 +2301,7 @@ proc OverlayUpdate {} {
             return
         }
         if {$on} {
-            if {$i==$focusWindow} {
+            if {$i==$lastFocusWindow} {
                 $t.l configure -foreground $settings(overlayFocusColor)
             } else {
                 $t.l configure -foreground white
@@ -2346,14 +2363,14 @@ proc OverlayConfig {} {
 }
 
 proc OverlayChangeFocusColor {} {
-    global settings focusWindow
+    global settings lastFocusWindow
     set color [tk_chooseColor -initialcolor gray -title "Choose overlay focus color"]
     if {$color == ""} {
         return
     }
     set settings(overlayFocusColor) $color
     .overlayConfig.color configure -bg $color
-    set f .o$focusWindow.l
+    set f .o$lastFocusWindow.l
     if {[winfo exist $f]} {
         $f configure -foreground $color
     }
@@ -3071,10 +3088,12 @@ if {![info exists pos]} {
     set nextWindow 1
     # max ever set in list box
     set maxNumW 1
-    # currently focused windows (at least as far as WOB is concerned)
+    # currently focused windows for normal rotation
     set focusWindow 1
     # custom rotation focused window
     set customWindow 1
+    # Actual last focused window (at least as far as WOB is concerned)
+    set lastFocusWindow 1
     # last swapped window
     set swappedWindow 1
     # hotkey ok
