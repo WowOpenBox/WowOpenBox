@@ -242,7 +242,8 @@ proc NewProfile {} {
     ttk::entry  $t.e -textvar profileName
     bind $t.e <Return> {set doneDialog 1}
     ttk::button $t.ok -text OK -command {set doneDialog 1}
-    ttk::button $t.cancel -text Cancel -command "set v {}; set doneDialog 1"
+    ttk::button $t.cancel -text Cancel -command "set profileName {}; set doneDialog 1"
+    bind $t.e <Escape> "$t.cancel invoke"
     grid $t.l - -sticky news -padx 4 -pady 4
     grid $t.e - -sticky news -padx 4 -pady 4
     grid $t.ok $t.cancel -padx 4 -pady 4
@@ -303,7 +304,7 @@ proc SaveSettings {args} {
         if {[lsearch $settings(profiles) $p]==-1} {
             Debug "New profile $p"
             lappend settings(profiles) $p
-            .mbar.profile insert end radiobutton -label $p -variable settings(profile) -command LoadProfile
+            .mbar.profile insert 1 radiobutton -label $p -variable settings(profile) -command LoadProfile
         }
         set pMode 1
         set pf [ProfileFileName $p]
