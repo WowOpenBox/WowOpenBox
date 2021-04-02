@@ -1304,10 +1304,19 @@ array set slot2position {}
 
 proc FocusN {n fg {update 1}} {
     global slot2handle slot2position focusWindow lastFocusWindow settings hasRR
-    if {![info exists slot2handle($n)]} {
-       Debug "FocusN $n called but no such window"
-       return
+    if {[info exists slot2handle($n)]} {
+        FocusNinternal $n $fg
+    } else {
+        Debug "FocusN $n called but no such window"
     }
+    set lastFocusWindow $n
+    if {$update} {
+        set focusWindow $n
+    }
+}
+
+proc FocusNinternal {n fg} {
+    global slot2handle slot2position lastFocusWindow settings hasRR
     set wh $slot2handle($n)
     set p $slot2position($n)
     Debug "FocusN $n called, at position $p - fg is $fg"
@@ -1321,17 +1330,10 @@ proc FocusN {n fg {update 1}} {
         }
     }
     if {$settings(showOverlay)} {
-        set prevFocusPos $slot2position($lastFocusWindow)
-        if {[winfo exists .o$prevFocusPos]} {
-            .o$prevFocusPos.l configure -foreground white
-        }
+        windowIndicatorN $lastFocusWindow configure -foreground white
         if {[winfo exists .o$p]} {
             .o$p.l configure -foreground $settings(overlayFocusColor)
         }
-    }
-    set lastFocusWindow $n
-    if {$update} {
-        set focusWindow $n
     }
 }
 
@@ -1483,11 +1485,26 @@ proc UpdateN {n} {
     }
 }
 
+proc windowIndicatorN {n args} {
+    global slot2position
+    if {![info exists slot2position($n)]} {
+        return
+    }
+    set p $slot2position($n)
+    if {![winfo exists .o$p.l]} {
+        return
+    }
+    .o$p.l {*}$args
+}
+
 proc SetAsMain {n} {
-    global settings
+    global settings lastFocusWindow
+    windowIndicatorN $lastFocusWindow configure -foreground white
     SetAsMainInt $n
     if {$settings(swapAlsoFocus)} {
         CheckWindow [list FocusN $n true] $n
+    } else {
+        windowIndicatorN $lastFocusWindow configure -foreground $settings(overlayFocusColor)
     }
 }
 
@@ -2288,9 +2305,14 @@ proc OverlayToggle {} {
 }
 
 proc OverlayUpdate {} {
-    global settings lastFocusWindow
+    global settings lastFocusWindow slot2position
     set on $settings(showOverlay)
     set lastOverlay $settings(numWindows)
+    set plfw $lastFocusWindow
+    if {[info exists slot2position($lastFocusWindow)]} {
+        set plfw $slot2position($lastFocusWindow)
+        Debug "Will show focus on area $plfw for $lastFocusWindow"
+    }
     if {$settings(layoutStacked)} {
         set lastOverlay 1
     }
@@ -2301,7 +2323,8 @@ proc OverlayUpdate {} {
             return
         }
         if {$on} {
-            if {$i==$lastFocusWindow} {
+            if {$i==$plfw} {
+                Debug "Highlight on $i"
                 $t.l configure -foreground $settings(overlayFocusColor)
             } else {
                 $t.l configure -foreground white
@@ -2370,10 +2393,7 @@ proc OverlayChangeFocusColor {} {
     }
     set settings(overlayFocusColor) $color
     .overlayConfig.color configure -bg $color
-    set f .o$lastFocusWindow.l
-    if {[winfo exist $f]} {
-        $f configure -foreground $color
-    }
+    windowIndicatorN $lastFocusWindow configure -foreground $color
     set f .o1.rr
     if {[winfo exist $f]} {
         $f configure -foreground $color
