@@ -3189,6 +3189,11 @@ puts "WowOpenBox - OpenMultiBoxing $vers started..."
 Defer 100 FindExisting
 set bottomText "WowOpenBox, OpenMultiBoxing $vers"
 wm state . normal
+if {[info exists settings(mainWindowGeometry)]} {
+    catch {wm geometry . $settings(mainWindowGeometry)}
+}
+bind . <Configure> {set settings(mainWindowGeometry) [wm geometry .]}
+
 Defer 150 {raise .}
 if {$settings(numWindows)==0} {
     Debug "No layout setup, opening layout"
