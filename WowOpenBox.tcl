@@ -1826,7 +1826,7 @@ proc WindowLayout {} {
     ttk::checkbutton $tw.cbA -variable settings(layoutAuto) -text "Auto" -command ChangeLayout
     tooltip $tw.cbA "Automatically regenerate the layout on any change\nwhen checked. Uncheck for manual layout"
     ttk::checkbutton $tw.cbT -variable settings(layoutTop) -text "Prefer Top" -command ChangeLayout
-    tooltip $tw.cbT "Checked if you prefer small windows on top of the main window"
+    tooltip $tw.cbT "Checked if you prefer small windows on top of the main window and the main window at bottom"
     set numWindowsFloat $settings(numWindows)
     ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to $settings(layoutMaxWindows) -command ChangeNumWindow
     tooltip $tw.s "Select how many windows in your layout."
@@ -2811,7 +2811,7 @@ proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
     incr startAt 1
     set xw2 [expr {$xw1+$sw}]
     for {set i 0} {$xw2<=$x2 && $i<$c} {incr i 1} {
-        set yw1 [expr {$y1+$i*$sh}]
+        set yw1 [expr {$yy1+$i*$sh}]
         set yw2 [expr {$yw1+$sh}]
         SetWindowOnCanvas $startAt $xw1 $yw1 $xw2 $yw2
         incr startAt 1
