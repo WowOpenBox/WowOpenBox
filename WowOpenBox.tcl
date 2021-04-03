@@ -431,9 +431,11 @@ wm protocol . WM_DELETE_WINDOW exit
 
 proc exit {{status 0}} {
     Debug "Exit $status called"
-    after cancel [after info]
     catch {destroy .clip}
+    after cancel [after info]
     RevertMouseFollow
+    update
+    after cancel [after info]
     _real_exit $status
 }
 
@@ -1825,8 +1827,8 @@ proc WindowLayout {} {
     wm title $tw "Wow Open Box Window Layout"
     ttk::checkbutton $tw.cbA -variable settings(layoutAuto) -text "Auto" -command ChangeLayout
     tooltip $tw.cbA "Automatically regenerate the layout on any change\nwhen checked. Uncheck for manual layout"
-    ttk::checkbutton $tw.cbT -variable settings(layoutTop) -text "Prefer Top" -command ChangeLayout
-    tooltip $tw.cbT "Checked if you prefer small windows on top of the main window and the main window at bottom"
+    ttk::checkbutton $tw.cbT -variable settings(layoutTop) -text "Main at bottom" -command ChangeLayout
+    tooltip $tw.cbT "Checked if you prefer the main window at the bottom instead of the top of the screen"
     set numWindowsFloat $settings(numWindows)
     ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to $settings(layoutMaxWindows) -command ChangeNumWindow
     tooltip $tw.s "Select how many windows in your layout."
@@ -2695,7 +2697,7 @@ proc CalcSize {monitor numWindows} {
 
 proc LayoutOneMonitorOneSize {monitor startAt numWindows ww wh maxW maxH} {
     Debug "LayoutOneMonitorOneSize $ww x $wh for $numWindows starting at $startAt on monitor $monitor"
-    global monitorInfo
+    global monitorInfo settings
     set x1 $monitorInfo($monitor,x1)
     set y1 $monitorInfo($monitor,y1)
     set x2 $monitorInfo($monitor,x2)
@@ -2721,7 +2723,7 @@ proc LayoutOneMonitorOneSize {monitor startAt numWindows ww wh maxW maxH} {
             } else {
                 set xx [expr {$x1+($x-1)*$ww}]
             }
-            if {$y1<0} {
+            if {$y1<0 || $settings(layoutTop)} {
                 set yy [expr {$y2-$y*$wh}]
             } else {
                 set yy [expr {$y1+($y-1)*$wh}]
