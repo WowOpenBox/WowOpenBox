@@ -1761,8 +1761,8 @@ proc updateListBox {n w wname} {
     if {$n>$settings(numWindows)} {
         set settings(numWindows) $n
         Overlay
-        RRCustomMenu
     }
+    RRCustomMenu
     set nextWindow [expr {$n+1}]
     set maxNumW $nextWindow
 }
