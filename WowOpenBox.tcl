@@ -3168,6 +3168,10 @@ if {![info exists pos]} {
     set hotkeyOk 1
 }
 
+if {![info exists lastFocusWindow]} {
+    set lastFocusWindow $focusWindow
+}
+
 LoadSettings
 if {[info exists initProfile]} {
     Debug "Loading cmd line initProfile $initProfile"
@@ -3223,9 +3227,6 @@ if {$settings(numWindows)==0} {
 if {$isUpdate} {
     # Do update stuff
     Debug "Update detected ($oldVersion to $previousVersion to $vers)"
-    if {![info exists lastFocusWindow]} {
-        set lastFocusWindow $focusWindow
-    }
     set isUpdate 0
 } else {
     if {[expr {([clock seconds]-$settings(lastUpdateChecked))>2*24*3600}]} {
