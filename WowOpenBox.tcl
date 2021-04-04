@@ -165,7 +165,7 @@ proc CheckForUpdates {silent} {
             Debug "Already running latest $vers"
             return
         }
-        WobMessage  -type ok -icon info -title "Already uptodate" \
+        WobMessage -type ok -icon info -title "Already uptodate" \
             -message "You're already running the latest version $vers"
         return
     }
@@ -222,7 +222,7 @@ proc CheckForUpdates {silent} {
     puts -nonewline $f $body
     close $f
     Debug "Updated $update_path"
-    WobMessage  -type ok -icon info -title "Download complete" \
+    WobMessage -type ok -icon info -title "Download complete" \
             -message "Backed up previous version as $backup_path - ready to restart with $newVersion"
     if {[catch {uplevel #0 [list source -encoding utf-8 $update_path]} err]} {
        WobError "Update error" "Error in new downloaded script:\n$err"
@@ -290,7 +290,7 @@ proc RefreshProfiles {} {
         lappend settings(profiles) $p
     }
     if {[lsearch -exact $settings(profiles) $settings(profile)] == -1} {
-        WobMessage "Profile $settings(profile) not found; resetting to Default"
+        WobError "Profile error" "Profile $settings(profile) not found; resetting to Default"
         set settings(profile) "Default"
     }
     UpdateProfilesMenu
@@ -1293,7 +1293,7 @@ proc RegisterHotkey {msg var callback} {
 
 proc FindOtherCopy {} {
     global ourTitle
-    set w [twapi::find_windows -match regexp -text "^$ourTitle\$" -visible true -single]
+    set w [twapi::find_windows -match regexp -text "^$ourTitle\$"]
     if {$w!=""} {
         catch {twapi::flash_window $w -count 3} err
         puts "Found another window of ours. Flashed it. $err"
@@ -1302,6 +1302,24 @@ proc FindOtherCopy {} {
         catch {Foreground $w; Focus $w; twapi::flash_window $w -count 3} err
         puts "Bring other window in focus. $err"
         exit 1
+    }
+    # Check for processes too (Issue #131)
+    set pList [twapi::get_process_ids -glob -name "OpenMultiBoxing-v*.exe"]
+    set ll [llength $pList]
+    if {$ll>1} {
+        set r [WobMessage -type yesno -title "Kill older instances" -icon warning -default yes\
+        -message "Found $ll copies of WOB/OMB process, want to kill them to avoid hotkey binding errors?"]
+        if {$r=="yes"} {
+            Debug "Kill extra confirmed"
+            set ours [twapi::get_current_process_id]
+            foreach p $pList {
+                if {$p==$ours} {
+                    Debug "Not killing ourselves ($p)
+                } else {
+                    Debug "Killing $p: [twapi::end_process $p -wait 200 -force -exitcode -1]"
+                }
+            }
+        }
     }
 }
 # ---
