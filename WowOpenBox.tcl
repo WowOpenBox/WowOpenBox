@@ -1325,7 +1325,7 @@ proc FindOtherCopy {} {
             set ours [twapi::get_current_process_id]
             foreach p $pList {
                 if {$p==$ours} {
-                    Debug "Not killing ourselves ($p)
+                    Debug "Not killing ourselves ($p)"
                 } else {
                     Debug "Killing $p: [twapi::end_process $p -wait 200 -force -exitcode -1]"
                 }
