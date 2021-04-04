@@ -787,6 +787,7 @@ proc MenuSetup {} {
     $m3 add radiobutton -label "Auto reset focus to main: after 3 sec" -value 3 -variable settings(autoResetFocusToMain)
     $m3 add separator
     $m3 add checkbutton -label "Pause when mouse is outside windows" -variable settings(mouseOutsideWindowsPauses)
+    $m3 add checkbutton -label "Focus back when mouse in game window" -variable settings(mouseInsideGameWindowFocuses)
 
     menu .mbar.help -tearoff 0
     .mbar add cascade -label Help -menu .mbar.help
@@ -890,7 +891,7 @@ proc ShouldPause {} {
     set w [twapi::get_window_at_location $x $y]
     set isOurs [IsOurs $w]
     #Debug "For $x $y : $w : $isOurs"
-    expr {$isOurs<2}
+    list [expr {$isOurs<2}] $isOurs
 }
 
 
@@ -908,7 +909,7 @@ set isPaused 0
 set pauseSchedule {}
 
 proc PeriodicChecks {} {
-    global settings isPaused prevRR prevMF prevOL hasRR rrOn mouseFollow maxNumW pauseSchedule
+    global settings isPaused prevRR prevMF prevOL hasRR rrOn mouseFollow maxNumW pauseSchedule lastFocusWindow slot2handle
     after cancel $pauseSchedule
     set pauseSchedule {}
     if {$settings(autoCapture) && ($maxNumW<=$settings(numWindows))} {
@@ -923,7 +924,7 @@ proc PeriodicChecks {} {
     if {!$settings(mouseOutsideWindowsPauses)} {
         return
     }
-    set shouldPause [ShouldPause]
+    lassign [ShouldPause] shouldPause isOurs
     if {$shouldPause != $isPaused} {
         Debug "Change of window from $isPaused to $shouldPause"
         if {$shouldPause} {
@@ -943,6 +944,7 @@ proc PeriodicChecks {} {
                 OverlayToggle
                 set prevOL 1
             }
+            # can't seem to raise our own window...
         } else {
             Debug "Restoring $prevRR $prevMF $prevOL"
             if {$prevRR && !$rrOn} {
@@ -955,6 +957,10 @@ proc PeriodicChecks {} {
             if {$prevOL} {
                 set settings(showOverlay) 1
                 OverlayUpdate
+            }
+            if {$isOurs==3 && $settings(mouseInsideGameWindowFocuses)} {
+                Debug "Focusing back $lastFocusWindow"
+                catch {Focus $slot2handle($lastFocusWindow)}
             }
         }
     }
@@ -2327,6 +2333,9 @@ proc RRCustomMenu {} {
     }
     RRCustomToArray
     set m .rrC.rrMenuB.menu
+    if {![winfo exists $m]} {
+        return
+    }
     $m delete 0 99
     $m add checkbutton -label "Main" -variable rrCustom(0) -command RRCustomUpdateSettings
     for {set i 1} {$i<=$settings(numWindows)} {incr i} {
@@ -3147,6 +3156,8 @@ array set settings {
     clipboardAtStart 0
     dontCaptureList {explorer.exe}
 }
+set settings(mouseInsideGameWindowFocuses) $hasRR
+
 
 # globals
 FindOtherCopy
