@@ -142,6 +142,7 @@ if {![info exists wobInitDone]} {
             if {[catch {source -encoding utf-8 $update_path} err]} {
                 WobError "WOB/OMB error: update file error" \
                  "Please delete [file nativename $update_path] and restart\n\n$err\n$errorInfo"
+                exit 1
             } else {
                 Debug "Control passed to local file $update_path"
                 return
@@ -151,7 +152,7 @@ if {![info exists wobInitDone]} {
 }
 
 proc CheckForUpdates {silent} {
-    global vers update_path settings
+    global vers update_path settings errorInfo
     set url "https://api.github.com/repos/WowOpenBox/WowOpenBox/releases/latest"
     if {[catch {set token [http::geturl $url]} err]} {
         WobError "WoW Open Box network error" "Url fetch error $err"
@@ -225,7 +226,7 @@ proc CheckForUpdates {silent} {
     WobMessage -type ok -icon info -title "Download complete" \
             -message "Backed up previous version as $backup_path - ready to restart with $newVersion"
     if {[catch {uplevel #0 [list source -encoding utf-8 $update_path]} err]} {
-       WobError "Update error" "Error in new downloaded script:\n$err"
+       WobError "Update error" "Error in new downloaded script:\n$err\n$errorInfo\n\nPlease screenshot this and report this bug!"
        return
     }
     Debug "Control passed successfully to updated file $newVersion"
@@ -1293,15 +1294,18 @@ proc RegisterHotkey {msg var callback} {
 
 proc FindOtherCopy {} {
     global ourTitle
-    set w [twapi::find_windows -match regexp -text "^$ourTitle\$"]
-    if {$w!=""} {
-        catch {twapi::flash_window $w -count 3} err
-        puts "Found another window of ours. Flashed it. $err"
-        WobError "WoW Open Box duplicate error" \
-          "Another copy of WowOpenBox is running, please exit it before starting a new one (or hotkeys will conflict)."
-        catch {Foreground $w; Focus $w; twapi::flash_window $w -count 3} err
-        puts "Bring other window in focus. $err"
-        exit 1
+    set wList [twapi::find_windows -match regexp -text "^$ourTitle\$"]
+    foreach w $wList {
+        UpdateOurWindowHandles
+        if {![IsOurs $w]} {
+            catch {twapi::flash_window $w -count 3} err
+            puts "Found another window of ours. Flashed it. $err"
+            WobError "WoW Open Box duplicate error" \
+                 "Another copy of WowOpenBox is running, please exit it before starting a new one (or hotkeys will conflict)."
+            catch {Foreground $w; Focus $w; twapi::flash_window $w -count 3} err
+            puts "Bring other window in focus. $err"
+            exit 1
+        }
     }
     # Check for processes too (Issue #131)
     set pList [twapi::get_process_ids -glob -name "OpenMultiBoxing-v*.exe"]
@@ -3144,8 +3148,8 @@ array set settings {
 }
 
 # globals
+FindOtherCopy
 if {![info exists pos]} {
-    FindOtherCopy
     # position of the next move window
     set pos "0 0"
     # size to set
