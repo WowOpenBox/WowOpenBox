@@ -411,6 +411,7 @@ proc AfterSettings {} {
     set mouseRaise [GetMouseRaise]
     LoadLayout
     Overlay
+    RRCustomMenu
     Debug "Settings (re)Loaded."
 }
 
