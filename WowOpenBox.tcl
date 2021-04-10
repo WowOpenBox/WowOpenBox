@@ -667,7 +667,7 @@ proc SetClipboard {} {
 }
 
 proc ClipboardManager {} {
-    global clipboardValue rrOn hasRR
+    global clipboardValue rrOn hasRR settings
     set tw .clip
     if {[winfo exists $tw]} {
         wm state $tw normal
@@ -684,6 +684,10 @@ proc ClipboardManager {} {
     grid [ttk::label $tw.help -text "Type in the entry box, only *s will show,\nClick Copy, then Ctrl-V as many times to paste,\nClose this popup or click Clear to erase."] -padx 4 -pady 6 -columnspan 2
     UpdateHandles
     focus $tw.e
+    if {[info exists settings(clipGeometry)]} {
+        catch {wm geometry .clip $settings(clipGeometry)}
+    }
+    bind .clip <Configure> {set settings(clipGeometry) [wm geometry .clip]}
 }
 
 #### end of clipboard management ####
