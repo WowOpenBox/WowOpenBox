@@ -913,7 +913,7 @@ set isPaused 0
 set pauseSchedule {}
 
 proc PeriodicChecks {} {
-    global settings isPaused prevRR prevMF prevOL hasRR rrOn mouseFollow maxNumW pauseSchedule lastFocusWindow slot2handle
+    global settings isPaused prevRR prevMF prevOL prevRRMouse hasRR rrOn rrMouse mouseFollow maxNumW pauseSchedule lastFocusWindow slot2handle
     after cancel $pauseSchedule
     set pauseSchedule {}
     if {$settings(autoCapture) && ($maxNumW<=$settings(numWindows))} {
@@ -935,14 +935,19 @@ proc PeriodicChecks {} {
             set prevRR 0
             set prevMF 0
             set prevOL 0
-            if {$hasRR && $rrOn} {
-                RRToggle
-                set prevRR 1
-            }
+            set prevRRMouse 0
             if {$mouseFollow} {
                 set mouseFollow 0
                 UpdateMouseFollow
                 set prevMF 1
+            }
+            if {[info exists rrMouse] && $rrMouse} {
+                set prevRRMouse 1
+                set rrMouse 0
+            }
+            if {$hasRR && $rrOn} {
+                RRToggle
+                set prevRR 1
             }
             if {$settings(showOverlay)} {
                 OverlayToggle
@@ -950,9 +955,12 @@ proc PeriodicChecks {} {
             }
             # can't seem to raise our own window...
         } else {
-            Debug "Restoring $prevRR $prevMF $prevOL"
+            Debug "Restoring $prevRR $prevMF $prevOL $prevRRMouse"
             if {$prevRR && !$rrOn} {
                 RRToggle
+            }
+            if {$prevRRMouse} {
+                set rrMouse 1
             }
             if {$prevMF} {
                 set mouseFollow 1
