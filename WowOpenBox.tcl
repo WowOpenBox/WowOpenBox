@@ -2421,6 +2421,7 @@ proc OverlayConfig {} {
     grid [button $tw.color -text "Change Focus Color" -bg $settings(overlayFocusColor) -command OverlayChangeFocusColor] -padx 8 -pady 4 -columnspan 3
     grid [ttk::checkbutton $tw.border -text "Overlay border" -variable settings(overlayShowBorder) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
     grid [ttk::checkbutton $tw.clickable -text "Clickable overlay" -variable settings(overlayClickable) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
+    grid [ttk::checkbutton $tw.big -text "Big numbers on windows 2+" -variable settings(overlayBig) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
     if {$hasRR} {
         grid [ttk::label $tw.lr1 -text "Round Robin indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
         grid [ttk::label $tw.lr2 -text "Label:" -anchor e] [entry $tw.re1 -width 5 -textvariable settings(rrIndicator,label)] -sticky ew -padx 6
@@ -2496,7 +2497,8 @@ set rrOnLabel ""
 proc Overlay {} {
     global settings rrOnLabel
     set transparentcolor #606060
-    ttk::style configure WobOverlayText.Label -font {Arial 48 bold} -foreground white -background $transparentcolor
+    ttk::style configure WobOverlayText.Label -font "Arial $settings(overlayFontSize1) bold" -foreground white -background $transparentcolor
+    ttk::style configure WobOverlayTextBig.Label -font "Arial $settings(overlayFontSize2) bold" -foreground white -background $transparentcolor
     set on $settings(showOverlay)
     set lastOverlay $settings(numWindows)
     if {$settings(layoutStacked)} {
@@ -2540,6 +2542,13 @@ proc Overlay {} {
                 bind $t.rr <ButtonPress> {}
             } else {
                 bind $t.l <ButtonPress> {}
+            }
+        }
+        if {$i!=1} {
+            if {$settings(overlayBig)} {
+                $t.l configure -style WobOverlayTextBig.Label
+            } else {
+                $t.l configure -style WobOverlayText.Label
             }
         }
         lassign $settings($i,posXY) x y
@@ -3136,6 +3145,9 @@ array set settings {
     overlayAnchor n
     overlayShowBorder 1
     overlayClickable 1
+    overlayBig 0
+    overlayFontSize1 48
+    overlayFontSize2 96
     game "World of Warcraft"
     games {"World of Warcraft" "EVE" "Star Wars\u2122: The Old Republic\u2122"}
     captureForegroundWindow 0
