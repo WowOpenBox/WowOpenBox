@@ -2422,6 +2422,7 @@ proc OverlayConfig {} {
     grid [ttk::checkbutton $tw.border -text "Overlay border" -variable settings(overlayShowBorder) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
     grid [ttk::checkbutton $tw.clickable -text "Clickable overlay" -variable settings(overlayClickable) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
     grid [ttk::checkbutton $tw.big -text "Big numbers on windows 2+" -variable settings(overlayBig) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
+    grid [ttk::checkbutton $tw.bigAll -text "Click to swap all area on windows 2+" -variable settings(overlayAllClickable) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
     if {$hasRR} {
         grid [ttk::label $tw.lr1 -text "Round Robin indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
         grid [ttk::label $tw.lr2 -text "Label:" -anchor e] [entry $tw.re1 -width 5 -textvariable settings(rrIndicator,label)] -sticky ew -padx 6
@@ -2499,6 +2500,7 @@ proc Overlay {} {
     set transparentcolor #606060
     ttk::style configure WobOverlayText.Label -font "Arial $settings(overlayFontSize1) bold" -foreground white -background $transparentcolor
     ttk::style configure WobOverlayTextBig.Label -font "Arial $settings(overlayFontSize2) bold" -foreground white -background $transparentcolor
+    ttk::style configure WobOverlayTextBigFull.Label -font "Arial $settings(overlayFontSize2) bold" -foreground white -background black
     set on $settings(showOverlay)
     set lastOverlay $settings(numWindows)
     if {$settings(layoutStacked)} {
@@ -2545,7 +2547,9 @@ proc Overlay {} {
             }
         }
         if {$i!=1} {
-            if {$settings(overlayBig)} {
+            if {$settings(overlayAllClickable)} {
+                $t.l configure -style WobOverlayTextBigFull.Label
+            } elseif {$settings(overlayBig)} {
                 $t.l configure -style WobOverlayTextBig.Label
             } else {
                 $t.l configure -style WobOverlayText.Label
@@ -3146,6 +3150,7 @@ array set settings {
     overlayShowBorder 1
     overlayClickable 1
     overlayBig 0
+    overlayAllClickable 0
     overlayFontSize1 48
     overlayFontSize2 96
     game "World of Warcraft"
