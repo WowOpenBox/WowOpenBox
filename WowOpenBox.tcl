@@ -2420,8 +2420,12 @@ proc OverlayConfig {} {
     grid [ttk::scale $tw.str  -variable settings(overlayAlpha) -command "OverlayTransparency"] -sticky ew -padx 4 -pady 4 -columnspan 3
     grid [button $tw.color -text "Change Focus Color" -bg $settings(overlayFocusColor) -command OverlayChangeFocusColor] -padx 8 -pady 4 -columnspan 3
     grid [ttk::checkbutton $tw.border -text "Overlay border" -variable settings(overlayShowBorder) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
+    grid [ttk::label $tw.lf1 -text "Window 1 font size:"] -columnspan 3
+    grid [ttk::scale $tw.sf1 -from 8. -to 128. -variable settings(overlayFontSize1) -command OverlayFontSizes] -sticky ew -padx 4 -pady 4 -columnspan 3
+    grid [ttk::label $tw.lf2 -text "Window 2+ font size:"] -columnspan 3
+    grid [ttk::scale $tw.sf2 -from 8. -to 128. -variable settings(overlayFontSize2) -command OverlayFontSizes] -sticky ew -padx 4 -pady 4 -columnspan 3
+
     grid [ttk::checkbutton $tw.clickable -text "Clickable overlay" -variable settings(overlayClickable) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
-    grid [ttk::checkbutton $tw.big -text "Big numbers on windows 2+" -variable settings(overlayBig) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
     grid [ttk::checkbutton $tw.bigAll -text "Click to swap all area on windows 2+" -variable settings(overlayAllClickable) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
     if {$hasRR} {
         grid [ttk::label $tw.lr1 -text "Round Robin indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
@@ -2470,6 +2474,17 @@ proc OverlayTransparency {alpha} {
     }
 }
 
+proc OverlayFontSizes {args} {
+    global settings
+    set transparentcolor #606060
+    set overlayFontSize1 [expr {round($settings(overlayFontSize1))}]
+    set overlayFontSize2 [expr {round($settings(overlayFontSize2))}]
+    ttk::style configure WobOverlayText.Label -font "Arial $overlayFontSize1 bold" -foreground white -background $transparentcolor
+    ttk::style configure WobOverlayTextBig.Label -font "Arial $overlayFontSize2 bold" -foreground white -background $transparentcolor
+    ttk::style configure WobOverlayTextBigFull.Label -font "Arial $overlayFontSize2 bold" -foreground white -background black
+    return $transparentcolor
+}
+
 proc OverlayAnchor {anchor} {
     global settings
     set settings(overlayAnchor) $anchor
@@ -2497,10 +2512,7 @@ proc SetClickThrough {t} {
 set rrOnLabel ""
 proc Overlay {} {
     global settings rrOnLabel
-    set transparentcolor #606060
-    ttk::style configure WobOverlayText.Label -font "Arial $settings(overlayFontSize1) bold" -foreground white -background $transparentcolor
-    ttk::style configure WobOverlayTextBig.Label -font "Arial $settings(overlayFontSize2) bold" -foreground white -background $transparentcolor
-    ttk::style configure WobOverlayTextBigFull.Label -font "Arial $settings(overlayFontSize2) bold" -foreground white -background black
+    set transparentcolor [OverlayFontSizes]
     set on $settings(showOverlay)
     set lastOverlay $settings(numWindows)
     if {$settings(layoutStacked)} {
@@ -2549,10 +2561,8 @@ proc Overlay {} {
         if {$i!=1} {
             if {$settings(overlayAllClickable)} {
                 $t.l configure -style WobOverlayTextBigFull.Label
-            } elseif {$settings(overlayBig)} {
-                $t.l configure -style WobOverlayTextBig.Label
             } else {
-                $t.l configure -style WobOverlayText.Label
+                $t.l configure -style WobOverlayTextBig.Label
             }
         }
         lassign $settings($i,posXY) x y
@@ -3149,10 +3159,9 @@ array set settings {
     overlayAnchor n
     overlayShowBorder 1
     overlayClickable 1
-    overlayBig 0
     overlayAllClickable 0
     overlayFontSize1 48
-    overlayFontSize2 96
+    overlayFontSize2 48
     game "World of Warcraft"
     games {"World of Warcraft" "EVE" "Star Wars\u2122: The Old Republic\u2122"}
     captureForegroundWindow 0
