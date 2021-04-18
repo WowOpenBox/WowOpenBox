@@ -392,8 +392,9 @@ proc AfterSettings {} {
         set settings(rrModExcludeList) [join $settings(rrModExcludeList) " "]
         unset settings(rrKeyList)
     }
-    if {$settings(dontCaptureList) == {explorer.exe}} {
-        set settings(dontCaptureList)  {explorer.exe SndVol.exe}
+    set toAdd "SndVol.exe"
+    if {[lsearch -exact $settings(dontCaptureList) $toAdd]==-1} {
+        lappend settings(dontCaptureList) $toAdd
     }
     RegisterHotkey "Capture" hk,capture CaptureOrUpdate
     RegisterHotkey "Start/Stop mouse tracking" hk,mouseTrack MouseTracking
@@ -751,6 +752,8 @@ proc MenuSetup {} {
     $m1 add command -label "Reload settings" -command LoadSettings
     $m1 add separator
     $m1 add command -label "Clipboard copy/paster..." -command ClipboardManager
+    $m1 add separator
+    $m1 add command -label "Reset all windows ($settings(hk,resetAll))" -command ResetAll
     $m1 add separator
     $m1 add command -label "Close all games..." -command CloseAllGames
     $m1 add command -label "Close all games and Exit..." -command "CloseAllGames 1"
@@ -1197,12 +1200,16 @@ proc MoveAndResize {w x y width height} {
 }
 
 proc FindExisting {} {
-    global settings SETTINGS_BASE
+    global settings SETTINGS_BASE nextWindow
     # do +1 just in case there is one more than last save
+    set firstMissing 0
     for {set n 1} {$n<=$settings(numWindows)+1} {incr n 1} {
         set wname "WOB $n"
         set wl [twapi::find_windows -match regexp -text "^$wname\$" -visible true]
         if {$wl eq {}} {
+            if {!$firstMissing} {
+                set firstMissing $n
+            }
             Debug "WOB $n not found, skipping"
             continue
         }
@@ -1215,6 +1222,9 @@ proc FindExisting {} {
         }
         updateListBox $n $w $wname
         UpdateN $n
+    }
+    if {$firstMissing} {
+        set nextWindow $firstMissing
     }
     CheckAutoKill
 }
@@ -2585,21 +2595,37 @@ proc Overlay {} {
 }
 
 proc ResetAll {} {
-    global settings lastUpdate lastSOT slot2position
+    global settings lastUpdate lastSOT slot2position slot2handle maxNumW nextWindow
     array unset lastUpdate
     array unset lastSOT
     Debug "Reset all called!"
+    set lastGood 0
+    set firstBad 0
     for {set i $settings(numWindows)} {$i>=1} {incr i -1} {
         # reset initial position
         set slot2position($i) $i
         CheckWindow [list UpdateN $i] $i
         if {[info exists slot2handle($i)]} {
             Foreground $slot2handle($i)
+            Debug "W $i is ok - last good $lastGood"
+            if {$lastGood == 0} {
+                set lastGood $i
+            }
+        } else {
+            set firstBad $i
         }
     }
     SetAsMain 1
+    .lbw delete $lastGood end
+    set maxNumW [expr {$lastGood+1}]
+    if {$firstBad} {
+        set nextWindow $firstBad
+    } else {
+        set nextWindow $maxNumW
+    }
     UpdateHandles
     CheckAutoKill
+    Debug "All reset complete: lg $lastGood, fb $firstBad, mx $maxNumW, next $nextWindow"
 }
 
 proc SaveLayout {} {
