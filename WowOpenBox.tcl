@@ -392,6 +392,9 @@ proc AfterSettings {} {
         set settings(rrModExcludeList) [join $settings(rrModExcludeList) " "]
         unset settings(rrKeyList)
     }
+    if {$settings(dontCaptureList) == {explorer.exe}} {
+        set settings(dontCaptureList)  {explorer.exe SndVol.exe}
+    }
     RegisterHotkey "Capture" hk,capture CaptureOrUpdate
     RegisterHotkey "Start/Stop mouse tracking" hk,mouseTrack MouseTracking
     RegisterHotkey "Focus next window" hk,focusNextWindow FocusNextWindow
@@ -1147,7 +1150,7 @@ proc GetY {} {
 proc FindGameWindow {} {
     global settings
     # consider doing exact match with ^ $ or...
-    set wList [twapi::find_windows -text $settings(game) -visible true]
+    set wList [twapi::find_windows -match string -text "$settings(game)" -visible true]
     set minTime 0
     set minW ""
     foreach w $wList {
@@ -3192,7 +3195,7 @@ array set settings {
     mouseOutsideWindowsPauses 1
     autoCapture 1
     clipboardAtStart 0
-    dontCaptureList {explorer.exe}
+    dontCaptureList {explorer.exe SndVol.exe}
 }
 set settings(mouseInsideGameWindowFocuses) $hasRR
 
