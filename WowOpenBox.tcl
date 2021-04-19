@@ -214,6 +214,10 @@ proc CheckForUpdates {silent} {
             return
         }
     }
+    if {$ncode != 200} {
+        WobError "Update error" "Update error code $ncode for\n$updateUrl"
+        return
+    }
     set body [http::data $token]
     set backup_path ${update_path}.$vers.bak
     # delete older backups
