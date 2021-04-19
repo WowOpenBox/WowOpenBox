@@ -216,6 +216,8 @@ proc CheckForUpdates {silent} {
     }
     set body [http::data $token]
     set backup_path ${update_path}.$vers.bak
+    # delete older backups
+    catch {file delete [glob ${update_path}.*.bak]}
     # can error when in exe...
     catch {file rename -force $update_path $backup_path}
     set f [open $update_path w+]
@@ -403,6 +405,12 @@ proc AfterSettings {} {
     set toAdd "SndVol.exe"
     if {[lsearch -exact $settings(dontCaptureList) $toAdd]==-1} {
         lappend settings(dontCaptureList) $toAdd
+    }
+    if {[info exists settings(overlayBig)]} {
+        if {!$settings(overlayBig)}	{
+            set settings(overlayFontSize2) $settings(overlayFontSize1)
+        }
+        unset settings(overlayBig)
     }
     UnregisterHotkeys
     RegisterHotkey "Capture" hk,capture CaptureOrUpdate
@@ -2640,7 +2648,9 @@ proc ResetAll {} {
         }
     }
     SetAsMain 1
-    .lbw delete $lastGood end
+    if {[winfo exist .lbw]} {
+        .lbw delete $lastGood end
+    }
     set maxNumW [expr {$lastGood+1}]
     if {$firstBad} {
         set nextWindow $firstBad
