@@ -378,8 +378,16 @@ proc LoadSettings {} {
     AfterSettings
 }
 
+proc UnregisterHotkeys {} {
+    global allHotKeys
+    Debug "Unregistering previous hotkeys"
+    foreach hk $allHotKeys {
+        twapi::unregister_hotkey $hk
+    }
+}
+
 proc AfterSettings {} {
-    global settings
+    global settings maxNumW slot2handle
     if {$settings(hk,swapNextWindow)=="Binding for next window swap is set on 'hk1,swap'"} {
         set settings(hk,swapNextWindow) "Ctrl-0xC0"
     }
@@ -396,6 +404,7 @@ proc AfterSettings {} {
     if {[lsearch -exact $settings(dontCaptureList) $toAdd]==-1} {
         lappend settings(dontCaptureList) $toAdd
     }
+    UnregisterHotkeys
     RegisterHotkey "Capture" hk,capture CaptureOrUpdate
     RegisterHotkey "Start/Stop mouse tracking" hk,mouseTrack MouseTracking
     RegisterHotkey "Focus next window" hk,focusNextWindow FocusNextWindow
@@ -408,6 +417,11 @@ proc AfterSettings {} {
     RegisterHotkey "RoundRobin toggle" hk,rrToggle RRToggle
     RegisterHotkey "Focus main window" hk,focusMain FocusMain
     RegisterHotkey "Reset all windows to saved positions" hk,resetAll ResetAll
+    for {set n 1} {$n < $maxNumW} {incr n} {
+        if {[info exists slot2handle($n)]} {
+            RegisterPerWindowHotkey $n "WOB $n"
+        }
+    }
     # Set mouse control to current values
     global mouseFollow mouseRaise mouseDelay
     set mouseDelay [GetMouseDelay]
@@ -1309,8 +1323,12 @@ proc HandleHotKey {msg cb} {
     if $hotkeyOk $cb
 }
 
+if {![info exists allHotKeys]} {
+    set allHotKeys {}
+}
+
 proc RegisterHotkey {msg var callback} {
-    global settings
+    global settings allHotKeys
     set hk $settings($var)
     Debug "RegisterHotkey $hk $msg $var $callback"
     if {$hk == ""} {
@@ -1322,6 +1340,7 @@ proc RegisterHotkey {msg var callback} {
         WobError "WoW Open Box HotKey error" \
          "Conflict for hotkey for $msg, change $var in settings to use something different than $hk"
     }
+    lappend allHotKeys $err
 }
 
 proc FindOtherCopy {} {
@@ -1780,11 +1799,8 @@ proc PostCapture {w wname} {
     updateListBox $nextWindow $w $wname
 }
 
-proc updateListBox {n w wname} {
-    global ourWindowHandles slot2handle slot2position nextWindow maxNumW settings
-    set slot2handle($n) $w
-    set slot2position($n) $n
-    set ourWindowHandles($w) 3
+proc RegisterPerWindowHotkey {n wname} {
+    global settings
     if {[info exists settings(hk$n,focus)]} {
         Debug "Setting focus hotkey for $n / $wname: $settings(hk$n,focus)"
         RegisterHotkey "Focus window $n" hk$n,focus [list FocusN $n true]
@@ -1797,6 +1813,14 @@ proc updateListBox {n w wname} {
     } else {
         Debug "No focus hotkey found or set for $n / $wname"
     }
+}
+
+proc updateListBox {n w wname} {
+    global ourWindowHandles slot2handle slot2position nextWindow maxNumW settings
+    set slot2handle($n) $w
+    set slot2position($n) $n
+    set ourWindowHandles($w) 3
+    RegisterPerWindowHotkey $n $wname
     # 0 based index
     set n0 [expr {$n-1}]
     Debug "n is $n nextWindow is $nextWindow maxNumW is $maxNumW"
