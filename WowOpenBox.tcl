@@ -222,7 +222,7 @@ proc CheckForUpdates {silent} {
     set body [http::data $token]
     set backup_path ${update_path}.$vers.bak
     # delete older backups
-    catch {file delete [glob ${update_path}.*.bak]}
+    catch {file delete {*}[glob ${update_path}.*.bak]}
     # can error when in exe...
     catch {file rename -force $update_path $backup_path}
     set f [open $update_path w+]
