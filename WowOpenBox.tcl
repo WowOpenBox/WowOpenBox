@@ -213,6 +213,7 @@ proc CheckForUpdates {silent} {
             WobError "Update error" "Update fetch error for redirected\n$location\n$err"
             return
         }
+        set ncode [http::ncode $token]
     }
     if {$ncode != 200} {
         WobError "Update error" "Update error code $ncode for\n$updateUrl"
