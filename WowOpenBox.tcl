@@ -324,7 +324,7 @@ proc SaveSettings {args} {
         fconfigure $f -encoding utf-8
         puts $f "array set settings {"
         foreach i [lsort [array names settings]] {
-            if {$i=="profile" || $i=="profiles" || $i=="games"} {
+            if {$i=="profile" || $i=="profiles" || $i=="games" || $i=="lastUpdateChecked"} {
                 continue
             }
             #  Debug "saving $i \"$settings($i)\""
