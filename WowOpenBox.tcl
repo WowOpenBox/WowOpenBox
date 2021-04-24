@@ -2945,6 +2945,15 @@ proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
     SetWindowOnCanvas $startAt $x1 $yy1 $xw1 [expr {$yy1+$bh}]
     incr numWindows -1
     incr startAt 1
+    set savedStart $startAt
+    set lastWin [expr ($startAt+$numWindows)]
+    if {$settings(layoutTop) && !$settings(layoutOneRowCol) && $numWindows>$c} {
+        set startAt [expr round($startAt+$c+$numWindows%2)]
+        if {$startAt+$c>$lastWin} {
+            set startAt [expr round($lastWin-$c)]
+        }
+        Debug "C is $c : changed startAt to $startAt, last win $lastWin"
+    }
     set xw2 [expr {$xw1+$sw}]
     for {set i 0} {$xw2<=$x2 && $i<$c} {incr i 1} {
         set yw1 [expr {$yy1+$i*$sh}]
@@ -2955,6 +2964,10 @@ proc LayoutOneMonitorVariable  {monitor startAt numWindows} {
     }
     if {$settings(layoutTop)} {
         set yw1 $y1
+        if {!$settings(layoutOneRowCol)} {
+            set startAt $savedStart
+            Debug "Restore startAt to $savedStart"
+        }
     } else {
         set yw1 [expr {$y1+$bh}]
     }
