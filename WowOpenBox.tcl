@@ -1456,7 +1456,6 @@ proc SwapNextWindow {} {
     }
     set n [expr {$swappedWindow % ($maxNumW-1) + 1}]
     Debug "SwapNextWindow: swappedWindow $swappedWindow maxNumW $maxNumW -> $n"
-    set swappedWindow $n
     SetAsMain $n
 }
 
@@ -1465,7 +1464,6 @@ proc SwapPreviousWindow {} {
     # maxNumW is one more than number of windows
     set n [expr {($swappedWindow+$maxNumW-3) % ($maxNumW-1) + 1}]
     Debug "SwapPreviousWindow: swappedWindow $swappedWindow maxNumW $maxNumW -> $n"
-    set swappedWindow $n
     SetAsMain $n
 }
 
@@ -1593,9 +1591,10 @@ proc windowIndicatorN {n args} {
 }
 
 proc SetAsMain {n} {
-    global settings lastFocusWindow
+    global settings lastFocusWindow swappedWindow
     windowIndicatorN $lastFocusWindow configure -foreground white
     SetAsMainInt $n
+    set swappedWindow $n
     if {$settings(swapAlsoFocus)} {
         CheckWindow [list FocusN $n true] $n
     } else {
