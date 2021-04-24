@@ -611,7 +611,7 @@ proc UISetup {} {
         grid [ttk::label .lRR -text "⟳ Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
         grid [ttk::checkbutton .cbRR -text "Round Robin ($settings(hk,rrToggle))" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
         tooltip .cbRR "Toggle round robin mode\nAlso turns off mouse focus and restore as needed while on\nHotkey: $settings(hk,rrToggle)"
-        grid [ttk::label .lrrK -text "Round Robin 'All' keys:"] -padx 4 -columnspan 2 -sticky w
+        grid [ttk::label .lrrK -text "Round Robin to all windows keys:"] -padx 4 -columnspan 2 -sticky w
         grid [entry .eRR -textvariable settings(rrKeyListAll) -width $width] -columnspan 2 -padx 4 -sticky ew
         bind .eRR <Return> RRKeysListChange
         tooltip .eRR "Which keys trigger round robin for all windows\nType <Return> after change to take effect.\nSee help/FAQ for list."
@@ -625,13 +625,15 @@ proc UISetup {} {
         menu $rrC.rrMenuB.menu -tearoff 0
         RRCustomMenu
         tooltip $rrC.rrMenuB "Select which window(s) are excluded from custom rotation"
-        ttk::checkbutton $rrC.rrCKC -state disabled -text "Up" -variable settings(rrCustomOnKeyUp)
-        tooltip $rrC.rrCKC "Whether to trigger on key Up or Down (wip)"
-        pack [ttk::label $rrC.lrrK3 -text "2nd rotation keys:" -anchor w] $rrC.rrMenuB $rrC.rrCKC -anchor w -side left -expand 1
+        pack [ttk::label $rrC.lrrK3 -text "Custom rotation keys:" -anchor w] $rrC.rrMenuB -anchor w -side left -expand 1
         grid $rrC -padx 4 -columnspan 2 -sticky ew
         grid [entry .eRR3 -textvariable settings(rrKeyListCustom) -width $width] -columnspan 2 -padx 4 -sticky ew
         tooltip .eRR3 "Which keys trigger custom rotation round robin\nType <Return> after change to take effect.\nSee help/FAQ for list."
         bind .eRR3 <Return> RRKeysListChange
+        grid [ttk::label .lrrD -text "Direct focus RR keys (Main, WOB1...N):"] -padx 4 -columnspan 2 -sticky w
+        grid [entry .eRR4 -textvariable settings(rrKeyListDirect) -width $width] -columnspan 2 -padx 4 -sticky ew
+        tooltip .eRR4 "Which key will (attempt to) switch focus directly to Main, WOB1, WOB2,...\nFirst key will focus main, 2nd key will focus WOB1, 3rd key will focus WOB2,...\nType <Return> after change to take effect.\nSee help/FAQ for list."
+        bind .eRR4 <Return> RRKeysListChange
     }
 
     grid [frame .sep2 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
@@ -1436,7 +1438,9 @@ proc FocusNinternal {n fg} {
 proc FocusMain {} {
     global slot2position
     # either 1 or the window currently swapped to 1
-    FocusN $slot2position(1) true
+    if {[info exists slot2position(1)]} {
+        FocusN $slot2position(1) true
+    }
 }
 
 proc StayOnTopToggle {} {
@@ -2242,11 +2246,17 @@ proc RRToggle {} {
 
 # Read/reset all keys so we don't pile up keydown when RR is off
 proc RRreadAllKeys {} {
-    global rrCodes rrExcludes
+    global rrCodes rrExcludes rrCodesCustom rrCodesDirect
     foreach code $rrExcludes {
         twapi::GetAsyncKeyState $code
     }
     foreach code $rrCodes {
+        twapi::GetAsyncKeyState $code
+    }
+    foreach code $rrCodesCustom {
+        twapi::GetAsyncKeyState $code
+    }
+    foreach code $rrCodesDirect {
         twapi::GetAsyncKeyState $code
     }
 }
@@ -2316,10 +2326,12 @@ set rrCodes {}
 set rrExcludes {}
 set rrExcludes {}
 set rrCodesCustom {}
+set rrCodesDirect {}
 proc RRKeysListChange {} {
-    global settings rrCodes rrExcludes rrCodesCustom
+    global settings rrCodes rrExcludes rrCodesCustom rrCodesDirect
     lassign [RRkeyListToCodes $settings(rrKeyListAll)] rrCodes settings(rrKeyListAll)
     lassign [RRkeyListToCodes $settings(rrKeyListCustom)] rrCodesCustom settings(rrKeyListCustom)
+    lassign [RRkeyListToCodes $settings(rrKeyListDirect)] rrCodesDirect settings(rrKeyListDirect)
     lassign [RRkeyListToCodes $settings(rrModExcludeList)] rrExcludes settings(rrModExcludeList)
 }
 
@@ -2327,7 +2339,7 @@ set rrLastCode {}
 set rrLastCustom 0
 
 proc RRCheck {} {
-    global rrCodes rrCodesCustom rrExcludes rrLastCode rrLastCustom rrTaskId settings
+    global rrCodes rrCodesCustom rrCodesDirect rrExcludes rrLastCode rrLastCustom rrTaskId settings maxNumW
     set rrTaskId [after $settings(rrInterval) RRCheck]
     #Debug "RR Check..."
     foreach code $rrExcludes {
@@ -2345,6 +2357,19 @@ proc RRCheck {} {
             FocusNextWindow $rrLastCustom
         }
         return
+    }
+    # direct on key down
+    set i 0
+    foreach code $rrCodesDirect {
+        set state [twapi::GetAsyncKeyState $code]
+        if {$state != 0} {
+            FocusDirect $i
+            break
+        }
+        incr i
+        if {$i>=$maxNumW} {
+            break
+        }
     }
     # custom rotation, keyUp normal mode
     foreach code $rrCodesCustom {
@@ -2367,6 +2392,20 @@ proc RRCheck {} {
     }
 }
 
+proc FocusDirect {n} {
+    global lastFocusWindow slot2position
+    # Like FocusMain
+    if {$n==0} {
+        if {![info exists slot2position(1)]} {
+            return
+        }
+        set n $slot2position(1)
+    }
+    if {$n==$lastFocusWindow} {
+        return
+    }
+    CheckWindow [list FocusN $n true 0] $n
+}
 
 proc RRCustomToArray {} {
     global settings rrCustom
@@ -3251,7 +3290,7 @@ array set settings {
     borderless 1
     rrKeyListAll "SPACE 1 2 3 4 5 6 7 8 9 0 - ="
     rrKeyListCustom ". [ ] F11"
-    rrCustomOnKeyUp 1
+    rrKeyListDirect "RETURN"
     rrCustomExcludeList 0
     rrModExcludeList "RCONTROL RSHIFT"
     rrInterval 5
