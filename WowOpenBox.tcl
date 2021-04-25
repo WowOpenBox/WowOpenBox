@@ -632,7 +632,7 @@ proc UISetup {} {
         bind .eRR3 <Return> RRKeysListChange
         grid [ttk::label .lrrD -text "Direct focus RR keys (Main, WOB1...N):"] -padx 4 -columnspan 2 -sticky w
         grid [entry .eRR4 -textvariable settings(rrKeyListDirect) -width $width] -columnspan 2 -padx 4 -sticky ew
-        tooltip .eRR4 "Which key will (attempt to) switch focus directly to Main, WOB1, WOB2,...\nFirst key will focus main, 2nd key will focus WOB1, 3rd key will focus WOB2,...\nTo skip a slot position use NONE\nHit <Return> after change to take effect.\nSee help/FAQ for list."
+        tooltip .eRR4 "Which key will (attempt to) switch focus directly to Main, WOB1, WOB2,...\nFirst key will focus main, 2nd key will focus WOB1, 3rd key will focus WOB2,...\nTo skip a slot position use .*\nRemember this is in addition to the focus hotkeys.\nHit <Return> after change to take effect.\nSee help/FAQ for list."
         bind .eRR4 <Return> RRKeysListChange
     }
 
@@ -2298,7 +2298,7 @@ proc RRUpdate {} {
     Debug "Reset all RR key states"
 }
 
-proc RRkeyListToCodes {keyList {noneKey ""}} {
+proc RRkeyListToCodes {keyList {noneKeyPattern ""}} {
     twapi::_init_vk_map
     set res {}
     set fixedList {}
@@ -2311,7 +2311,7 @@ proc RRkeyListToCodes {keyList {noneKey ""}} {
         if {$len == 1} {
             lassign [twapi::VkKeyScan $k] x code
         } else {
-            if {$k==$noneKey} {
+            if {$noneKeyPattern!="" && [string match $noneKeyPattern $k]} {
                 # only for direct we need to skip some positions
                 set code 0
             } elseif {![info exists twapi::vk_map($k)]} {
@@ -2337,7 +2337,7 @@ proc RRKeysListChange {} {
     global settings rrCodes rrExcludes rrCodesCustom rrCodesDirect
     lassign [RRkeyListToCodes $settings(rrKeyListAll)] rrCodes settings(rrKeyListAll)
     lassign [RRkeyListToCodes $settings(rrKeyListCustom)] rrCodesCustom settings(rrKeyListCustom)
-    lassign [RRkeyListToCodes $settings(rrKeyListDirect) "NONE"] rrCodesDirect settings(rrKeyListDirect)
+    lassign [RRkeyListToCodes $settings(rrKeyListDirect) ".*"] rrCodesDirect settings(rrKeyListDirect)
     lassign [RRkeyListToCodes $settings(rrModExcludeList)] rrExcludes settings(rrModExcludeList)
 }
 
@@ -3303,7 +3303,7 @@ array set settings {
     borderless 1
     rrKeyListAll "SPACE 1 2 3 4 5 6 7 8 9 0 - ="
     rrKeyListCustom ". [ ] F11"
-    rrKeyListDirect "RETURN"
+    rrKeyListDirect ".m .1 .2 .3 ..."
     rrCustomExcludeList 0
     rrModExcludeList "RCONTROL RSHIFT"
     rrInterval 5
