@@ -614,10 +614,10 @@ proc UISetup {} {
         grid [ttk::label .lrrK -text "Round Robin to all windows keys:"] -padx 4 -columnspan 2 -sticky w
         grid [entry .eRR -textvariable settings(rrKeyListAll) -width $width] -columnspan 2 -padx 4 -sticky ew
         bind .eRR <Return> RRKeysListChange
-        tooltip .eRR "Which keys trigger round robin for all windows\nType <Return> after change to take effect.\nSee help/FAQ for list."
+        tooltip .eRR "Which keys trigger round robin for all windows\nHit <Return> after change to take effect.\nSee help/FAQ for list."
         grid [ttk::label .lrrK2 -text "No Round Robin when:"] -padx 4 -columnspan 2 -sticky w
         grid [entry .eRR2 -textvariable settings(rrModExcludeList) -width $width] -columnspan 2 -padx 4 -sticky ew
-        tooltip .eRR2 "Which modifiers pause round robin while held\nType <Return> after change to take effect.\nSee help/FAQ for list."
+        tooltip .eRR2 "Which modifiers pause round robin while held\nHit <Return> after change to take effect.\nSee help/FAQ for list."
         bind .eRR2 <Return> RRKeysListChange
         set rrC .rrC
         frame $rrC
@@ -628,11 +628,11 @@ proc UISetup {} {
         pack [ttk::label $rrC.lrrK3 -text "Custom rotation keys:" -anchor w] $rrC.rrMenuB -anchor w -side left -expand 1
         grid $rrC -padx 4 -columnspan 2 -sticky ew
         grid [entry .eRR3 -textvariable settings(rrKeyListCustom) -width $width] -columnspan 2 -padx 4 -sticky ew
-        tooltip .eRR3 "Which keys trigger custom rotation round robin\nType <Return> after change to take effect.\nSee help/FAQ for list."
+        tooltip .eRR3 "Which keys trigger custom rotation round robin\nHit <Return> after change to take effect.\nSee help/FAQ for list."
         bind .eRR3 <Return> RRKeysListChange
         grid [ttk::label .lrrD -text "Direct focus RR keys (Main, WOB1...N):"] -padx 4 -columnspan 2 -sticky w
         grid [entry .eRR4 -textvariable settings(rrKeyListDirect) -width $width] -columnspan 2 -padx 4 -sticky ew
-        tooltip .eRR4 "Which key will (attempt to) switch focus directly to Main, WOB1, WOB2,...\nFirst key will focus main, 2nd key will focus WOB1, 3rd key will focus WOB2,...\nType <Return> after change to take effect.\nSee help/FAQ for list."
+        tooltip .eRR4 "Which key will (attempt to) switch focus directly to Main, WOB1, WOB2,...\nFirst key will focus main, 2nd key will focus WOB1, 3rd key will focus WOB2,...\nTo skip a slot position use NONE\nHit <Return> after change to take effect.\nSee help/FAQ for list."
         bind .eRR4 <Return> RRKeysListChange
     }
 
@@ -641,7 +641,7 @@ proc UISetup {} {
     grid [ttk::checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
     tooltip .mf "Toggle focus follow mouse mode\nHotkey: $settings(hk,focusFollowMouse)"
 #    grid [ttk::label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width]  -padx 4 -sticky w
-#    tooltip .emd "Focus follow mouse activation delay\nType <Return> after change to take effect."
+#    tooltip .emd "Focus follow mouse activation delay\nHit <Return> after change to take effect."
 #    bind .emd <Return> UpdateMouseDelay
 #    grid [frame .sep3 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
     grid [ttk::label .l_bottom -textvariable bottomText -justify center -anchor c] -padx 2 -columnspan 2
@@ -2295,7 +2295,7 @@ proc RRUpdate {} {
     Debug "Reset all RR key states"
 }
 
-proc RRkeyListToCodes {keyList} {
+proc RRkeyListToCodes {keyList {noneKey ""}} {
     twapi::_init_vk_map
     set res {}
     set fixedList {}
@@ -2308,7 +2308,10 @@ proc RRkeyListToCodes {keyList} {
         if {$len == 1} {
             lassign [twapi::VkKeyScan $k] x code
         } else {
-            if {![info exists twapi::vk_map($k)]} {
+            if {$k==$noneKey} {
+                # only for direct we need to skip some positions
+                set code 0
+            } elseif {![info exists twapi::vk_map($k)]} {
                 WobError "Invalid RR key" "$k isn't a valid key"
                 continue
             } else {
@@ -2331,7 +2334,7 @@ proc RRKeysListChange {} {
     global settings rrCodes rrExcludes rrCodesCustom rrCodesDirect
     lassign [RRkeyListToCodes $settings(rrKeyListAll)] rrCodes settings(rrKeyListAll)
     lassign [RRkeyListToCodes $settings(rrKeyListCustom)] rrCodesCustom settings(rrKeyListCustom)
-    lassign [RRkeyListToCodes $settings(rrKeyListDirect)] rrCodesDirect settings(rrKeyListDirect)
+    lassign [RRkeyListToCodes $settings(rrKeyListDirect) "NONE"] rrCodesDirect settings(rrKeyListDirect)
     lassign [RRkeyListToCodes $settings(rrModExcludeList)] rrExcludes settings(rrModExcludeList)
 }
 
@@ -2361,10 +2364,13 @@ proc RRCheck {} {
     # direct on key down
     set i 0
     foreach code $rrCodesDirect {
-        set state [twapi::GetAsyncKeyState $code]
-        if {$state != 0} {
-            FocusDirect $i
-            break
+        # Allow "NONE"
+        if {$code != 0} {
+            set state [twapi::GetAsyncKeyState $code]
+            if {$state != 0} {
+                FocusDirect $i
+                break
+            }
         }
         incr i
         if {$i>=$maxNumW} {
@@ -2534,7 +2540,7 @@ proc OverlayConfig {} {
     grid [ttk::label $tw.lr4 -text "Y:" -anchor e] [entry $tw.re3 -width 5 -textvariable settings(rrIndicator,y)] -sticky ew -padx 6
     bind $tw.re3 <Return> "RRUpdate; SaveSettings"
     tooltip $tw.re3 "Relative vertical position: 0 is top 1 is bottom, 0.5 is center"
-    grid [ttk::label $tw.lr5 -text "(type <Return> to update)" -anchor n] -pady 6 -columnspan 3
+    grid [ttk::label $tw.lr5 -text "(Hit <Return> to update)" -anchor n] -pady 6 -columnspan 3
     UpdateHandles
 }
 
