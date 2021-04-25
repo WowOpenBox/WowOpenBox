@@ -824,6 +824,9 @@ proc MenuSetup {} {
     $m3 add radiobutton -label "Auto reset focus to main: after 1 sec" -value 1 -variable settings(autoResetFocusToMain)
     $m3 add radiobutton -label "Auto reset focus to main: after 2 sec" -value 2 -variable settings(autoResetFocusToMain)
     $m3 add radiobutton -label "Auto reset focus to main: after 3 sec" -value 3 -variable settings(autoResetFocusToMain)
+    if {$hasRR} {
+        $m3 add checkbutton -label "Auto reset after direct RR keys" -variable settings(autoResetDirect)
+    }
     $m3 add separator
     $m3 add checkbutton -label "Pause when mouse is outside windows" -variable settings(mouseOutsideWindowsPauses)
     $m3 add checkbutton -label "Focus back when mouse in game window" -variable settings(mouseInsideGameWindowFocuses)
@@ -2368,14 +2371,11 @@ proc RRCheck {} {
         if {$code != 0} {
             set state [twapi::GetAsyncKeyState $code]
             if {$state != 0} {
-                FocusDirect $i
+                FocusDirect [expr {$i%($settings(numWindows)+1)}]
                 break
             }
         }
         incr i
-        if {$i>=$maxNumW} {
-            break
-        }
     }
     # custom rotation, keyUp normal mode
     foreach code $rrCodesCustom {
@@ -2399,7 +2399,12 @@ proc RRCheck {} {
 }
 
 proc FocusDirect {n} {
-    global lastFocusWindow slot2position
+    global lastFocusWindow slot2position resetTaskId settings
+    # Like in FocusNextWindow - cancel auto reset
+    if {[info exists resetTaskId]} {
+        after cancel $resetTaskId
+        unset resetTaskId
+    }
     # Like FocusMain
     if {$n==0} {
         if {![info exists slot2position(1)]} {
@@ -2407,10 +2412,12 @@ proc FocusDirect {n} {
         }
         set n $slot2position(1)
     }
-    if {$n==$lastFocusWindow} {
-        return
+    if {$n!=$lastFocusWindow} {
+        CheckWindow [list FocusN $n true 0] $n
     }
-    CheckWindow [list FocusN $n true 0] $n
+    if {$settings(autoResetFocusToMain)>0 && $settings(autoResetDirect)} {
+        set resetTaskId [after [expr {round(1000.*$settings(autoResetFocusToMain))}] FocusMain]
+    }
 }
 
 proc RRCustomToArray {} {
@@ -3301,6 +3308,7 @@ array set settings {
     rrModExcludeList "RCONTROL RSHIFT"
     rrInterval 5
     autoResetFocusToMain 1
+    autoResetDirect 0
     hk,rrToggle "Ctrl-Shift-R"
     hk,focusMain "Ctrl-Shift-W"
     hk,resetAll "Ctrl-Shift-Alt-R"
