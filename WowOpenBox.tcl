@@ -630,9 +630,9 @@ proc UISetup {} {
         grid [entry .eRR3 -textvariable settings(rrKeyListCustom) -width $width] -columnspan 2 -padx 4 -sticky ew
         tooltip .eRR3 "Which keys trigger custom rotation round robin\nHit <Return> after change to take effect.\nSee help/FAQ for list."
         bind .eRR3 <Return> RRKeysListChange
-        grid [ttk::label .lrrD -text "Direct focus RR keys (Main, WOB1...N):"] -padx 4 -columnspan 2 -sticky w
+        grid [ttk::label .lrrD -text "Direct focus keys (Main, WOB1...N):"] -padx 4 -columnspan 2 -sticky w
         grid [entry .eRR4 -textvariable settings(rrKeyListDirect) -width $width] -columnspan 2 -padx 4 -sticky ew
-        tooltip .eRR4 "Which key will (attempt to) switch focus directly to Main, WOB1, WOB2,...\nFirst key will focus main, 2nd key will focus WOB1, 3rd key will focus WOB2,...\nTo skip a slot position use .*\nRemember this is in addition to the focus hotkeys.\nHit <Return> after change to take effect.\nSee help/FAQ for list."
+        tooltip .eRR4 "Which key will switch focus asap directly to Main, WOB1, WOB2,...\nFirst key will focus main, 2nd key will focus WOB1, 3rd key will focus WOB2,...\nTo skip a slot position use .*\nRemember this is in addition to the focus hotkeys.\nHit <Return> after change to take effect.\nSee help/FAQ for list."
         bind .eRR4 <Return> RRKeysListChange
     }
 
@@ -1768,6 +1768,9 @@ proc AutoCapture {w} {
     } err]} {
         Debug "Auto capture error: $err for $w - will try later"
         puts stderr "Auto capture error: $err for $w - will try later"
+        if {$err=="Access is denied."} {
+            WobError "Auto Capture Error" "Access Denied - You should not run $settings(game) as Administrator; it prevents window control from WOB/OMB. Please restart your game windows as non admin. See FAQ."
+        }
         return
     }
     PostCapture $w $wname
