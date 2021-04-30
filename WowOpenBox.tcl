@@ -1754,8 +1754,10 @@ proc IsOurs {w} {
 
 # TODO: count errors and stop instead of spinning after a while
 
+set autoCaptureErrorCount 0
+
 proc AutoCapture {w} {
-    global nextWindow settings stayOnTop lastUpdate slot2handle
+    global nextWindow settings stayOnTop lastUpdate slot2handle autoCaptureErrorCount
     for {} {[info exists slot2handle($nextWindow)]} {incr nextWindow} {
         Debug "Skipping existing nextwindow $nextWindow"
     }
@@ -1766,12 +1768,20 @@ proc AutoCapture {w} {
         }
         Rename $w $wname
     } err]} {
-        Debug "Auto capture error: $err for $w - will try later"
-        puts stderr "Auto capture error: $err for $w - will try later"
+        set eMsg "Auto capture error: $err for $w - will try later (#$autoCaptureErrorCount)"
+        Debug $eMsg
+        puts stderr $eMsg
         if {$err=="Access is denied."} {
-            WobError "Auto Capture Error" "Access Denied - You should not run $settings(game) as Administrator; it prevents window control from WOB/OMB. Please restart your game windows as non admin. See FAQ."
+            incr autoCaptureErrorCount
+            # allow some retries before giving up
+            if {$autoCaptureErrorCount > 20} {
+                WobError "Auto Capture Error" "Access Denied - You should not run $settings(game) as Administrator; it prevents window control from WOB/OMB. Please restart your game windows as non admin. See FAQ."
+                set autoCaptureErrorCount 0
+            }
         }
         return
+    } else {
+        set autoCaptureErrorCount 0
     }
     PostCapture $w $wname
 }
