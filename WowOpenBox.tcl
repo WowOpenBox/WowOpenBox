@@ -826,6 +826,7 @@ proc MenuSetup {} {
     $m3 add radiobutton -label "Auto reset focus to main: after 3 sec" -value 3 -variable settings(autoResetFocusToMain)
     if {$hasRR} {
         $m3 add checkbutton -label "Auto reset after direct RR keys" -variable settings(autoResetDirect)
+        $m3 add checkbutton -label "Always focus (if mixing click and RR)" -variable settings(rrAlwaysFocus)
     }
     $m3 add separator
     $m3 add checkbutton -label "Pause when mouse is outside windows" -variable settings(mouseOutsideWindowsPauses)
@@ -1527,7 +1528,7 @@ proc FocusNextWindow {{custom 0}} {
         set n [expr {$focusWindow % ($maxNumW-1) + 1}]
     }
     Debug "FocusNextWindow: custom $custom, focusWindow $focusWindow maxNumW $maxNumW -> $n"
-    if {$n!=$lastFocusWindow} {
+    if {$settings(rrAlwaysFocus) || $n!=$lastFocusWindow} {
         # Don't update here as it could be custom
         CheckWindow [list FocusN $n true 0] $n
     }
@@ -2425,7 +2426,7 @@ proc FocusDirect {n} {
         }
         set n $slot2position(1)
     }
-    if {$n!=$lastFocusWindow} {
+    if {$settings(rrAlwaysFocus) || $n!=$lastFocusWindow} {
         CheckWindow [list FocusN $n true 0] $n
     }
     if {$settings(autoResetFocusToMain)>0 && $settings(autoResetDirect)} {
@@ -3320,6 +3321,7 @@ array set settings {
     rrCustomExcludeList 0
     rrModExcludeList "RCONTROL RSHIFT"
     rrInterval 5
+    rrAlwaysFocus 1
     autoResetFocusToMain 1
     autoResetDirect 0
     hk,rrToggle "Ctrl-Shift-R"
