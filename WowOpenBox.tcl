@@ -794,7 +794,7 @@ proc MenuSetup {} {
     menu $mG -tearoff 0
     .mbar add cascade -label Game -menu $mG
     foreach g $settings(games) {
-        $mG add radiobutton -label $g -variable settings(game)
+        $mG add radiobutton -label $g -value $g -variable settings(game)
     }
     $mG add separator
     $mG add checkbutton -label "Add (capture focused window mode)" -variable settings(captureForegroundWindow) -command UpdateForegroundMode
