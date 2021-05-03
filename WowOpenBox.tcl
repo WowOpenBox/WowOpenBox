@@ -3309,7 +3309,7 @@ array set settings {
     overlayFontSize1 48
     overlayFontSize2 48
     game "World of Warcraft"
-    games {"World of Warcraft" "EVE" "Star Wars\u2122: The Old Republic\u2122"}
+    games {"World of Warcraft" "Overwatch" "EVE" "Star Wars\u2122: The Old Republic\u2122"}
     captureForegroundWindow 0
     lastUpdateChecked 0
     profile "Default"
