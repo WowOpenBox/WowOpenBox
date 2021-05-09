@@ -113,15 +113,6 @@ if {![info exists wobInitDone]} {
         set initProfile [lindex $argv end]
         Debug "OMB requested profile '$initProfile'"
     }
-    # TOS compliance - do it first so the binary can't possibly be used for broadcasting
-    if {[catch {
-        rename twapi::SendInput {}
-        rename twapi::Twapi_SendUnicode {}
-        rename twapi::SetCursorPos {}
-        rename twapi::BlockInput {}
-    } err]} {
-        Debug "Error in removing primitive: $err"
-    }
     # Settings and updated code directory
     # -- App utils - save settings
     set script_path [file normalize [info script]]

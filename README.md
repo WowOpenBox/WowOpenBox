@@ -2,7 +2,7 @@
 # OpenMultiBoxing
 <img src="https://OpenMultiBoxing.org/sshot4_2.png" alt="OMB Screenshot" align="right">
 
-Open source software for MultiBoxing any game or app. This is the continuation of [WowOpenBox][https://wowopenbox.org/].
+Open source software for MultiBoxing any game or app. This is the continuation of [WowOpenBox](https://wowopenbox.org/).
 
 Since version 2.0 you can also manage the windows of any Windows10 application or game (Eve online, Path of Exile, Browser Games, etc... under the "OpenMultiBoxing" moniker but this is the same code that started for just Wow and now works for both/all)
 
