@@ -2,7 +2,7 @@
 
 name: CI
 
-# Controls when the action will run. 
+# Controls when the action will run.
 on:
   push:
     tags:
@@ -42,14 +42,14 @@ jobs:
           else
             echo ::set-output name=PRERELEASE::false
           fi
-          sed -e "s/^set vers .*$/set vers \"$VERSION\"/" < WowOpenBox.tcl > WowOpenBox.tkapp
+          sed -e "s/^set vers .*$/set vers \"$VERSION\"/" < OpenMultiBoxing.tcl > OpenMultiBoxing.tkapp
           sed -b -e "s/OpenMultiBoxing-vX.Y.Z.exe/OpenMultiBoxing-$VERSION.exe/" buildkit/OpenMultiBoxing_RR.exe > buildkit/OpenMultiBoxing_RR-$VERSION.exe
         shell: bash
 
       - name: Make the executable and zip
         run: |
           cd buildkit
-          cp ..\WowOpenBox.tkapp OpenMultiBoxing.vfs\app
+          cp ..\OpenMultiBoxing.tkapp OpenMultiBoxing.vfs\app
           Add-Content -Path OpenMultiBoxing.vfs\tclkit.inf -Value "ProductVersion ""${{ steps.get_version.outputs.VERSION }}""" -PassThru
           tclkit\tclkit.exe sdx\sdx.kit wrap OpenMultiBoxing -runtime runtime.exe
           Rename-Item OpenMultiBoxing OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.exe
@@ -63,7 +63,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           tag_name: ${{ github.ref }}
-          release_name: WowOpenBox / OpenMultiBoxing ${{ steps.get_version.outputs.VERSION }}
+          release_name: OpenMultiBoxing ${{ steps.get_version.outputs.VERSION }}
           draft: true
           prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
 
@@ -85,6 +85,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: WowOpenBox.tkapp
-          asset_name: WowOpenBox-${{ steps.get_version.outputs.VERSION }}.tkapp
+          asset_path: OpenMultiBoxing.tkapp
+          asset_name: OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.tkapp
           asset_content_type: application/octet-stream

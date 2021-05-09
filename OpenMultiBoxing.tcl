@@ -5,7 +5,7 @@
 #  The GNU General Public License does not permit incorporating this work
 #  into proprietary programs.
 #
-#  Releases detail/changes are on https://github.com/WowOpenBox/WowOpenBox/releases
+#  Releases detail/changes are on https://github.com/OpenMultiBoxing/OpenMultiBoxing/releases
 #
 package require Tk
 package require twapi
@@ -65,10 +65,10 @@ proc EnableDisableWindows {enable} {
 }
 
 
-proc WobMessage {args} {
+proc OmbMessage {args} {
     global hotkeyOk
     set hotkeyOk 0
-    Debug "WOB message $args"
+    Debug "OMB message $args"
     EnableDisableWindows 0
     set ret [tk_messageBox {*}$args]
     EnableDisableWindows 1
@@ -76,12 +76,12 @@ proc WobMessage {args} {
     return $ret
 }
 
-proc WobError {title msg} {
+proc OmbError {title msg} {
     puts stderr "Error $title: $msg"
-    WobMessage -type ok -icon error -title $title -message $msg
+    OmbMessage -type ok -icon error -title $title -message $msg
 }
 
-set SETTINGS_PREFIX "wowopenboxSettings"
+set SETTINGS_PREFIX "OpenMultiBoxingSettings"
 set SETTINGS_SUFFIX ".tcl"
 set SETTINGS_BASE "$SETTINGS_PREFIX$SETTINGS_SUFFIX"
 
@@ -103,7 +103,7 @@ if {![info exists wobInitDone]} {
     if {[HasArg "-debug"]} {
         set forceDebug 1
         catch {console show}
-        Debug "WOB $vers called with -debug"
+        Debug "OMB $vers called with -debug"
     }
     if {[HasArg "-rr"]} {
         set hasRR 1
@@ -111,7 +111,7 @@ if {![info exists wobInitDone]} {
     }
     if {[HasArg "-profile"]} {
         set initProfile [lindex $argv end]
-        Debug "WOB requested profile '$initProfile'"
+        Debug "OMB requested profile '$initProfile'"
     }
     # TOS compliance - do it first so the binary can't possibly be used for broadcasting
     if {[catch {
@@ -140,7 +140,7 @@ if {![info exists wobInitDone]} {
         Debug "In EXE, checking for code outside: $update_path"
         if {[file readable $update_path]} {
             if {[catch {source -encoding utf-8 $update_path} err]} {
-                WobError "WOB/OMB error: update file error" \
+                OmbError "OMB error: update file error" \
                  "Please delete [file nativename $update_path] and restart\n\n$err\n$errorInfo"
                 exit 1
             } else {
@@ -153,9 +153,9 @@ if {![info exists wobInitDone]} {
 
 proc CheckForUpdates {silent} {
     global vers update_path settings errorInfo
-    set url "https://api.github.com/repos/WowOpenBox/WowOpenBox/releases/latest"
+    set url "https://api.github.com/repos/OpenMultiBoxing/OpenMultiBoxing/releases/latest"
     if {[catch {set token [http::geturl $url]} err]} {
-        WobError "WoW Open Box network error" "Url fetch error $err"
+        OmbError "OpenMultiBoxing network error" "Url fetch error $err"
         return
     }
     set settings(lastUpdateChecked) [clock seconds]
@@ -166,13 +166,13 @@ proc CheckForUpdates {silent} {
             Debug "Already running latest $vers"
             return
         }
-        WobMessage -type ok -icon info -title "Already uptodate" \
+        OmbMessage -type ok -icon info -title "Already uptodate" \
             -message "You're already running the latest version $vers"
         return
     }
-    if {![regexp {browser_download_url":"(https://github\.com/WowOpenBox/WowOpenBox/releases/download/[^"]+\.tkapp)"} $body all updateUrl]} {
+    if {![regexp {browser_download_url":"(https://github\.com/OpenMultiBoxing/OpenMultiBoxing/releases/download/[^"]+\.tkapp)"} $body all updateUrl]} {
         Debug "--- Update not found in $url ---\n$body\n--- end of $url ---"
-        WobError "Update Error" "Couldn't find update in latest release - please report as a bug"
+        OmbError "Update Error" "Couldn't find update in latest release - please report as a bug"
         return
     }
     set name ""
@@ -184,17 +184,17 @@ proc CheckForUpdates {silent} {
     set description [string trimright $description]
     Debug "Found update $updateUrl : $name ($description)"
     if {![regexp {/(v[^/]+)/} $updateUrl all newVersion]} {
-        WobError "Update Error" "Couldn't find version in update url: $updateUrl\nPlease report this bug!"
+        OmbError "Update Error" "Couldn't find version in update url: $updateUrl\nPlease report this bug!"
         return
     }
-    set doUpdate [WobMessage -type yesno -icon question -title "Update Available" \
+    set doUpdate [OmbMessage -type yesno -icon question -title "Update Available" \
             -message "$newVersion is available:\n\n$name\n\n$description\n\nDo you want to install it?"]
     Debug "Do update is $doUpdate"
     if {$doUpdate=="no"} {
         return
     }
     if {[catch {set token [http::geturl $updateUrl]} err]} {
-        WobError "Update error" "Update fetch error for\n$updateUrl\n$err"
+        OmbError "Update error" "Update fetch error for\n$updateUrl\n$err"
         return
     }
     set ncode [http::ncode $token]
@@ -210,13 +210,13 @@ proc CheckForUpdates {silent} {
         }
         Debug "Got a redirect $ncode: $location"
         if {[catch {set token [http::geturl $location]} err]} {
-            WobError "Update error" "Update fetch error for redirected\n$location\n$err"
+            OmbError "Update error" "Update fetch error for redirected\n$location\n$err"
             return
         }
         set ncode [http::ncode $token]
     }
     if {$ncode != 200} {
-        WobError "Update error" "Update error code $ncode for\n$updateUrl"
+        OmbError "Update error" "Update error code $ncode for\n$updateUrl"
         return
     }
     set body [http::data $token]
@@ -230,10 +230,10 @@ proc CheckForUpdates {silent} {
     puts -nonewline $f $body
     close $f
     Debug "Updated $update_path"
-    WobMessage -type ok -icon info -title "Download complete" \
+    OmbMessage -type ok -icon info -title "Download complete" \
             -message "Backed up previous version as $backup_path - ready to restart with $newVersion"
     if {[catch {uplevel #0 [list source -encoding utf-8 $update_path]} err]} {
-       WobError "Update error" "Error in new downloaded script:\n$err\n$errorInfo\n\nPlease screenshot this and report this bug!"
+       OmbError "Update error" "Error in new downloaded script:\n$err\n$errorInfo\n\nPlease screenshot this and report this bug!"
        return
     }
     Debug "Control passed successfully to updated file $newVersion"
@@ -249,7 +249,7 @@ proc NewProfile {} {
     EnableDisableWindows 0
     toplevel $t
     wm resizable $t 0 0
-    wm title $t "WOB/OMB New Profile Name..."
+    wm title $t "OMB New Profile Name..."
     ttk::label  $t.l -text "Save settings as new Profile named:"
     ttk::entry  $t.e -textvar profileName
     bind $t.e <Return> {set doneDialog 1}
@@ -298,7 +298,7 @@ proc RefreshProfiles {} {
         lappend settings(profiles) $p
     }
     if {[lsearch -exact $settings(profiles) $settings(profile)] == -1} {
-        WobError "Profile error" "Profile $settings(profile) not found; resetting to Default"
+        OmbError "Profile error" "Profile $settings(profile) not found; resetting to Default"
         set settings(profile) "Default"
     }
     UpdateProfilesMenu
@@ -335,7 +335,7 @@ proc SaveSettings {args} {
     }
     Debug "SaveSettings base $SETTINGS_FILE (from cb $args)"
     if {[catch {open $SETTINGS_FILE w+} f]} {
-        WobError "Error saving settings" \
+        OmbError "Error saving settings" \
             "Unable to save settings: $f\n\nPlease do not put OpenMultiBoxing*.exe\nin a system/special/protected folder\nput them on your Desktop instead for instance."
         return
     }
@@ -355,7 +355,7 @@ proc LoadProfile {} {
     set pf [ProfileFileName $profile]
     if {[catch {source -encoding utf-8 $pf} err]} {
         puts stderr "Error sourcing profile $pf\n$err"
-        WobError "WoW Open Box profile error" \
+        OmbError "OpenMultiBoxing profile error" \
             "Your $pf has an error: $err\nYou can remove it and use Refresh Profiles in the menu."
         set settings(profile) "Default"
         return
@@ -374,7 +374,7 @@ proc LoadSettings {} {
     if {[file exists $SETTINGS_FILE]} {
         if {[catch {source -encoding utf-8 $SETTINGS_FILE} err]} {
             puts stderr "Could not source $SETTINGS_FILE\n$err"
-            WobError "WoW Open Box settings error" \
+            OmbError "OpenMultiBoxing settings error" \
                 "Your $SETTINGS_FILE has an error: $err"
         } else {
             if {$settings(profile)!="Default"} {
@@ -432,7 +432,7 @@ proc AfterSettings {} {
     RegisterHotkey "Reset all windows to saved positions" hk,resetAll ResetAll
     for {set n 1} {$n < $maxNumW} {incr n} {
         if {[info exists slot2handle($n)]} {
-            RegisterPerWindowHotkey $n "WOB $n"
+            RegisterPerWindowHotkey $n "OMB $n"
         }
     }
     # Set mouse control to current values
@@ -502,30 +502,7 @@ proc updateIndex {args} {
     }
 }
 
-
 proc GetLogo {} {
-    global imgObj70 vers inExe img_dir
-    if {$inExe} {
-        if {[catch {set imgObj70 [image create photo -file [file join $img_dir "WoWOpenBox70.png"]]} err]} {
-            Debug "Didn't get logos: $err - falling back to https download"
-        } else {
-            Debug "In exe wob logo loaded"
-            return ""
-        }
-    }
-    if {[catch {set token [http::geturl "https://wowopenbox.org/WoWOpenBox70.png?v=$vers"]} err]} {
-        WobError "WoW Open Box network error" "Url fetch error $err"
-        return $err
-    }
-    set body [http::data $token]
-    if {[catch {set imgObj70 [image create photo -data $body]} err]} {
-        WobError "WoW Open Box logo error" "Logo error $err -:- $body"
-        return "Invalid data $err $body"
-    }
-    return ""
-}
-
-proc GetOMBLogo {} {
     global imgOMB70 vers inExe img_dir
     if {[catch {set imgOMB70 [image create photo -file [file join $img_dir "OpenMultiBoxing70.png"]]} err]} {
         Debug "Didn't get logos: $err - falling back to https download"
@@ -534,50 +511,33 @@ proc GetOMBLogo {} {
         return ""
     }
     if {[catch {set token [http::geturl "https://openmultiboxing.org/OpenMultiBoxing70.png?v=$vers"]} err]} {
-        WobError "OpenMultiBoxing network error" "Url fetch error $err"
+        OmbError "OpenMultiBoxing network error" "Url fetch error $err"
         return $err
     }
     set body [http::data $token]
     if {[catch {set imgOMB70 [image create photo -data $body]} err]} {
-        WobError "Open Multi Boxing logo error" "Logo error $err -:- $body"
+        OmbError "Open Multi Boxing logo error" "Logo error $err -:- $body"
         return "Invalid data $err $body"
     }
     return ""
 }
 
-
-proc SwitchLogo {} {
-    global skin imgObj70 imgOMB70
-    if {$skin} {
-        .logo configure -image $imgOMB70
-        wm iconphoto . -default $imgOMB70
-    } else {
-        .logo configure -image $imgObj70
-        wm iconphoto . -default $imgObj70
-    }
-    set skin [expr {1-$skin}]
-}
-
-set ourTitle "WoW Open Box - Opensource MultiBoxing"
+set ourTitle "OpenMultiBoxing - Opensource MultiBoxing"
 
 proc UISetup {} {
-    global imgObj70 vers stayOnTop pos windowSize settings \
-         mouseFollow mouseRaise mouseDelay ourTitle skin bottomText \
+    global imgOMB70 vers stayOnTop pos windowSize settings \
+         mouseFollow mouseRaise mouseDelay ourTitle bottomText \
          rrOn hasRR
     wm title . $ourTitle
     # Get logo
-    set err1 [GetLogo]
-    set err2 [GetOMBLogo]
-    if {$err1 != "" || $err2 != ""} {
-        set txt "WoW\nOpenBox\nMultiboxing"
-        if {$skin} {
-            set txt "Opensource\nMulti\nBoxing"
-        }
+    set err [GetLogo]
+    if {$err != ""} {
+        set txt "Opensource\nMulti\nBoxing"
         grid [ttk::label .logo -text $txt] -rowspan 3
     } else {
         grid [ttk::label .logo] -rowspan 3 -pady 6 -padx 12
-        bind .logo <ButtonPress> SwitchLogo
-        SwitchLogo
+        .logo configure -image $imgOMB70
+        wm iconphoto . -default $imgOMB70
     }
     set labelW 18
     grid [ttk::button .bH -text "Help" -width $labelW -command Help]  -row 0 -column 1 -padx 4
@@ -674,9 +634,9 @@ proc About {} {
     if {$inExe && [info exists oldVersion] && $oldVersion !=$vers} {
         set extra "Binary version $oldVersion\n$extra"
     }
-    WobMessage -type ok -icon info -title "About Wow Open Box / Open MultiBoxing" \
+    OmbMessage -type ok -icon info -title "About OpenMultiBoxing" \
             -message \
-"WoW Open Box (WOB) / Open MultiBoxing (OMB) $vers\n$extra\n\nFree, OpenSource, Safe, Rules compliant, Multiboxing Software\n\nLicensed under GPLv3 - No Warranty\nThe GNU General Public License does not permit incorporating this work into proprietary programs.\n\nhttps://openmultiboxing.org https://wowopenbox.org/\n\uA9 2020-2021 MooreaTv <moorea@ymail.com>"
+"Open MultiBoxing (OMB) $vers\n$extra\n\nFree, OpenSource, Safe, Rules compliant, Multiboxing Software\n\nLicensed under GPLv3 - No Warranty\nThe GNU General Public License does not permit incorporating this work into proprietary programs.\n\nhttps://openmultiboxing.org https://wowopenbox.org/\n\uA9 2020-2021 MooreaTv <moorea@ymail.com>"
 
 }
 
@@ -708,7 +668,7 @@ proc ClipboardManager {} {
         return
     }
     toplevel $tw
-    wm title $tw "WOB/OMB Secure Copy Paste"
+    wm title $tw "OMB Secure Copy Paste"
     grid [ttk::label $tw.la -text "Secure text"] [entry $tw.e  -show "*" -textvariable clipboardValue -width 14] -padx 4 -sticky ew
     grid [ttk::button $tw.copy -width 14 -text "Copy" -command SetClipboard] [ttk::button $tw.clear -width 14 -text "Clear" -command ClearClipboard] -padx 4 -sticky ew
     tooltip $tw.copy "Copy hidden text"
@@ -729,9 +689,9 @@ proc CloseAllGames {{andExit 0}} {
     global slot2handle slot2position nextWindow maxNumW
     set extraMsg ""
     if {$andExit} {
-        set extraMsg " and Exit WOB/OMB"
+        set extraMsg " and Exit OMB"
     }
-    set r [WobMessage -type yesno -title "Close All$extraMsg?" -icon warning -default no\
+    set r [OmbMessage -type yesno -title "Close All$extraMsg?" -icon warning -default no\
         -message "Are you sure you want to (force) close all the game windows$extraMsg?\n\nYou will lose all unsaved progress!"]
     if {$r!="yes"} {
         Debug "Close All not confirmed"
@@ -853,7 +813,7 @@ proc MouseTracking {} {
         return
     }
     toplevel $tw
-    wm title $tw "WOB/OMB Mouse Tracking"
+    wm title $tw "OMB Mouse Tracking"
     grid [ttk::button $tw.bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry $tw.emt -textvariable mouseCoords -width 14] -padx 4 -sticky w
     tooltip $tw.bml "Start/Stop mouse tracking\nHotkey: $settings(hk,mouseTrack)"
     grid [ttk::label $tw.la -text "Coords in area"] [entry $tw.ema -textvariable mouseArea -width 14] -padx 4 -sticky w
@@ -874,7 +834,7 @@ proc CheckAutoKill {} {
         set newPath $path.bak
         if {[file exists $path]} {
             if {[catch {file rename -force $path $newPath} err]} {
-                WobError "AutoKill rename error" "$err"
+                OmbError "AutoKill rename error" "$err"
             }
             Debug "Renamed $path to $newPath"
         }
@@ -1099,7 +1059,7 @@ proc CheckWindow {cmd n} {
     UpdateForegroundMode
     set n0 [expr {$n-1}]
     .lbw delete $n0
-    .lbw insert $n0 " WOB $n (lost)"
+    .lbw insert $n0 " OMB $n (lost)"
 }
 
 proc selectChanged {w args} {
@@ -1128,7 +1088,7 @@ proc ContextMenu {n x y} {
     Debug "In context for $n"
     catch {destroy .ctx}
     menu .ctx -tearoff 0
-    .ctx add command -label "Forget WOB $n..." -command [list Forget $n]
+    .ctx add command -label "Forget OMB $n..." -command [list Forget $n]
     tk_popup .ctx $x $y
 }
 
@@ -1146,11 +1106,11 @@ proc Forget {n} {
     UpdateForegroundMode
     set n0 [expr {$n-1}]
     .lbw delete $n0
-    .lbw insert $n0 " WOB $n (removed)"
+    .lbw insert $n0 " OMB $n (removed)"
     if {[info exists savedWindowStyle($wh)]} {
         # this would require a resize as well for the game to pickup the change
         # but this is "forget" so... that's enough we get back a title and resize
-        # if the user which to move the window out of wob/omb
+        # if the user which to move the window out of omb
         lassign $savedWindowStyle($wh) st exst
         catch {twapi::set_window_style $wh $st $exst}
     }
@@ -1237,20 +1197,20 @@ proc FindExisting {} {
     # do +1 just in case there is one more than last save
     set firstMissing 0
     for {set n 1} {$n<=$settings(numWindows)+1} {incr n 1} {
-        set wname "WOB $n"
+        set wname "OMB $n"
         set wl [twapi::find_windows -match regexp -text "^$wname\$" -visible true]
         if {$wl eq {}} {
             if {!$firstMissing} {
                 set firstMissing $n
             }
-            Debug "WOB $n not found, skipping"
+            Debug "OMB $n not found, skipping"
             continue
         }
         lassign $wl w
-        Debug "found WOB $n! : $wl : $w"
+        Debug "found OMB $n! : $wl : $w"
         if {$settings(numWindows)==0} {
-            WobError "WoW Open Box missing settings error" \
-                "You have existing WOB 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
+            OmbError "OpenMultiBoxing missing settings error" \
+                "You have existing OMB 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
             exit 1
         }
         updateListBox $n $w $wname
@@ -1319,12 +1279,12 @@ proc Foreground {wh} {
 
 proc Help {} {
     global vers
-    twapi::shell_execute -path https://wowopenbox.org/help?v=$vers
+    twapi::shell_execute -path https://OpenMultiBoxing.org/help?v=$vers
 }
 
 proc Releases {} {
     global vers
-    twapi::shell_execute -path https://github.com/WowOpenBox/WowOpenBox/releases?v=$vers
+    twapi::shell_execute -path https://github.com/OpenMultiBoxing/OpenMultiBoxing/releases?v=$vers
 }
 
 proc EditSettings {} {
@@ -1356,7 +1316,7 @@ proc RegisterHotkey {msg var callback} {
     }
     if {[catch {twapi::register_hotkey $hk [list HandleHotKey $msg $callback]} err]} {
         puts "hotkey error $hk for $msg: $err"
-        WobError "WoW Open Box HotKey error" \
+        OmbError "OpenMultiBoxing HotKey error" \
          "Conflict for hotkey for $msg, change $var in settings to use something different than $hk"
     }
     lappend allHotKeys $err
@@ -1370,8 +1330,8 @@ proc FindOtherCopy {} {
         if {![IsOurs $w]} {
             catch {twapi::flash_window $w -count 3} err
             puts "Found another window of ours. Flashed it. $err"
-            WobError "WoW Open Box duplicate error" \
-                 "Another copy of WowOpenBox is running, please exit it before starting a new one (or hotkeys will conflict)."
+            OmbError "OpenMultiBoxing duplicate error" \
+                 "Another copy of OpenMultiBoxing is running, please exit it before starting a new one (or hotkeys will conflict)."
             catch {Foreground $w; Focus $w; twapi::flash_window $w -count 3} err
             puts "Bring other window in focus. $err"
             exit 1
@@ -1381,8 +1341,8 @@ proc FindOtherCopy {} {
     set pList [twapi::get_process_ids -glob -name "OpenMultiBoxing-v*.exe"]
     set ll [llength $pList]
     if {$ll>1} {
-        set r [WobMessage -type yesno -title "Kill older instances" -icon warning -default yes\
-        -message "Found $ll copies of WOB/OMB process, want to kill them to avoid hotkey binding errors?"]
+        set r [OmbMessage -type yesno -title "Kill older instances" -icon warning -default yes\
+        -message "Found $ll copies of OMB process, want to kill them to avoid hotkey binding errors?"]
         if {$r=="yes"} {
             Debug "Kill extra confirmed"
             set ours [twapi::get_current_process_id]
@@ -1479,7 +1439,7 @@ proc NextCustomWindow {} {
     global customWindow maxNumW rrCustom slot2position
     if {![info exists rrCustom(0)]} {
         # updgrade without menu setup
-        WobError "Restart needed" "You just upgraded but need to restart WOB! No state will be lost if you do! Thanks!"
+        OmbError "Restart needed" "You just upgraded but need to restart OMB! No state will be lost if you do! Thanks!"
     }
     set mainSlot $slot2position(1)
     set mainCheck $mainSlot
@@ -1503,11 +1463,11 @@ proc NextCustomWindow {} {
             return $n
         }
     }
-    # only complain if it would never work; not if say main is excluded; only Wob2 is allowed yet
+    # only complain if it would never work; not if say main is excluded; only Omb2 is allowed yet
     # wob2 is the one in main
     Debug "Nothing found $excl $maxNumW staying on $customWindow"
     if {$excl==$maxNumW-1} {
-        WobError "Custom RR Error" "Invalid Custom Rotation, All windows are disabled!"
+        OmbError "Custom RR Error" "Invalid Custom Rotation, All windows are disabled!"
     }
     return $customWindow
 }
@@ -1628,7 +1588,7 @@ proc SetAsMainInt {n} {
     set p1 $slot2position(1)
     Debug "SetAsMain $n called currently was in $p, s1 is in $p1"
     if {$slot2position($p1)!=1} {
-        WobError "Bug?" "Unexpected s1 is in $p1 but $p1 is in $slot2position($p1)"
+        OmbError "Bug?" "Unexpected s1 is in $p1 but $p1 is in $slot2position($p1)"
         return
     }
     set slot2position($n) 1
@@ -1734,7 +1694,7 @@ proc UpdateOurWindowHandles {} {
             Debug "Already shown error $handleRetryCount: $notReadyCause"
         } else {
             set handleErrorShown 1
-            WobError "UpdateHandles Error" "Unable to complete updates after $handleRetryCount.\n\nPlease screenshot this and report this bug.\n\nCode: $notReadyCause\n\n$vers"
+            OmbError "UpdateHandles Error" "Unable to complete updates after $handleRetryCount.\n\nPlease screenshot this and report this bug.\n\nCode: $notReadyCause\n\n$vers"
         }
     }
     set handleRetryCount 2
@@ -1762,7 +1722,7 @@ proc AutoCapture {w} {
     for {} {[info exists slot2handle($nextWindow)]} {incr nextWindow} {
         Debug "Skipping existing nextwindow $nextWindow"
     }
-    set wname "WOB $nextWindow"
+    set wname "OMB $nextWindow"
     if {[catch {
         if {$settings(borderless)} {
             BorderLess $w 0
@@ -1776,7 +1736,7 @@ proc AutoCapture {w} {
             incr autoCaptureErrorCount
             # allow some retries before giving up
             if {$autoCaptureErrorCount > 20} {
-                WobError "Auto Capture Error" "Access Denied - You should not run $settings(game) as Administrator; it prevents window control from WOB/OMB. Please restart your game windows as non admin. See FAQ."
+                OmbError "Auto Capture Error" "Access Denied - You should not run $settings(game) as Administrator; it prevents window control from OMB. Please restart your game windows as non admin. See FAQ."
                 set autoCaptureErrorCount 0
             }
         }
@@ -1796,7 +1756,7 @@ proc Capture {} {
             return
         }
         if {[IsOurs $w]} {
-            WobError "WoW Open Box Error" "Can't capture foreground window: it's (already) ours!"
+            OmbError "OpenMultiBoxing Error" "Can't capture foreground window: it's (already) ours!"
             return
         }
         set wtitle [twapi::get_window_text $w]
@@ -1810,11 +1770,11 @@ proc Capture {} {
     } else {
         set w [FindGameWindow]
         if {$w eq ""} {
-            WobError "WoW Open Box Error" "No $settings(game) window found"
+            OmbError "OpenMultiBoxing Error" "No $settings(game) window found"
             return
         }
     }
-    set wname "WOB $nextWindow"
+    set wname "OMB $nextWindow"
     # We are resizing just after so no need to do it twice,
     # but otherwise it is needed for the inner size of wow to be correct
     if {$settings(borderless)} {
@@ -1868,7 +1828,7 @@ proc updateListBox {n w wname} {
     }
     # jump by more than 1
     for {set i $maxNumW} {$i < $n} {incr i} {
-        .lbw insert end " WOB $i (not present)"
+        .lbw insert end " OMB $i (not present)"
     }
     .lbw insert $n0 " $wname "
     if {$n>$settings(numWindows)} {
@@ -1935,7 +1895,7 @@ proc WindowLayout {} {
     }
     UpdateExcluded
     toplevel $tw
-    wm title $tw "Wow Open Box Window Layout"
+    wm title $tw "OpenMultiBoxing Window Layout"
     ttk::checkbutton $tw.cbA -variable settings(layoutAuto) -text "Auto" -command ChangeLayout
     tooltip $tw.cbA "Automatically regenerate the layout on any change\nwhen checked. Uncheck for manual layout"
     ttk::checkbutton $tw.cbT -variable settings(layoutTop) -text "Main at bottom" -command ChangeLayout
@@ -1990,12 +1950,12 @@ proc WindowLayout {} {
         }
         $tw.snapMenu.menu add radiobutton -variable settings(layoutSnap) -label $snapLabel -value $v -command [list set snapMenuText "Snap to: $snapLabel"]
     }
-    ttk::style configure WobBoldButton.TButton -font WOBBold
+    ttk::style configure OmbBoldButton.TButton -font WOBBold
     grid $tw.monIdx $tw.scaleMenu \
         [ttk::checkbutton $tw.ctaskbar -text "Avoid\ntaskbar area" -variable settings(avoidTaskbar) -command UpdateExcluded] \
         [ttk::checkbutton $tw.cstayontop -text "Default to\nStay on top" -variable stayOnTop] \
         $tw.snapMenu \
-        [ttk::button $tw.bsave -text " Save and Apply " -command SaveLayout -style WobBoldButton.TButton] -sticky ns -padx 4 -pady 4
+        [ttk::button $tw.bsave -text " Save and Apply " -command SaveLayout -style OmbBoldButton.TButton] -sticky ns -padx 4 -pady 4
     tooltip $tw.bsave "Saves the currently shown layout into permanent settings\nand apply it to any captured WoW windows.\nClose the window without clicking to keep your previous Layout."
     tooltip  $tw.cstayontop "Whether newly laid out window will have\nStay On Top set or not as starting value."
     grid rowconfigure $tw 3 -weight 1
@@ -2185,7 +2145,7 @@ proc SetWindowOnCanvas {id x1 y1 x2 y2} {
         set sot($id) 0
         after idle "$c itemconfigure $tag&&wowWindow -fill #ffd633"
     }
-    $c create text $x1 $y1 -text "\n   ${pin}WOB $id${pin}\n   $w x $h" -anchor "nw" -tags $txtTags
+    $c create text $x1 $y1 -text "\n   ${pin}OMB $id${pin}\n   $w x $h" -anchor "nw" -tags $txtTags
     Debug "Window $id $x1,$y1 $x2,$y2 ($tags)"
 }
 
@@ -2201,7 +2161,7 @@ proc UpdateWindowText {tag w h} {
     } else {
         after idle "$c itemconfigure $tag&&wowWindow -fill #ffd633"
     }
-    $c itemconfigure $t -text "\n   ${pin}WOB $id${pin}\n   $w x $h"
+    $c itemconfigure $t -text "\n   ${pin}OMB $id${pin}\n   $w x $h"
 }
 
 proc LoadLayout {} {
@@ -2221,7 +2181,7 @@ proc LoadLayout {} {
         set i [lindex [split $k ","] 0]
         lassign $settings($k) x1 y1
         lassign $settings($i,size) w h
-        Debug "Found settings for WOB $i $x1 , $y1  $w x $h"
+        Debug "Found settings for OMB $i $x1 , $y1  $w x $h"
         if {$i>$n} {
             continue
         }
@@ -2255,7 +2215,7 @@ proc SizeOfWindow {tag} {
 proc RRToggle {} {
     global rrOn hasRR vers
     if {!$hasRR} {
-        WobError "Round Robin not enabled" "You must start WOB/OMB by launching\n\n   OpenMultiBoxing_RR-${vers}.exe\n\nif you decide to enable RounRobin."
+        OmbError "Round Robin not enabled" "You must start OMB by launching\n\n   OpenMultiBoxing_RR-${vers}.exe\n\nif you decide to enable RounRobin."
     }
     set rrOn [expr {!$rrOn}]
     RRUpdate
@@ -2329,7 +2289,7 @@ proc RRkeyListToCodes {keyList {noneKeyPattern ""}} {
                 # only for direct we need to skip some positions
                 set code 0
             } elseif {![info exists twapi::vk_map($k)]} {
-                WobError "Invalid RR key" "$k isn't a valid key"
+                OmbError "Invalid RR key" "$k isn't a valid key"
                 continue
             } else {
                 set code [expr [lindex $twapi::vk_map($k) 0]]
@@ -2466,7 +2426,7 @@ proc RRCustomMenu {} {
     $m delete 0 99
     $m add checkbutton -label "Main" -variable rrCustom(0) -command RRCustomUpdateSettings
     for {set i 1} {$i<=$settings(numWindows)} {incr i} {
-        $m add checkbutton -label "WOB $i" -variable rrCustom($i) -command RRCustomUpdateSettings
+        $m add checkbutton -label "OMB $i" -variable rrCustom($i) -command RRCustomUpdateSettings
     }
 }
 
@@ -2522,7 +2482,7 @@ proc OverlayConfig {} {
         return
     }
     toplevel $tw
-    wm title $tw "Wow Open Box Overlay Configuration"
+    wm title $tw "OpenMultiBoxing Overlay Configuration"
     grid [ttk::label $tw.l1 -text "Pick the location of the window number overlay:"] -columnspan 3
     grid [ttk::button $tw.b1 -text "\u2b76" -command "OverlayAnchor nw"] [ttk::button $tw.b2 -text "\u2b71" -command "OverlayAnchor n"] [ttk::button $tw.b3 -text "\u2b77" -command "OverlayAnchor ne"]
     grid [ttk::button $tw.b4 -text "\u2b70" -command "OverlayAnchor w"] [ttk::button $tw.b5 -text "\uB7" -command "OverlayAnchor c"] [ttk::button $tw.b6 -text "\u2b72" -command "OverlayAnchor e"]
@@ -2594,9 +2554,9 @@ proc OverlayFontSizes {args} {
     set transparentcolor #606060
     set overlayFontSize1 [expr {round($settings(overlayFontSize1))}]
     set overlayFontSize2 [expr {round($settings(overlayFontSize2))}]
-    ttk::style configure WobOverlayText.Label -font "Arial $overlayFontSize1 bold" -foreground white -background $transparentcolor
-    ttk::style configure WobOverlayTextBig.Label -font "Arial $overlayFontSize2 bold" -foreground white -background $transparentcolor
-    ttk::style configure WobOverlayTextBigFull.Label -font "Arial $overlayFontSize2 bold" -foreground white -background black
+    ttk::style configure OmbOverlayText.Label -font "Arial $overlayFontSize1 bold" -foreground white -background $transparentcolor
+    ttk::style configure OmbOverlayTextBig.Label -font "Arial $overlayFontSize2 bold" -foreground white -background $transparentcolor
+    ttk::style configure OmbOverlayTextBigFull.Label -font "Arial $overlayFontSize2 bold" -foreground white -background black
     return $transparentcolor
 }
 
@@ -2648,10 +2608,10 @@ proc Overlay {} {
             wm overrideredirect $t 1
             wm attributes $t -alpha $settings(overlayAlpha) -topmost 1 -transparentcolor $transparentcolor
             $t configure -bg $transparentcolor
-            ttk::label $t.l -text "$i" -style WobOverlayText.Label -anchor $settings(overlayAnchor)
+            ttk::label $t.l -text "$i" -style OmbOverlayText.Label -anchor $settings(overlayAnchor)
             if {$i==1} {
                 ttk::label $t.rr -text "" -textvariable rrOnLabel -foreground $settings(overlayFocusColor) \
-                    -style WobOverlayText.Label -justify center -anchor c
+                    -style OmbOverlayText.Label -justify center -anchor c
                 place $t.rr -in $t -relx $settings(rrIndicator,x) -rely $settings(rrIndicator,y) -anchor c
             }
             pack $t.l -fill both -expand 1
@@ -2675,9 +2635,9 @@ proc Overlay {} {
         }
         if {$i!=1} {
             if {$settings(overlayAllClickable)} {
-                $t.l configure -style WobOverlayTextBigFull.Label
+                $t.l configure -style OmbOverlayTextBigFull.Label
             } else {
-                $t.l configure -style WobOverlayTextBig.Label
+                $t.l configure -style OmbOverlayTextBig.Label
             }
         }
         lassign $settings($i,posXY) x y
@@ -3055,7 +3015,7 @@ proc UpdateLayoutInfo {tag} {
     if {$sot($id)} {
         set x ", On top"
     }
-    set layoutinfo "WOB $id: Top Left ($x1 , $y1) Size $w x $h$x"
+    set layoutinfo "OMB $id: Top Left ($x1 , $y1) Size $w x $h$x"
 }
 
 # -- move/resize windows in layout
@@ -3268,7 +3228,7 @@ proc UpdateMouseDelay {} {
 
 #---- settings and initial setup
 
-# default hotkeys (change/add more in you wowopenboxSettings.tcl)
+# default hotkeys (change/add more in you OpenMultiBoxingSettings.tcl)
 for {set i 1} {$i<=10} {incr i} {
     set settings(hk$i,focus) "Ctrl-F$i"
     set settings(hk$i,swap) "Ctrl-Shift-F$i"
@@ -3362,7 +3322,7 @@ if {![info exists pos]} {
     set focusWindow 1
     # custom rotation focused window
     set customWindow 1
-    # Actual last focused window (at least as far as WOB is concerned)
+    # Actual last focused window (at least as far as OMB is concerned)
     set lastFocusWindow 1
     # last swapped window
     set swappedWindow 1
@@ -3380,12 +3340,6 @@ if {[info exists initProfile]} {
     set settings(profile) $initProfile
     unset initProfile
     LoadProfile
-}
-
-if {$settings(captureForegroundWindow) || $settings(game) != "World of Warcraft"} {
-    set skin 1
-} else {
-    set skin 0
 }
 
 
@@ -3411,9 +3365,9 @@ if {![winfo exists .logo]} {
 }
 
 # --- main / tweak me ---
-puts "WowOpenBox - OpenMultiBoxing $vers started..."
+puts "OpenMultiBoxing $vers started..."
 Defer 100 FindExisting
-set bottomText "WowOpenBox, OpenMultiBoxing $vers"
+set bottomText "OpenMultiBoxing $vers"
 wm state . normal
 if {[info exists settings(mainWindowGeometry)]} {
     catch {wm geometry . $settings(mainWindowGeometry)}

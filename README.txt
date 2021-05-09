@@ -1,13 +1,13 @@
-WowOpenBox / OpenMultiboxing by MooreaTV <moorea@ymail.com> (c) 2020-2021 All rights reserved
+OpenMultiBoxing / OpenMultiboxing by MooreaTV <moorea@ymail.com> (c) 2020-2021 All rights reserved
 Open Source Software licensed under GPLv3 - No Warranty
 (contact the author if you need a different license)
 
 The GNU General Public License does not permit incorporating this work
 into proprietary programs.
 
-Source code and newest releases on https://github.com/WowOpenBox/WowOpenBox
+Source code and newest releases on https://github.com/OpenMultiBoxing/OpenMultiBoxing
 
-Website https://wowopenbox.org/
+Website https://OpenMultiBoxing.org/
 
 Extract all the files into any same normal folder (not Program Files or system folders).
 Run the _RR exe for round-robin.
