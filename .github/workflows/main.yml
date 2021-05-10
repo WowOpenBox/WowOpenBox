@@ -42,7 +42,7 @@ jobs:
           else
             echo ::set-output name=PRERELEASE::false
           fi
-          sed -e -i "s/^set vers .*$/set vers \"$VERSION\"/" OpenMultiBoxing.tcl
+          sed -i -e "s/^set vers .*$/set vers \"$VERSION\"/" OpenMultiBoxing.tcl
           sed -b -e "s/OpenMultiBoxing-vX.Y.Z.exe/OpenMultiBoxing-$VERSION.exe/" buildkit/OpenMultiBoxing_RR.exe > buildkit/OpenMultiBoxing_RR-$VERSION.exe
         shell: bash
 
