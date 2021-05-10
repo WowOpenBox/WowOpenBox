@@ -25,7 +25,7 @@ jobs:
       - name: Checkout tools repo
         uses: actions/checkout@v2
         with:
-          repository: WowOpenBox/BuildKit
+          repository: OpenMultiBoxing/BuildKit
           path: buildkit
 
       - name: Get and set the version
@@ -42,14 +42,14 @@ jobs:
           else
             echo ::set-output name=PRERELEASE::false
           fi
-          sed -e "s/^set vers .*$/set vers \"$VERSION\"/" < OpenMultiBoxing.tcl > OpenMultiBoxing.tkapp
+          sed -e -i "s/^set vers .*$/set vers \"$VERSION\"/" OpenMultiBoxing.tcl
           sed -b -e "s/OpenMultiBoxing-vX.Y.Z.exe/OpenMultiBoxing-$VERSION.exe/" buildkit/OpenMultiBoxing_RR.exe > buildkit/OpenMultiBoxing_RR-$VERSION.exe
         shell: bash
 
       - name: Make the executable and zip
         run: |
           cd buildkit
-          cp ..\OpenMultiBoxing.tkapp OpenMultiBoxing.vfs\app
+          cp ..\OpenMultiBoxing.tcl OpenMultiBoxing.vfs\app\
           Add-Content -Path OpenMultiBoxing.vfs\tclkit.inf -Value "ProductVersion ""${{ steps.get_version.outputs.VERSION }}""" -PassThru
           tclkit\tclkit.exe sdx\sdx.kit wrap OpenMultiBoxing -runtime runtime.exe
           Rename-Item OpenMultiBoxing OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.exe
@@ -85,6 +85,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: OpenMultiBoxing.tkapp
-          asset_name: OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.tkapp
+          asset_path: OpenMultiBoxing.tcl
+          asset_name: OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.tcl
           asset_content_type: application/octet-stream

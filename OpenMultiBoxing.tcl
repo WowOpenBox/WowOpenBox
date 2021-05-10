@@ -161,7 +161,7 @@ proc CheckForUpdates {silent} {
             -message "You're already running the latest version $vers"
         return
     }
-    if {![regexp {browser_download_url":"(https://github\.com/OpenMultiBoxing/OpenMultiBoxing/releases/download/[^"]+\.tkapp)"} $body all updateUrl]} {
+    if {![regexp {browser_download_url":"(https://github\.com/OpenMultiBoxing/OpenMultiBoxing/releases/download/[^"]+\.tcl)"} $body all updateUrl]} {
         Debug "--- Update not found in $url ---\n$body\n--- end of $url ---"
         OmbError "Update Error" "Couldn't find update in latest release - please report as a bug"
         return
