@@ -1323,7 +1323,8 @@ proc RegisterHotkey {msg var callback} {
 
 proc FindOtherCopy {} {
     global ourTitle
-    set wList [twapi::find_windows -match regexp -text "^$ourTitle\$"]
+    set wobTitle "WoW Open Box - Opensource MultiBoxing"
+    set wList [twapi::find_windows -match regexp -text "^($ourTitle|$wobTitle)\$"]
     foreach w $wList {
         UpdateOurWindowHandles
         if {![IsOurs $w]} {
