@@ -437,9 +437,16 @@ proc AfterSettings {} {
     Debug "Settings (re)Loaded."
 }
 
+set prevMF 0
+
 proc RevertMouseFollow {} {
-    global mouseDelay settings
+    global mouseDelay settings prevMF mouseFollow
     if {!$settings(mouseFocusOffAtExit)} {
+        if {$prevMF} {
+            Debug "Keeping mouse focus mode on on exit"
+            set mouseFollow 1
+            UpdateMouseFollow
+        }
         return
     }
     if {![info exists mouseDelay]} {
@@ -955,6 +962,7 @@ proc PeriodicChecks {} {
             if {$prevMF} {
                 set mouseFollow 1
                 UpdateMouseFollow
+                set prevMF 0
             }
             if {$prevOL} {
                 set settings(showOverlay) 1
@@ -3200,6 +3208,7 @@ proc AddMouseToRRLabel {} {
 
 proc UpdateMouseFollow {} {
     global mouseFollow settings
+    Debug "UpdateMouseFollow $mouseFollow $settings(mouseDelay)"
     SetFocusFollowMouse $mouseFollow
     if {$mouseFollow} {
         SetMouseDelay $settings(mouseDelay)
