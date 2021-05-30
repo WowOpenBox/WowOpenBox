@@ -2234,10 +2234,13 @@ proc BroadcastText {text {addEnterKey 0}} {
     global settings slot2handle
     foreach {n w} [array get slot2handle] {
         Debug "Sending text to $n ($w)"
-        twapi::set_foreground_window $w
+        if {![twapi::set_foreground_window $w]} {
+            Debug "Failed to set fg for $n ($w)"
+            continue
+        }
         twapi::send_input_text $text
         if {$addEnterKey} {
-            twapi::send_keys "{ENTER}"
+            twapi::send_input {{key 13 0}}
         }
     }
 }
