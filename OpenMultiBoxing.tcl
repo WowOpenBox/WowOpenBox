@@ -657,6 +657,12 @@ proc SetClipboard {} {
     clipboard append -- $clipboardValue
 }
 
+proc BroadcastClipboard {} {
+    global clipboardValue
+    BroadcastText "$clipboardValue" 1
+    ClearClipboard
+}
+
 proc ClipboardManager {} {
     global clipboardValue rrOn hasRR settings
     set tw .clip
@@ -668,13 +674,15 @@ proc ClipboardManager {} {
     toplevel $tw
     wm title $tw "OMB Secure Copy Paste"
     grid [ttk::label $tw.la -text "Secure text"] [entry $tw.e  -show "*" -textvariable clipboardValue -width 14] -padx 4 -sticky ew
+    grid [ttk::button $tw.broadcast -width 14 -text "Broadcast" -command BroadcastClipboard] - -padx 4 -sticky ew
     grid [ttk::button $tw.copy -width 14 -text "Copy" -command SetClipboard] [ttk::button $tw.clear -width 14 -text "Clear" -command ClearClipboard] -padx 4 -sticky ew
     tooltip $tw.copy "Copy hidden text"
     tooltip $tw.clear "Clear clipboard and hidden text"
     bind $tw.clear <Destroy> ClearClipboard
-    grid [ttk::label $tw.help -text "Type in the entry box, only *s will show,\nClick Copy, then Ctrl-V as many times to paste,\nClose this popup or click Clear to erase."] -padx 4 -pady 6 -columnspan 2
+    grid [ttk::label $tw.help -text "Type in the entry box, only *s will show,\nType <Return> for broadcast or\nClick Copy, then Ctrl-V as many times to paste,\nClose this popup or click Clear to erase."] -padx 4 -pady 6 -columnspan 2
     UpdateHandles
     focus $tw.e
+    bind $tw.e <Return> BroadcastClipboard
     if {[info exists settings(clipGeometry)]} {
         catch {wm geometry .clip $settings(clipGeometry)}
     }
@@ -2208,6 +2216,30 @@ proc SizeOfWindow {tag} {
     set y2 [expr {round($y2/$scale)}]
     Debug "$tag found [$c coords $r] for saving -> $x1, $y1 - $x2, $y2 -> $w x $h"
     return [list $x1 $y1 $w $h]
+}
+
+# --- start of broadcasting ---
+# (not to be used for world of warcraft)
+
+proc BroadcastKeys {keySequence} {
+    global settings slot2handle
+    foreach {n w} [array get slot2handle] {
+        Debug "Sending key sequence $keySequence to $n ($w)"
+        twapi::set_foreground_window $w
+        twapi::send_keys $keySequence
+    }
+}
+
+proc BroadcastText {text {addEnterKey 0}} {
+    global settings slot2handle
+    foreach {n w} [array get slot2handle] {
+        Debug "Sending text to $n ($w)"
+        twapi::set_foreground_window $w
+        twapi::send_input_text $text
+        if {$addEnterKey} {
+            twapi::send_keys "{ENTER}"
+        }
+    }
 }
 
 # --- start of RR ---
