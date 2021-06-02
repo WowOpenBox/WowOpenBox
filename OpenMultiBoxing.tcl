@@ -2232,11 +2232,19 @@ proc BroadcastKeys {keySequence} {
 
 proc BroadcastText {text {addEnterKey 0}} {
     global settings slot2handle
+    set first 1
     foreach {n w} [array get slot2handle] {
         Debug "Sending text to $n ($w)"
         if {![twapi::set_foreground_window $w]} {
             Debug "Failed to set fg for $n ($w)"
             continue
+        }
+        if {$first} {
+            # first one is slow to switch somehow
+            after 50
+            twapi::set_foreground_window $w
+            after 50
+            set first 0
         }
         twapi::send_input_text $text
         if {$addEnterKey} {
