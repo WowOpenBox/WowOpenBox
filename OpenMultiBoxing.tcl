@@ -421,6 +421,7 @@ proc AfterSettings {} {
     RegisterHotkey "RoundRobin toggle" hk,rrToggle RRToggle
     RegisterHotkey "Focus main window" hk,focusMain FocusMain
     RegisterHotkey "Reset all windows to saved positions" hk,resetAll ResetAll
+    RegisterHotkey "Start/Stop mouse broadcasting" hk,mouseBroadcast MouseBroadcast
     for {set n 1} {$n < $maxNumW} {incr n} {
         if {[info exists slot2handle($n)]} {
             RegisterPerWindowHotkey $n "OMB $n"
@@ -525,7 +526,7 @@ set ourTitle "OpenMultiBoxing - Opensource MultiBoxing"
 proc UISetup {} {
     global imgOMB70 vers stayOnTop pos windowSize settings \
          mouseFollow mouseRaise mouseDelay ourTitle bottomText \
-         rrOn hasRR
+         rrOn hasRR mouseBroadcast
     wm title . $ourTitle
     # Get logo
     set err [GetLogo]
@@ -598,10 +599,8 @@ proc UISetup {} {
     grid [ttk::label .l6 -text "🖰 Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
     grid [ttk::checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
     tooltip .mf "Toggle focus follow mouse mode\nHotkey: $settings(hk,focusFollowMouse)"
-#    grid [ttk::label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width]  -padx 4 -sticky w
-#    tooltip .emd "Focus follow mouse activation delay\nHit <Return> after change to take effect."
-#    bind .emd <Return> UpdateMouseDelay
-#    grid [frame .sep3 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
+    grid [ttk::checkbutton .mbc -text "Broadcast mouse clicks" -variable mouseBroadcast] -padx 4 -columnspan 2 -sticky w
+    tooltip .mbc "Toggle mouse click broadcasting\nHotkey: $settings(hk,mouseBroadcast)"
     grid [ttk::label .l_bottom -textvariable bottomText -justify center -anchor c] -padx 2 -columnspan 2
     bind .l_bottom <ButtonPress> [list CheckForUpdates 0]
     tooltip .l_bottom "Click to check for update from $vers"
@@ -808,6 +807,11 @@ proc MenuSetup {} {
     .mbar.help add command -label "Check for update" -command [list CheckForUpdates 0]
     .mbar.help add command -label About -command About
  }
+
+proc MouseBroadcast {} {
+    global mouseBroadcast
+    set mouseBroadcast [expr {1-$mouseBroadcast}]
+}
 
 proc MouseTracking {} {
     global settings mouseArea mouseCoords
@@ -3345,6 +3349,7 @@ array set settings {
     autoCapture 1
     clipboardAtStart 0
     dontCaptureList {explorer.exe SndVol.exe}
+    hk,mouseBroadcast "Ctrl-M"
 }
 set settings(mouseInsideGameWindowFocuses) $hasRR
 
@@ -3372,6 +3377,8 @@ if {![info exists pos]} {
     set swappedWindow 1
     # hotkey ok
     set hotkeyOk 1
+    # mouse click broadcasting
+    set mouseBroadcast 0
 }
 
 if {![info exists lastFocusWindow]} {
@@ -3428,6 +3435,7 @@ if {$isUpdate} {
     # Do update stuff
     Debug "Update detected ($oldVersion to $previousVersion to $vers)"
     set isUpdate 0
+    set mouseBroadcast 0
 } else {
     if {[expr {([clock seconds]-$settings(lastUpdateChecked))>2*24*3600}]} {
         Debug "Last update check $settings(lastUpdateChecked) - checking for updates in 1s"
