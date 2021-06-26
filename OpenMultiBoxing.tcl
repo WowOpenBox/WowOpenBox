@@ -660,6 +660,7 @@ proc BroadcastClipboard {} {
     global clipboardValue
     BroadcastText "$clipboardValue" 1
     ClearClipboard
+    twapi::set_foreground_window [twapi::tkpath_to_hwnd .clip]
 }
 
 proc ClipboardManager {} {
