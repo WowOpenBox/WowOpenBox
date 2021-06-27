@@ -919,15 +919,55 @@ proc MouseArea {mouseCoords} {
     }
 }
 
+proc ClickWindowRel {n xp yp button} {
+    global settings slot2position
+    set p $slot2position($n)
+    # scale
+    lassign $settings($p,posXY) lx ly
+    lassign $settings($p,size) lw lh
+    set x [expr {round($lx+$xp*$lw)}]
+    set y [expr {round($ly+$yp*$lh)}]
+    Debug "Will click at $x $y for $n"
+    twapi::move_mouse $x $y
+    twapi::click_mouse_button $button
+}
 
 set clickInProgress ""
 proc MouseBroadcastCheck {} {
-    global clickInProgress
+    global clickInProgress settings slot2position slot2handle
     set VK_LBUTTON 0x01
     set state [twapi::GetAsyncKeyState $VK_LBUTTON]
     if {$clickInProgress!="" && $state==0} {
-        Debug "MOUSE_CLICK_RELEASE $clickInProgress vs [twapi::get_mouse_location]"
+        set saveMousePos [twapi::get_mouse_location]
+        #Debug "MOUSE_CLICK_RELEASE $clickInProgress vs $saveMousePos"
+        lassign $clickInProgress x y
         set clickInProgress ""
+        # Find window
+        set w [twapi::get_window_at_location $x $y]
+        set wType [IsOurs $w]
+        #Debug "Window clicked is $w: $wType"
+        if {$wType<3} {
+            return
+        }
+        set n [expr {$wType-2}]
+        set p $slot2position($n)
+        # scale
+        lassign $settings($p,posXY) lx ly
+        lassign $settings($p,size) lw lh
+        set xp [expr {1.0*($x-$lx)/$lw}]
+        set yp [expr {1.0*($y-$ly)/$lh}]
+        Debug "Clicked on $n in position $p is rel x $xp rel y $yp"
+        # iterate move to other windows applying scale
+        for {set i 1} {$i<=$settings(numWindows)} {incr i} {
+            if {$i==$n} {
+                continue
+            }
+            if {[info exists slot2handle($i)]} {
+                ClickWindowRel $i $xp $yp left
+            }
+        }
+        # bring back
+        twapi::move_mouse {*}$saveMousePos
     } elseif {$state > 1 && $clickInProgress==""} {
         set clickInProgress [twapi::get_mouse_location]
         Debug "VK_LBUTTON [format %x $state] $clickInProgress"
@@ -1000,7 +1040,7 @@ proc PeriodicChecks {} {
                 set settings(showOverlay) 1
                 OverlayUpdate
             }
-            if {$isOurs==3 && $settings(mouseInsideGameWindowFocuses)} {
+            if {$isOurs>=3 && $settings(mouseInsideGameWindowFocuses)} {
                 Debug "Focusing back $lastFocusWindow"
                 catch {Focus $slot2handle($lastFocusWindow)}
             }
@@ -1669,7 +1709,7 @@ proc Defer {time cmd} {
 
 # All our windows (to not capture and to handle pause/overlay hide)
 array set ourWindowHandles {}
-# value is 3 for game window
+# value is 3+ for game window (2+windowId)
 # 2 for UI like overlay and wizard and overlay config
 # 1 for main UI (no RR/overlay)
 # non existant/0 is other windows
@@ -1713,7 +1753,7 @@ proc UpdateOurWindowHandles {} {
         set ourWindowHandles($tl) $val
     }
     foreach {n wh} [array get slot2handle] {
-        set ourWindowHandles($wh) 3
+        set ourWindowHandles($wh) [expr {$n+2}]
     }
     Debug "Done refreshing window ids - retry #$handleRetryCount $notReady"
     if {$notReady} {
@@ -1732,7 +1772,7 @@ proc UpdateOurWindowHandles {} {
     set handleRetryCount 2
 }
 
-# now 4 states: game window and overlay/misc UI is 1 and 2, our main UI 3, neither is 0
+# 0 for not ours, 1 and 2 for our UI, 3+ for game windows
 proc IsOurs {w} {
     global ourWindowHandles
     if {[IsDesktop $w]} {
@@ -1844,7 +1884,7 @@ proc updateListBox {n w wname} {
     global ourWindowHandles slot2handle slot2position nextWindow maxNumW settings
     set slot2handle($n) $w
     set slot2position($n) $n
-    set ourWindowHandles($w) 3
+    set ourWindowHandles($w) [expr 2+$n]
     RegisterPerWindowHotkey $n $wname
     # 0 based index
     set n0 [expr {$n-1}]
