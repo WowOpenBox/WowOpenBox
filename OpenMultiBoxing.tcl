@@ -920,17 +920,17 @@ proc MouseArea {mouseCoords} {
 }
 
 
-set clickInProgress 0
+set clickInProgress ""
 proc MouseBroadcastCheck {} {
     global clickInProgress
     set VK_LBUTTON 0x01
     set state [twapi::GetAsyncKeyState $VK_LBUTTON]
-    if {$clickInProgress && $state==0} {
-        Debug "MOUSE_CLICK_RELEASE"
-        set clickInProgress 0
-    } elseif {$state > 1} {
-        Debug "VK_LBUTTON [format %x $state]"
-        set clickInProgress 1
+    if {$clickInProgress!="" && $state==0} {
+        Debug "MOUSE_CLICK_RELEASE $clickInProgress vs [twapi::get_mouse_location]"
+        set clickInProgress ""
+    } elseif {$state > 1 && $clickInProgress==""} {
+        set clickInProgress [twapi::get_mouse_location]
+        Debug "VK_LBUTTON [format %x $state] $clickInProgress"
     }
 }
 
