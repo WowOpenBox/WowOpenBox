@@ -599,8 +599,8 @@ proc UISetup {} {
     grid [ttk::label .l6 -text "🖰 Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
     grid [ttk::checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
     tooltip .mf "Toggle focus follow mouse mode\nHotkey: $settings(hk,focusFollowMouse)"
-    grid [ttk::checkbutton .mbc -text "Broadcast mouse clicks" -variable mouseBroadcast -state disabled] -padx 4 -columnspan 2 -sticky w
-    tooltip .mbc "Toggle mouse click broadcasting\nHotkey: $settings(hk,mouseBroadcast)\nNOT YET IMPLEMENTED"
+    grid [ttk::checkbutton .mbc -text "Broadcast mouse clicks" -variable mouseBroadcast] -padx 4 -columnspan 2 -sticky w
+    tooltip .mbc "Toggle mouse click broadcasting\nHotkey: $settings(hk,mouseBroadcast)"
     grid [ttk::label .l_bottom -textvariable bottomText -justify center -anchor c] -padx 2 -columnspan 2
     bind .l_bottom <ButtonPress> [list CheckForUpdates 0]
     tooltip .l_bottom "Click to check for update from $vers"
@@ -919,11 +919,27 @@ proc MouseArea {mouseCoords} {
     }
 }
 
+
+set clickInProgress 0
+proc MouseBroadcastCheck {} {
+    global clickInProgress
+    set VK_LBUTTON 0x01
+    set state [twapi::GetAsyncKeyState $VK_LBUTTON]
+    if {$clickInProgress && $state==0} {
+        Debug "MOUSE_CLICK_RELEASE"
+        set clickInProgress 0
+    } elseif {$state > 1} {
+        Debug "VK_LBUTTON [format %x $state]"
+        set clickInProgress 1
+    }
+}
+
 set isPaused 0
 set pauseSchedule {}
 
 proc PeriodicChecks {} {
-    global settings isPaused prevRR prevMF prevOL prevRRMouse hasRR rrOn rrMouse mouseFollow maxNumW pauseSchedule lastFocusWindow slot2handle
+    global settings isPaused prevRR prevMF prevOL prevRRMouse hasRR rrOn rrMouse mouseFollow\
+         maxNumW pauseSchedule lastFocusWindow slot2handle mouseBroadcast
     after cancel $pauseSchedule
     set pauseSchedule {}
     if {$settings(autoCapture) && ($maxNumW<=$settings(numWindows))} {
@@ -934,6 +950,9 @@ proc PeriodicChecks {} {
     }
     if {$settings(mouseWatchInterval)} {
         set pauseSchedule [after $settings(mouseWatchInterval) PeriodicChecks]
+    }
+    if {$mouseBroadcast} {
+        MouseBroadcastCheck
     }
     if {!$settings(mouseOutsideWindowsPauses)} {
         return
