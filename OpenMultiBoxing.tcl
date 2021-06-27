@@ -933,13 +933,16 @@ proc ClickWindowRel {n xp yp button} {
 }
 
 set clickInProgress ""
+set mouseBeforeClick ""
 proc MouseBroadcastCheck {} {
-    global clickInProgress settings slot2position slot2handle
+    global mouseBeforeClick clickInProgress settings slot2position slot2handle
     set VK_LBUTTON 0x01
     set state [twapi::GetAsyncKeyState $VK_LBUTTON]
     if {$clickInProgress!="" && $state==0} {
         set saveMousePos [twapi::get_mouse_location]
-        #Debug "MOUSE_CLICK_RELEASE $clickInProgress vs $saveMousePos"
+        Debug "MOUSE_CLICK_RELEASE $clickInProgress vs $saveMousePos"
+        # return to the click pos and not current pos which seems to glitch at times
+        set saveMousePos $clickInProgress
         lassign $clickInProgress x y
         set clickInProgress ""
         # Find window
@@ -968,10 +971,12 @@ proc MouseBroadcastCheck {} {
         }
         # bring back
         twapi::move_mouse {*}$saveMousePos
+        Foreground $w
     } elseif {$state > 1 && $clickInProgress==""} {
-        set clickInProgress [twapi::get_mouse_location]
+        set clickInProgress $mouseBeforeClick
         Debug "VK_LBUTTON [format %x $state] $clickInProgress"
     }
+    set mouseBeforeClick [twapi::get_mouse_location]
 }
 
 set isPaused 0
@@ -988,11 +993,11 @@ proc PeriodicChecks {} {
             AutoCapture $w
         }
     }
-    if {$settings(mouseWatchInterval)} {
-        set pauseSchedule [after $settings(mouseWatchInterval) PeriodicChecks]
-    }
     if {$mouseBroadcast} {
         MouseBroadcastCheck
+    }
+    if {$settings(mouseWatchInterval)} {
+        set pauseSchedule [after $settings(mouseWatchInterval) PeriodicChecks]
     }
     if {!$settings(mouseOutsideWindowsPauses)} {
         return
