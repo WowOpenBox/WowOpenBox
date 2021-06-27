@@ -599,8 +599,8 @@ proc UISetup {} {
     grid [ttk::label .l6 -text "🖰 Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
     grid [ttk::checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
     tooltip .mf "Toggle focus follow mouse mode\nHotkey: $settings(hk,focusFollowMouse)"
-    grid [ttk::checkbutton .mbc -text "Broadcast mouse clicks" -variable mouseBroadcast] -padx 4 -columnspan 2 -sticky w
-    tooltip .mbc "Toggle mouse click broadcasting\nHotkey: $settings(hk,mouseBroadcast)"
+    grid [ttk::checkbutton .mbc -text "Broadcast mouse clicks" -variable mouseBroadcast -state disabled] -padx 4 -columnspan 2 -sticky w
+    tooltip .mbc "Toggle mouse click broadcasting\nHotkey: $settings(hk,mouseBroadcast)\nNOT YET IMPLEMENTED"
     grid [ttk::label .l_bottom -textvariable bottomText -justify center -anchor c] -padx 2 -columnspan 2
     bind .l_bottom <ButtonPress> [list CheckForUpdates 0]
     tooltip .l_bottom "Click to check for update from $vers"
