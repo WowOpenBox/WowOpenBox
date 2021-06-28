@@ -37,6 +37,6 @@ Go through the Window Layout Wizard to pick how many game windows you plan on pl
 
 Then start your game windows (e.g World of Warcraft, Classic or Shadowlands) using battle.net launcher is fine (that way you don't need to keep typing your password). OMB since version 4.1 will automatically capture and place the windows in their respective position for you (you can turn that option off in the Option menu)
 
-![OMB Window Layout GUI Screenshot](https://OpenMultiBoxing.org/sshotWindowLayout.png?src=github)
+![OMB Window Layout GUI Screenshot](https://wowopenbox.org/sshotWindowLayout.png?src=github)
 
 Also checkout our [FAQ](https://github.com/OpenMultiBoxing/OpenMultiBoxing/wiki/FAQ)
