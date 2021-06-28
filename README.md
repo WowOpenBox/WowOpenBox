@@ -16,6 +16,8 @@ The source for the [binary distribution](https://github.com/OpenMultiBoxing/Open
 
 - Window Layout wizard and manual tweaking; get your game windows exactly how you want them to be to play.
 - Instant swapping of windows; with keyboard hotkeys for fast switching to the next or any specific window.
+- Left click broadcasting option
+- Secure text (password) broadcasting option (can also broadcast slash commands, etc)
 - Many additional options to switch which window your keys are going to:
   - Focus follow mouse: turns on/off the Windows&trade; accessibility feature so you just hover a window to make it receive keys
   - Focus next/previous/specific windows with hotkeys.
