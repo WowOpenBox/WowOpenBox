@@ -938,6 +938,10 @@ proc MouseBroadcastCheck {} {
     global mouseBeforeClick clickInProgress settings slot2position slot2handle
     set VK_LBUTTON 0x01
     set VK_RBUTTON 0x02
+    if {[twapi::GetAsyncKeyState $VK_RBUTTON]>=1} {
+        set clickInProgress ""
+        return
+    }
     set state [twapi::GetAsyncKeyState $VK_LBUTTON]
     if {$clickInProgress!="" && $state==0} {
         set saveMousePos [twapi::get_mouse_location]
@@ -973,7 +977,7 @@ proc MouseBroadcastCheck {} {
         # bring back
         twapi::move_mouse {*}$saveMousePos
         Foreground $w
-    } elseif {$state > 1 && $clickInProgress=="" && [twapi::GetAsyncKeyState $VK_RBUTTON]<=1} {
+    } elseif {$state > 1 && $clickInProgress==""} {
         set clickInProgress $mouseBeforeClick
         Debug "VK_LBUTTON [format %x $state] $clickInProgress"
     }
