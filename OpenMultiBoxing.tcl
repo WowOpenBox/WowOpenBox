@@ -942,9 +942,13 @@ proc MouseBroadcastCheck {} {
         set clickInProgress ""
         return
     }
+    if {[catch {twapi::get_mouse_location} lMouse]} {
+        # access denied while in lock screen etc
+        return
+    }
     set state [twapi::GetAsyncKeyState $VK_LBUTTON]
     if {$clickInProgress!="" && $state==0} {
-        set saveMousePos [twapi::get_mouse_location]
+        set saveMousePos $lMouse
         Debug "MOUSE_CLICK_RELEASE $clickInProgress vs $saveMousePos"
         # return to the click pos and not current pos which seems to glitch at times
         set saveMousePos $clickInProgress
@@ -981,7 +985,7 @@ proc MouseBroadcastCheck {} {
         set clickInProgress $mouseBeforeClick
         Debug "VK_LBUTTON [format %x $state] $clickInProgress"
     }
-    set mouseBeforeClick [twapi::get_mouse_location]
+    set mouseBeforeClick $lMouse
 }
 
 set isPaused 0
@@ -1061,7 +1065,7 @@ proc PeriodicChecks {} {
 
 proc mouseTrack {} {
     global mouseTrackOn mouseCoords mouseArea
-    set mouseCoords [twapi::get_mouse_location]
+    catch {twapi::get_mouse_location} mouseCoords
     set mouseArea [MouseArea $mouseCoords]
     set mouseTrackOn [after 100 mouseTrack]
 }
