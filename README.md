@@ -1,6 +1,6 @@
 ![CI](https://github.com/OpenMultiBoxing/OpenMultiBoxing/workflows/CI/badge.svg)
 # OpenMultiBoxing
-<img src="https://OpenMultiBoxing.org/sshot4_2.png" alt="OMB Screenshot" align="right">
+<img src="https://OpenMultiBoxing.org/sshot5_2.png" alt="OMB 5.2 Screenshot" align="right">
 
 Open source software for MultiBoxing any game or app. This is the continuation of [WowOpenBox](https://wowopenbox.org/).
 
