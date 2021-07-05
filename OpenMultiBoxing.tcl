@@ -938,7 +938,8 @@ proc MouseBroadcastCheck {} {
     global mouseBeforeClick clickInProgress settings slot2position slot2handle
     set VK_LBUTTON 0x01
     set VK_RBUTTON 0x02
-    if {[twapi::GetAsyncKeyState $VK_RBUTTON]>=1} {
+    set W_KEY 0x57
+    if {[twapi::GetAsyncKeyState $VK_RBUTTON]>=1 || [twapi::GetAsyncKeyState $W_KEY]>1} {
         set clickInProgress ""
         return
     }
