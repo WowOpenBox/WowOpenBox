@@ -929,6 +929,7 @@ proc ClickWindowRel {n xp yp button} {
     set y [expr {round($ly+$yp*$lh)}]
     Debug "Will click at $x $y for $n"
     twapi::move_mouse $x $y
+    after $settings(mouseBroadcastDelay)
     twapi::click_mouse_button $button
 }
 
@@ -3454,6 +3455,8 @@ if {![info exists pos]} {
     set hotkeyOk 1
     # mouse click broadcasting
     set mouseBroadcast 0
+    # mouse click broadcasting delay
+    set mouseBroadcastDelay 30
 }
 
 if {![info exists lastFocusWindow]} {
