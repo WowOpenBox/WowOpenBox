@@ -3426,6 +3426,7 @@ array set settings {
     clipboardAtStart 0
     dontCaptureList {explorer.exe SndVol.exe}
     hk,mouseBroadcast "Ctrl-M"
+    mouseBroadcastDelay 30
 }
 set settings(mouseInsideGameWindowFocuses) $hasRR
 
@@ -3455,8 +3456,6 @@ if {![info exists pos]} {
     set hotkeyOk 1
     # mouse click broadcasting
     set mouseBroadcast 0
-    # mouse click broadcasting delay
-    set mouseBroadcastDelay 30
 }
 
 if {![info exists lastFocusWindow]} {
