@@ -393,8 +393,50 @@ proc UnregisterHotkeys {} {
     }
 }
 
+
+proc IsInside {x y x1 y1 x2 y2} {
+    expr {$x>=$x1 && $x<=$x2 && $y>=$y1 && $y<=$y2}
+}
+
+proc Offscreen {x y} {
+    global displayInfo
+    if {![info exists displayInfo]} {
+        # only extract it the first time
+        set displayInfo [twapi::get_multiple_display_monitor_info]
+        Debug "displayInfo = $displayInfo"
+    }
+    set i 0
+    foreach monitor $displayInfo {
+        incr i 1
+        array set info $monitor
+        lassign $info(-extent) x1 y1 x2 y2
+        Debug "Monitor $i Extent   $x1,$y1  - $x2,$y2"
+        if {[IsInside $x $y $x1 $y1 $x2 $y2]} {
+            return false
+        }
+    }
+    return true
+}
+
+proc OffscreenGeometryCheck {} {
+    global settings
+    foreach k {mainWindowGeometry clipGeometry} {
+        if {![info exists settings($k)]} {
+            continue
+        }
+        regexp {\+(.*?)\+(.*?)$} $settings($k) all x y
+        Debug "geometry for $k is at $x,$y"
+        if {[Offscreen $x $y]} {
+            Debug "unsetting offscreen geometry $k"
+            unset settings($k)
+        }
+    }
+}
+
 proc AfterSettings {} {
     global settings maxNumW slot2handle
+    # Handle off screen/geometry change
+    OffscreenGeometryCheck
     if {$settings(hk,swapNextWindow)=="Binding for next window swap is set on 'hk1,swap'"} {
         set settings(hk,swapNextWindow) "Ctrl-0xC0"
     }
