@@ -971,6 +971,7 @@ proc ClickWindowRel {n xp yp button} {
     set y [expr {round($ly+$yp*$lh)}]
     Debug "Will click at $x $y for $n"
     twapi::move_mouse $x $y
+    after $settings(mouseBroadcastDelay)
     twapi::click_mouse_button $button
 }
 
@@ -3467,6 +3468,7 @@ array set settings {
     clipboardAtStart 0
     dontCaptureList {explorer.exe SndVol.exe}
     hk,mouseBroadcast "Ctrl-M"
+    mouseBroadcastDelay 30
 }
 set settings(mouseInsideGameWindowFocuses) $hasRR
 
