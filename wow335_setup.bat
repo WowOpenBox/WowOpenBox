@@ -21,6 +21,6 @@ mklink msvcr80.dll ..\Wow\msvcr80.dll
 mklink Scan.dll ..\Wow\Scan.dll
 mklink unicows.dll ..\Wow\unicows.dll
 mkdir WTF
-mklink /d WTF\Account ..\Wow\WTF\Account
+mklink /d WTF\Account ..\..\Wow\WTF\Account
 copy ..\Wow\WTF\Config.wtf WTF\Config.wtf
 cd ..
