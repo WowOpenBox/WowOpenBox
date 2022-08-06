@@ -6,6 +6,10 @@ REM the parent directory of your main Wow directory.
 REM
 REM Needs to be run as admin in order to make hard links.
 REM
+@if not [%1]==[] goto main
+@echo Must specify a number for the clone - open/edit this bat file
+@exit /b 1
+:main
 echo "Working on Wow%1"
 mkdir Wow%1
 cd Wow%1
