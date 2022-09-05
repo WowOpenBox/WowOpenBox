@@ -12,7 +12,7 @@ Github home: https://github.com/WowOpenBox/WowOpenBox#wowopenbox
 
 The source for the [binary distribution](https://github.com/WowOpenBox/WowOpenBox/releases) (and the round robin wrapper) is built from https://github.com/WowOpenBox/BuildKit (just mentioning that if you're curious, you don't need to look there to **use** WowOpenBox / OpenMultiBoxing)
 
-See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenmMultiBoxing.org for other games.
+See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMultiBoxing.org for other games.
 
 ## Main features
 
