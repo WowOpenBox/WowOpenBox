@@ -2378,17 +2378,17 @@ proc BroadcastText {text {addEnterKey 0}} {
 # For instance this sends Up arrow for 0.5s to windows without change to which is fg/active:
 # BroadcastKey 0x26 500
 
-proc BroadcastKey {key {delayMs 100}} {
+proc BroadcastKey {keyCode {delayMs 100}} {
     global slot2handle
     set WM_KEYDOWN 0x0100
     set WM_KEYUP 0x0101
     foreach {n w} [array get slot2handle] {
-        Debug "Sending input key $key to $n ($w)"
-        twapi::PostMessage $w $WM_KEYDOWN $key 1
+        Debug "Sending input key $keyCode to $n ($w)"
+        twapi::PostMessage $w $WM_KEYDOWN $keyCode 1
     }
     after $delayMs
     foreach {n w} [array get slot2handle] {
-        twapi::PostMessage $w $WM_KEYUP $key 1
+        twapi::PostMessage $w $WM_KEYUP $keyCode 1
     }
     # could also use twapi::send_input but that changes fg/active window
 }
