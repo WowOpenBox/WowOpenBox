@@ -35,7 +35,7 @@ If you want to use the optional Round Robin feature, run the `OpenMultiBoxing_RR
 
 Go through the Window Layout Wizard to pick how many game windows you plan on playing with and their layout, save and apply.
 
-Then start your game windows (e.g World of Warcraft, Classic or Shadowlands) using battle.net launcher is fine (that way you don't need to keep typing your password). Wob since version 4.1 will automatically capture and place the windows in their respective position for you (you can turn that option off in the Option menu)
+Then start your game windows (e.g World of Warcraft, Classic, Wrath or Dragonflight) using battle.net launcher is fine (that way you don't need to keep typing your password). Wob since version 4.1 will automatically capture and place the windows in their respective position for you (you can turn that option off in the Option menu)
 
 ![WOB Window Layout GUI Screenshot](https://wowopenbox.org/sshotWindowLayout.png?src=github)
 
