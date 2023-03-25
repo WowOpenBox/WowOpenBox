@@ -852,12 +852,24 @@ proc MenuSetup {} {
  }
 
 proc MouseBroadcast {} {
-    global mouseBroadcast
+    global mouseBroadcast mouseFollow rrOn
     set mouseBroadcast [expr {1-$mouseBroadcast}]
+    if {$mouseBroadcast} {
+        if {$mouseFollow} {
+            # Turn off mouse focus
+            FocusFollowMouseToggle
+        }
+    } else {
+        if {!$mouseFollow && !$rrOn} {
+            # Turn (back) on mouse focus
+            FocusFollowMouseToggle
+        }
+    }
+    AddMouseToRRLabel
 }
 
 proc MouseTracking {} {
-    global settings mouseArea mouseCoords
+    global settings mouseArea mouseCoords mouseLocalCoords
     set tw .mouseTracking
     if {[winfo exists $tw]} {
         wm state $tw normal
@@ -870,6 +882,7 @@ proc MouseTracking {} {
     grid [ttk::button $tw.bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry $tw.emt -textvariable mouseCoords -width 14] -padx 4 -sticky w
     tooltip $tw.bml "Start/Stop mouse tracking\nHotkey: $settings(hk,mouseTrack)"
     grid [ttk::label $tw.la -text "Coords in area"] [entry $tw.ema -textvariable mouseArea -width 14] -padx 4 -sticky w
+    grid [ttk::label $tw.lcl -text "Relative Coords"] [entry $tw.eml -textvariable mouseLocalCoords -width 14] -padx 4 -sticky w
     UpdateHandles
     StartStopMouseTrack
 }
@@ -955,45 +968,100 @@ proc MouseArea {mouseCoords} {
     global settings
     set n [CoordsIn $mouseCoords]
     if {$n} {
-        return "Window $n"
+        return [list "Window $n" [AbsoluteMouseCoordsToRelative $n $mouseCoords]]
     } else {
-        return "Not in 1-$settings(numWindows)"
+        return [list "Not in 1-$settings(numWindows)" ""]
     }
 }
 
 proc ClickWindowRel {n xp yp button} {
-    global settings slot2position
+    global settings slot2position slot2handle
+    set WM_LBUTTONDOWN 0x0201
+    set WM_LBUTTONUP 0x0202
+    if {$button=="right"} {
+        set WM_LBUTTONDOWN 0x0204
+        set WM_LBUTTONUP 0x0205
+    }
     set p $slot2position($n)
     # scale
     lassign $settings($p,posXY) lx ly
     lassign $settings($p,size) lw lh
-    set x [expr {round($lx+$xp*$lw)}]
-    set y [expr {round($ly+$yp*$lh)}]
+    set x [expr {round($xp*$lw)}]
+    set y [expr {round($yp*$lh)}]
+    set lword [expr {($y<<16)+$x}]
+    set x [expr {$lx+$x}]
+    set y [expr {$ly+$y}]
     Debug "Will click at $x $y for $n"
     twapi::move_mouse $x $y
+    set w $slot2handle($n)
     after $settings(mouseBroadcastDelay)
-    twapi::click_mouse_button $button
+    twapi::PostMessage $w $WM_LBUTTONDOWN 1 $lword
+    twapi::PostMessage $w $WM_LBUTTONUP 1 $lword
+    after $settings(mouseBroadcastDelay)
+    # twapi::click_mouse_button $button
+}
+
+proc AbsoluteMouseCoordsToRelative {n mouseCoords} {
+    global settings slot2position
+    set p $slot2position($n)
+    lassign $mouseCoords x y
+    # offset
+    lassign $settings($p,posXY) lx ly
+    set xp [expr {$x-$lx}]
+    set yp [expr {$y-$ly}]
+    return [list $xp $yp]
 }
 
 set clickInProgress ""
 set mouseBeforeClick ""
+set clickButton ""
+set clickWhen 0
 proc MouseBroadcastCheck {} {
-    global mouseBeforeClick clickInProgress settings slot2position slot2handle
+    global mouseBeforeClick clickInProgress settings slot2position slot2handle isPaused clickButton clickWhen
     set VK_LBUTTON 0x01
     set VK_RBUTTON 0x02
     set W_KEY 0x57
-    if {[twapi::GetAsyncKeyState $VK_RBUTTON]>=1 || [twapi::GetAsyncKeyState $W_KEY]>1} {
+    if {$isPaused || [twapi::GetAsyncKeyState $W_KEY]>1} {
         set clickInProgress ""
+        set clickButton ""
         return
     }
     if {[catch {twapi::get_mouse_location} lMouse]} {
         # access denied while in lock screen etc
         return
     }
-    set state [twapi::GetAsyncKeyState $VK_LBUTTON]
+    set stateL [twapi::GetAsyncKeyState $VK_LBUTTON]
+    set stateR [twapi::GetAsyncKeyState $VK_RBUTTON]
+    if {$stateL && $stateR} {
+        # both buttons down
+        # Debug "Both buttons down, no click broadcast"
+        set clickButton "both"
+        set clickInProgress ""
+        return
+    }
+    set state [expr {$stateL|$stateR}]
+    if {$clickButton=="both"} {
+        Debug "Released button(s) after both were down, no click broadcast $stateL $stateR"
+        set clickInProgress ""
+        if {$state==0} {
+            set clickButton ""
+        }
+        return
+    }
+    if {$stateR} {
+        set clickButton "right"
+    } elseif {$stateL} {
+        set clickButton "left"
+    }
     if {$clickInProgress!="" && $state==0} {
+        set elapsed [expr {[clock milliseconds]-$clickWhen}]
         set saveMousePos $lMouse
-        Debug "MOUSE_CLICK_RELEASE $clickInProgress vs $saveMousePos"
+        Debug "MOUSE_CLICK_RELEASE $clickButton $clickInProgress vs $saveMousePos after $elapsed ms"
+        if {$elapsed > 500} {
+            set clickInProgress ""
+            set clickButton ""
+            return
+        }
         # return to the click pos and not current pos which seems to glitch at times
         set saveMousePos $clickInProgress
         lassign $clickInProgress x y
@@ -1012,22 +1080,24 @@ proc MouseBroadcastCheck {} {
         lassign $settings($p,size) lw lh
         set xp [expr {1.0*($x-$lx)/$lw}]
         set yp [expr {1.0*($y-$ly)/$lh}]
-        Debug "Clicked on $n in position $p is rel x $xp rel y $yp"
+        Debug "Clicked on $n in position $p is rel x $xp rel y $yp - $clickButton"
         # iterate move to other windows applying scale
         for {set i 1} {$i<=$settings(numWindows)} {incr i} {
             if {$i==$n} {
                 continue
             }
             if {[info exists slot2handle($i)]} {
-                ClickWindowRel $i $xp $yp left
+                ClickWindowRel $i $xp $yp $clickButton
             }
         }
         # bring back
+        after $settings(mouseBroadcastDelay)
         twapi::move_mouse {*}$saveMousePos
         Foreground $w
     } elseif {$state > 1 && $clickInProgress==""} {
         set clickInProgress $mouseBeforeClick
-        Debug "VK_LBUTTON [format %x $state] $clickInProgress"
+        set clickWhen [clock milliseconds]
+        Debug "VK $clickButton [format %x $state] $clickInProgress"
     }
     set mouseBeforeClick $lMouse
 }
@@ -1108,9 +1178,9 @@ proc PeriodicChecks {} {
 }
 
 proc mouseTrack {} {
-    global mouseTrackOn mouseCoords mouseArea
+    global mouseTrackOn mouseCoords mouseArea mouseLocalCoords
     catch {twapi::get_mouse_location} mouseCoords
-    set mouseArea [MouseArea $mouseCoords]
+    lassign [MouseArea $mouseCoords] mouseArea mouseLocalCoords
     set mouseTrackOn [after 100 mouseTrack]
 }
 
@@ -2393,6 +2463,24 @@ proc BroadcastKey {keyCode {delayMs 100}} {
     # could also use twapi::send_input but that changes fg/active window
 }
 
+# Unfortunatly this does not work (mouse coords are not used, it only clicks where the mouse really is)
+proc BroadcastMouseClick {x y} {
+    global slot2handle settings
+    set WM_LBUTTONDOWN 0x0201
+    set WM_LBUTTONUP 0x0202
+    set WM_MOUSEMOVE 0x0200
+    set lword [expr {($x<<16)+$y}]
+    foreach {n w} [array get slot2handle] {
+        Debug "Sending mouse click $x,$y $lword to $n ($w)"
+        twapi::PostMessage $w $WM_MOUSEMOVE 1 $lword
+        twapi::PostMessage $w $WM_LBUTTONDOWN 1 $lword
+    }
+    after $settings(mouseBroadcastDelay)
+    foreach {n w} [array get slot2handle] {
+        twapi::PostMessage $w $WM_LBUTTONUP 1 $lword
+    }
+}
+
 # --- start of RR ---
 
 proc RRToggle {} {
@@ -2422,7 +2510,7 @@ proc RRreadAllKeys {} {
 }
 
 proc RRUpdate {} {
-    global rrOn rrOnLabel settings hasRR mouseFollow rrMouse rrLastCode rrTaskId
+    global rrOn rrOnLabel settings hasRR mouseFollow rrMouse rrLastCode rrTaskId mouseBroadcast
     Debug "RRupdate $rrOn"
     if {[info exists rrTaskId]} {
         after cancel $rrTaskId
@@ -2446,7 +2534,7 @@ proc RRUpdate {} {
     } else {
         set rrOnLabel ""
         .mf configure -state enabled
-        if {[info exists rrMouse] && $rrMouse} {
+        if {[info exists rrMouse] && $rrMouse && !$mouseBroadcast} {
             set mouseFollow 1
             UpdateMouseFollow
         }
@@ -2691,7 +2779,7 @@ proc OverlayConfig {} {
         bind $tw.re1 <Return> "RRUpdate; SaveSettings"
         tooltip $tw.re1 "What is shown when RR is on"
     }
-    grid [ttk::label $tw.lm1 -text "Mouse Focus indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
+    grid [ttk::label $tw.lm1 -text "Mouse Broadcast indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
     grid [ttk::label $tw.lm2 -text "Label:" -anchor e] [entry $tw.me1 -width 5 -textvariable settings(mfIndicator,label)] -sticky ew -padx 6
     tooltip $tw.me1 "What is shown when Focus Follow Mouse is on"
     bind $tw.me1 <Return> "AddMouseToRRLabel; SaveSettings"
@@ -3381,9 +3469,9 @@ proc SetMouseRaise {v} {
 # -- sync with widget values
 
 proc AddMouseToRRLabel {} {
-    global settings mouseFollow rrOnLabel
+    global settings mouseBroadcast rrOnLabel
     set left [lindex [split $rrOnLabel \n] 0]
-    if {$mouseFollow} {
+    if {$mouseBroadcast} {
         set rrOnLabel "$left\n$settings(mfIndicator,label)"
     } else {
         set rrOnLabel "$left"
@@ -3397,7 +3485,6 @@ proc UpdateMouseFollow {} {
     if {$mouseFollow} {
         SetMouseDelay $settings(mouseDelay)
     }
-    AddMouseToRRLabel
 }
 
 proc UpdateMouseRaise {} {
