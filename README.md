@@ -16,7 +16,7 @@ The source for the [binary distribution](https://github.com/OpenMultiBoxing/Open
 
 - Window Layout wizard and manual tweaking; get your game windows exactly how you want them to be to play.
 - Instant swapping of windows; with keyboard hotkeys for fast switching to the next or any specific window.
-- Left click broadcasting option
+- Left and right mouse click broadcasting option (press W or both buttons or hold them for more than half a second to avoid broadcasting)
 - Secure text (password) broadcasting option (can also broadcast slash commands, etc)
 - Many additional options to switch which window your keys are going to:
   - Focus follow mouse: turns on/off the Windows&trade; accessibility feature so you just hover a window to make it receive keys
@@ -35,7 +35,7 @@ If you want to use the optional Round Robin feature, run the `OpenMultiBoxing_RR
 
 Go through the Window Layout Wizard to pick how many game windows you plan on playing with and their layout, save and apply.
 
-Then start your game windows (e.g World of Warcraft, Classic or Shadowlands) using battle.net launcher is fine (that way you don't need to keep typing your password). OMB since version 4.1 will automatically capture and place the windows in their respective position for you (you can turn that option off in the Option menu)
+Then start your game windows (e.g World of Warcraft) using battle.net launcher is fine (that way you don't need to keep typing your password). OMB since version 4.1 will automatically capture and place the windows in their respective position for you (you can turn that option off in the Option menu)
 
 ![OMB Window Layout GUI Screenshot](https://wowopenbox.org/sshotWindowLayout.png?src=github)
 
