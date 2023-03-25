@@ -852,8 +852,20 @@ proc MenuSetup {} {
  }
 
 proc MouseBroadcast {} {
-    global mouseBroadcast
+    global mouseBroadcast mouseFollow rrOn
     set mouseBroadcast [expr {1-$mouseBroadcast}]
+    if {$mouseBroadcast} {
+        if {$mouseFollow} {
+            # Turn off mouse focus
+            FocusFollowMouseToggle
+        }
+    } else {
+        if {!$mouseFollow && !$rrOn} {
+            # Turn (back) on mouse focus
+            FocusFollowMouseToggle
+        }
+    }
+    AddMouseToRRLabel
 }
 
 proc MouseTracking {} {
@@ -2498,7 +2510,7 @@ proc RRreadAllKeys {} {
 }
 
 proc RRUpdate {} {
-    global rrOn rrOnLabel settings hasRR mouseFollow rrMouse rrLastCode rrTaskId
+    global rrOn rrOnLabel settings hasRR mouseFollow rrMouse rrLastCode rrTaskId mouseBroadcast
     Debug "RRupdate $rrOn"
     if {[info exists rrTaskId]} {
         after cancel $rrTaskId
@@ -2522,7 +2534,7 @@ proc RRUpdate {} {
     } else {
         set rrOnLabel ""
         .mf configure -state enabled
-        if {[info exists rrMouse] && $rrMouse} {
+        if {[info exists rrMouse] && $rrMouse && !$mouseBroadcast} {
             set mouseFollow 1
             UpdateMouseFollow
         }
@@ -2767,7 +2779,7 @@ proc OverlayConfig {} {
         bind $tw.re1 <Return> "RRUpdate; SaveSettings"
         tooltip $tw.re1 "What is shown when RR is on"
     }
-    grid [ttk::label $tw.lm1 -text "Mouse Focus indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
+    grid [ttk::label $tw.lm1 -text "Mouse Broadcast indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
     grid [ttk::label $tw.lm2 -text "Label:" -anchor e] [entry $tw.me1 -width 5 -textvariable settings(mfIndicator,label)] -sticky ew -padx 6
     tooltip $tw.me1 "What is shown when Focus Follow Mouse is on"
     bind $tw.me1 <Return> "AddMouseToRRLabel; SaveSettings"
@@ -3457,9 +3469,9 @@ proc SetMouseRaise {v} {
 # -- sync with widget values
 
 proc AddMouseToRRLabel {} {
-    global settings mouseFollow rrOnLabel
+    global settings mouseBroadcast rrOnLabel
     set left [lindex [split $rrOnLabel \n] 0]
-    if {$mouseFollow} {
+    if {$mouseBroadcast} {
         set rrOnLabel "$left\n$settings(mfIndicator,label)"
     } else {
         set rrOnLabel "$left"
@@ -3473,7 +3485,6 @@ proc UpdateMouseFollow {} {
     if {$mouseFollow} {
         SetMouseDelay $settings(mouseDelay)
     }
-    AddMouseToRRLabel
 }
 
 proc UpdateMouseRaise {} {

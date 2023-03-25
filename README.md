@@ -19,7 +19,7 @@ The source for the [binary distribution](https://github.com/OpenMultiBoxing/Open
 - Left and right mouse click broadcasting option (press W or both buttons or hold them for more than half a second to avoid broadcasting)
 - Secure text (password) broadcasting option (can also broadcast slash commands, etc)
 - Many additional options to switch which window your keys are going to:
-  - Focus follow mouse: turns on/off the Windows&trade; accessibility feature so you just hover a window to make it receive keys
+  - Focus follow mouse: turns on/off the Windows&trade; accessibility feature so you just hover a window to make it receive keys (note that mouse click broadcast only works if focus follow mouse is off, which )
   - Focus next/previous/specific windows with hotkeys.
   - Optional Round robin: after you press configurable keys, focus switches to the next window automatically.
 - Free, OpenSource and the Safest option available.
