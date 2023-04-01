@@ -841,6 +841,8 @@ proc MenuSetup {} {
     $m3 add checkbutton -label "Auto reset after direct BR keys" -variable settings(autoResetDirect)
     $m3 add checkbutton -label "Always focus (if mixing click and RR)" -variable settings(rrAlwaysFocus)
     $m3 add separator
+    $m3 add checkbutton -label "Mouse broadcast uses message mode" -variable settings(mouseBroadcastUsePostMessage)
+    $m3 add separator
     $m3 add checkbutton -label "Pause when mouse is outside windows" -variable settings(mouseOutsideWindowsPauses)
     $m3 add checkbutton -label "Focus back when mouse in game window" -variable settings(mouseInsideGameWindowFocuses)
 
@@ -856,15 +858,15 @@ proc MenuSetup {} {
  }
 
 proc MouseBroadcast {} {
-    global mouseBroadcast mouseFollow rrOn
+    global mouseBroadcast mouseFollow rrOn settings
     set mouseBroadcast [expr {1-$mouseBroadcast}]
     if {$mouseBroadcast} {
-        if {$mouseFollow} {
+        if {$mouseFollow && $settings(mouseBroadcastUsePostMessage)} {
             # Turn off mouse focus
             FocusFollowMouseToggle
         }
     } else {
-        if {!$mouseFollow && !$rrOn} {
+        if {!$mouseFollow && !$rrOn && $settings(mouseBroadcastUsePostMessage)} {
             # Turn (back) on mouse focus
             FocusFollowMouseToggle
         }
@@ -999,8 +1001,12 @@ proc ClickWindowRel {n xp yp button} {
     twapi::move_mouse $x $y
     set w $slot2handle($n)
     after $settings(mouseBroadcastDelay)
-    twapi::PostMessage $w $WM_LBUTTONDOWN 1 $lword
-    twapi::PostMessage $w $WM_LBUTTONUP 1 $lword
+    if {$settings(mouseBroadcastUsePostMessage)} {
+        twapi::PostMessage $w $WM_LBUTTONDOWN 1 $lword
+        twapi::PostMessage $w $WM_LBUTTONUP 1 $lword
+    } else {
+        twapi::click_mouse_button $button
+    }
     after $settings(mouseBroadcastDelay)
     # twapi::click_mouse_button $button
 }
@@ -1061,7 +1067,7 @@ proc MouseBroadcastCheck {} {
         set elapsed [expr {[clock milliseconds]-$clickWhen}]
         set saveMousePos $lMouse
         Debug "MOUSE_CLICK_RELEASE $clickButton $clickInProgress vs $saveMousePos after $elapsed ms"
-        if {$elapsed > 500} {
+        if {$elapsed > $settings(mouseHoldCancel)} {
             set clickInProgress ""
             set clickButton ""
             return
@@ -2563,7 +2569,7 @@ proc RRUpdate {} {
     } else {
         set rrOnLabel ""
         .mf configure -state enabled
-        if {[info exists rrMouse] && $rrMouse && !$mouseBroadcast} {
+        if {[info exists rrMouse] && $rrMouse && (!$mouseBroadcast || !$settings(mouseBroadcastUsePostMessage))} {
             set mouseFollow 1
             UpdateMouseFollow
         }
@@ -3656,6 +3662,8 @@ array set settings {
     dontCaptureList {explorer.exe SndVol.exe}
     hk,mouseBroadcast "Ctrl-M"
     mouseBroadcastDelay 30
+    mouseHoldCancel 500
+    mouseBroadcastUsePostMessage 1
 }
 #   rrKeyListAll ". F B T I \[ \] SPACE 1 2 3 4 5 6 7 8 9 0 - = UP LEFT RIGHT DOWN"
 #   rrKeyListCustom ". [ ] F11"
