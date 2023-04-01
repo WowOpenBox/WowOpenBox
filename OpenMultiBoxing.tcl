@@ -980,14 +980,16 @@ proc MouseArea {mouseCoords} {
     }
 }
 
-# Mousebroadcast main function
+# Mouse broadcast main function
 proc ClickWindowRel {n xp yp button} {
     global settings slot2position slot2handle
     set WM_LBUTTONDOWN 0x0201
     set WM_LBUTTONUP 0x0202
+    set wParam 1
     if {$button=="right"} {
         set WM_LBUTTONDOWN 0x0204
         set WM_LBUTTONUP 0x0205
+        set wParam 2
     }
     set p $slot2position($n)
     # scale
@@ -1003,13 +1005,12 @@ proc ClickWindowRel {n xp yp button} {
     set w $slot2handle($n)
     after $settings(mouseBroadcastDelay)
     if {$settings(mouseBroadcastUsePostMessage)} {
-        twapi::PostMessage $w $WM_LBUTTONDOWN 1 $lword
-        twapi::PostMessage $w $WM_LBUTTONUP 1 $lword
+        twapi::PostMessage $w $WM_LBUTTONDOWN $wParam $lword
+        twapi::PostMessage $w $WM_LBUTTONUP 0 $lword
     } else {
         twapi::click_mouse_button $button
     }
     after $settings(mouseBroadcastDelay)
-    # twapi::click_mouse_button $button
 }
 
 proc AbsoluteMouseCoordsToRelative {n mouseCoords} {
@@ -2497,17 +2498,41 @@ proc BroadcastMouseClick {x y} {
     set WM_LBUTTONDOWN 0x0201
     set WM_LBUTTONUP 0x0202
     set WM_MOUSEMOVE 0x0200
+    set WM_MOUSEACTIVATE 0x0021
+    set HTCLIENT 1
     set lword [expr {($x<<16)+$y}]
     foreach {n w} [array get slot2handle] {
         Debug "Sending mouse click $x,$y $lword to $n ($w)"
-        twapi::PostMessage $w $WM_MOUSEMOVE 1 $lword
+#        twapi::PostMessage $w $WM_MOUSEACTIVATE [lindex $w 0] $HTCLIENT # doesn't help
+        twapi::PostMessage $w $WM_MOUSEMOVE 0 $lword
         twapi::PostMessage $w $WM_LBUTTONDOWN 1 $lword
     }
     after $settings(mouseBroadcastDelay)
     foreach {n w} [array get slot2handle] {
-        twapi::PostMessage $w $WM_LBUTTONUP 1 $lword
+        twapi::PostMessage $w $WM_LBUTTONUP 0 $lword
     }
 }
+
+# Doesn't work either...
+proc BroadcastMouseClick2 {x y} {
+    global slot2handle settings
+    set WM_LBUTTONDOWN 0x0201
+    set WM_LBUTTONUP 0x0202
+    set WM_MOUSEMOVE 0x0200
+    set SMTO_ABORTIFHUNG 0x0002
+    set timeout 50
+    set lword [expr {($x<<16)+$y}]
+    foreach {n w} [array get slot2handle] {
+        Debug "Sending mouse click $x,$y $lword to $n ($w) using SendMessageTimeout"
+        twapi::SendMessageTimeout $w $WM_MOUSEMOVE 0 $lword $SMTO_ABORTIFHUNG $timeout
+        twapi::SendMessageTimeout $w $WM_LBUTTONDOWN 1 $lword $SMTO_ABORTIFHUNG $timeout
+    }
+    after $settings(mouseBroadcastDelay)
+    foreach {n w} [array get slot2handle] {
+        twapi::SendMessageTimeout $w $WM_LBUTTONUP 0 $lword $SMTO_ABORTIFHUNG $timeout
+    }
+}
+
 
 # --- start of RR, now Broadcasting ---
 
