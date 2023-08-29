@@ -802,13 +802,21 @@ proc UISetup {} {
         grid [entry .eRR2 -textvariable settings(rrModExcludeList) -width $width] -columnspan 2 -padx 4 -sticky ew
         tooltip .eRR2 "Which modifiers pause $rrlabel while held\nHit <Return> after change to take effect.\nSee help/FAQ for list."
         bind .eRR2 <Return> RRKeysListChange
-        set rrC .rrC
-        frame $rrC
-        ttk::menubutton $rrC.rrMenuB -text "Skips" -menu $rrC.rrMenuB.menu
-        menu $rrC.rrMenuB.menu -tearoff 0
-        RRCustomMenu
-        tooltip $rrC.rrMenuB "Select which window(s) are excluded from custom rotation"
-        pack [ttk::label $rrC.lrrK3 -text "Custom rotation keys:" -anchor w] $rrC.rrMenuB -anchor w -side left -expand 1
+
+        grid [ttk::label .lBMap -text "Key remapping"] -padx 4 -columnspan 2 -sticky w
+        grid [entry .eBMap -textvariable settings(broadcastMap) -width $width] -columnspan 2 -padx 4 -sticky ew
+        tooltip .eBMap "Key mapping from key pressed to key broadcast\nFor instance F:T will send T to other windows when F is pressed"
+        bind .eBMap <Return> RRKeysListChange
+
+        # (old wob) RR stuff that's not working in broadcast OMB
+
+        # set rrC .rrC
+        # frame $rrC
+        # ttk::menubutton $rrC.rrMenuB -text "Skips" -menu $rrC.rrMenuB.menu
+        # menu $rrC.rrMenuB.menu -tearoff 0
+        # RRCustomMenu
+        # tooltip $rrC.rrMenuB "Select which window(s) are excluded from custom rotation"
+        # pack [ttk::label $rrC.lrrK3 -text "Custom rotation keys:" -anchor w] $rrC.rrMenuB -anchor w -side left -expand 1
         # grid $rrC -padx 4 -columnspan 2 -sticky ew
         # grid [entry .eRR3 -textvariable settings(rrKeyListCustom) -width $width] -columnspan 2 -padx 4 -sticky ew
         # tooltip .eRR3 "Which keys trigger custom rotation $rrlabel\nHit <Return> after change to take effect.\nSee help/FAQ for list."
@@ -826,7 +834,7 @@ proc UISetup {} {
     grid [ttk::checkbutton .mbc -text "Broadcast mouse clicks" -variable mouseBroadcast] -padx 4 -columnspan 2 -sticky w
     tooltip .mbc "Toggle mouse click broadcasting\nHotkey: $settings(hk,mouseBroadcast)"
     grid [frame .sep3 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
-    grid [ttk::checkbutton .pauseNet -text "Pause network commands" -variable networkPause] -padx 4 -columnspan 2 -sticky ew
+    grid [ttk::checkbutton .pauseNet -text "Pause remote input broadcasting" -variable networkPause] -padx 4 -columnspan 2 -sticky ew
     tooltip .pauseNet "When checked, network commands coming from \"$settings(connectTo)\" are ignored\nOnly applicable if using File>Connect to..."
     grid [ttk::label .l_bottom -textvariable bottomText -justify center -anchor c] -padx 2 -columnspan 2
     bind .l_bottom <ButtonPress> [list CheckForUpdates 0]
@@ -2687,11 +2695,15 @@ proc BroadcastKey {keyCode {delayMs 100}} {
 # Send key to all windows except the one with the given slot number
 # Use up=1 for key up, up=0 for key down
 proc BroadcastKeyToOther {n keyCode up} {
-    global slot2handle
+    global slot2handle broadcastMap
     set ev [expr {0x0100+$up}]
     set lparam 0
     if {$up} {
         set lparam 0xC0000001
+    }
+    # Remap key if needed
+    if {[info exists broadcastMap($keyCode)]} {
+        set keyCode $broadcastMap($keyCode)
     }
     foreach {i w} [array get slot2handle] {
         if {$i==$n} {
@@ -2816,30 +2828,39 @@ proc RRUpdate {} {
     Debug "Reset all Broadcasting key states"
 }
 
+proc KeyToKeyCode {k {noneKeyPattern ""}} {
+    set len [string length $k]
+    if {$len == 0} {
+        # skip extra spaces
+        return
+    }
+    if {$len == 1} {
+        lassign [twapi::VkKeyScan $k] x code
+    } else {
+        if {$noneKeyPattern!="" && [string match $noneKeyPattern $k]} {
+            # only for direct we need to skip some positions
+            set code 0
+        } elseif {![info exists twapi::vk_map($k)]} {
+            OmbError "Invalid Broadcasting key" "$k isn't a valid key"
+            return
+        } else {
+            set code [expr [lindex $twapi::vk_map($k) 0]]
+        }
+    }
+    Debug "RRkey $k -> 0x[format %x $code]"
+    return [list $k $code]
+}
+
 proc RRkeyListToCodes {keyList {noneKeyPattern ""}} {
-    twapi::_init_vk_map
     set res {}
     set fixedList {}
     foreach k [split $keyList " "] {
+        lassign [KeyToKeyCode $k $noneKeyPattern] k code
         set len [string length $k]
         if {$len == 0} {
-            # skip extra spaces
+            # skip extra spaces and errors
             continue
         }
-        if {$len == 1} {
-            lassign [twapi::VkKeyScan $k] x code
-        } else {
-            if {$noneKeyPattern!="" && [string match $noneKeyPattern $k]} {
-                # only for direct we need to skip some positions
-                set code 0
-            } elseif {![info exists twapi::vk_map($k)]} {
-                OmbError "Invalid Broadcasting key" "$k isn't a valid key"
-                continue
-            } else {
-                set code [expr [lindex $twapi::vk_map($k) 0]]
-            }
-        }
-        Debug "RRkey $k -> 0x[format %x $code]"
         lappend res $code
         lappend fixedList $k
     }
@@ -2851,8 +2872,35 @@ set rrExcludes {}
 set rrExcludes {}
 set rrCodesCustom {}
 set rrCodesDirect {}
+array set broadcastMap {}
+
 proc RRKeysListChange {} {
-    global settings rrCodes rrExcludes rrCodesCustom rrCodesDirect
+    twapi::_init_vk_map
+    global settings rrCodes rrExcludes rrCodesCustom rrCodesDirect broadcastMap
+    # Split settings(broadcastMap) into pairs separated by :
+    catch {unset broadcastMap}
+    array set broadcastMap {}
+    set okMapList {}
+    foreach m [split $settings(broadcastMap) " "] {
+        if {$m == ""} {
+            continue
+        }
+        lassign [split $m ":"] in out
+        if {$in == "" || $out == ""} {
+            OmbError "Invalid key map" "$m isn't a colon separated pair"
+            continue
+        }
+        lassign [KeyToKeyCode $in] in inCode
+        lassign [KeyToKeyCode $out] out outCode
+        if {$in == "" || $out == ""} {
+            # Error already shown, if any
+            continue
+        }
+        set broadcastMap($inCode) $outCode
+        lappend okMapList [join [list $in $out] ":"]
+    }
+    # TODO: check for duplicates
+    set settings(broadcastMap) [join $okMapList " "]
     lassign [RRkeyListToCodes $settings(rrKeyListExclude)] rrCodes settings(rrKeyListExclude)
     #lassign [RRkeyListToCodes $settings(rrKeyListCustom)] rrCodesCustom settings(rrKeyListCustom)
     #lassign [RRkeyListToCodes $settings(rrKeyListDirect) ".*"] rrCodesDirect settings(rrKeyListDirect)
@@ -3841,7 +3889,7 @@ for {set i 1} {$i<=10} {incr i} {
 
 array set settings {
     hk,capture "Ctrl-Shift-C"
-    hk,mouseTrack "Ctrl-Shift-M"
+    hk,mouseTrack "Ctrl-Shift-Alt-M"
     hk,focusNextWindow "Ctrl-Shift-N"
     hk,focusPreviousWindow "Ctrl-Shift-P"
     hk,swapPreviousWindow "Ctrl-Shift-0xC0"
@@ -3903,7 +3951,7 @@ array set settings {
     autoCapture 1
     clipboardAtStart 0
     dontCaptureList {explorer.exe SndVol.exe}
-    hk,mouseBroadcast "Ctrl-M"
+    hk,mouseBroadcast "Ctrl-Shift-M"
     mouseBroadcastDelay 30
     mouseHoldCancel 500
     mouseBroadcastUsePostMessage 1
