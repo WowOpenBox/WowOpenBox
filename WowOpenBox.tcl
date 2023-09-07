@@ -490,6 +490,12 @@ proc AfterSettings {} {
 
 set prevMF 0
 
+proc MouseFollowToggle {} {
+    global mouseFollow
+    set mouseFollow [expr {1-$mouseFollow}]
+    UpdateMouseFollow
+}
+
 proc RevertMouseFollow {} {
     global mouseDelay settings prevMF mouseFollow
     if {!$settings(mouseFocusOffAtExit)} {
@@ -2676,7 +2682,7 @@ proc SetClickThrough {t} {
 
 set rrOnLabel ""
 proc Overlay {} {
-    global settings rrOnLabel
+    global settings rrOnLabel hasRR
     set transparentcolor [OverlayFontSizes]
     set on $settings(showOverlay)
     set lastOverlay $settings(numWindows)
@@ -2711,7 +2717,11 @@ proc Overlay {} {
         if {$settings(overlayClickable)} {
             if {$i==1} {
                 bind $t.l <ButtonPress> SwapNextWindow
-                bind $t.rr <ButtonPress> RRToggle
+                if {$hasRR} {
+                    bind $t.rr <ButtonPress> RRToggle
+                } else {
+                    bind $t.rr <ButtonPress> MouseFollowToggle
+                }
             } else {
                 bind $t.l <ButtonPress> [list SetAsMain $i]
             }
