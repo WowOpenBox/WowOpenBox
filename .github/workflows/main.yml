@@ -2,7 +2,7 @@
 
 name: CI
 
-# Controls when the action will run. 
+# Controls when the action will run.
 on:
   push:
     tags:
@@ -20,10 +20,10 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Checkout tools repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: WowOpenBox/BuildKit
           path: buildkit
@@ -43,6 +43,7 @@ jobs:
             echo ::set-output name=PRERELEASE::false
           fi
           sed -e "s/^set vers .*$/set vers \"$VERSION\"/" < WowOpenBox.tcl > WowOpenBox.tkapp
+          # This will only work for X.Y.Z so can't get past .9 on Z for instance
           sed -b -e "s/OpenMultiBoxing-vX.Y.Z.exe/OpenMultiBoxing-$VERSION.exe/" buildkit/OpenMultiBoxing_RR.exe > buildkit/OpenMultiBoxing_RR-$VERSION.exe
         shell: bash
 
