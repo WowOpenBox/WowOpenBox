@@ -1704,7 +1704,9 @@ proc SetAsMainInt {n} {
 
 proc IsDesktop {w} {
     lassign $w id
-    expr {$id==0x10010}
+    # Probably should have a safer/cleaner way to find toplevel but this works for windows11 24h2 (0x1000c)
+    # and earlier versions (0x10010).
+    expr {$id==0x10010 || $id==0x1000c}
 }
 
 proc TopLevelWindow {w} {
