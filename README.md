@@ -1,6 +1,10 @@
 ![CI](https://github.com/WowOpenBox/WowOpenBox/workflows/CI/badge.svg)
+
+
 # WowOpenBox
 <img src="https://wowopenbox.org/sshot4_2.png" alt="WOB Screenshot w/ RR" align="right">
+
+_July 2025 Update_: **There has been recent reports of World of Warcraft bans - most likely a mis-flag given what WOB does (or rather does not do) - yet you should proceed with caution - probably only use the non RR version and exit it after setting up the windows.**
 
 Open source, non commercial use software for MultiBoxing World of Warcraft within the rules.
 
