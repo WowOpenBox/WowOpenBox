@@ -64,7 +64,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           tag_name: ${{ github.ref }}
-          release_name: WowOpenBox / OpenMultiBoxing ${{ steps.get_version.outputs.VERSION }}
+          release_name: WOB2025 ${{ steps.get_version.outputs.VERSION }}
           draft: true
           prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
 
@@ -75,8 +75,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: .\buildkit\OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.zip
-          asset_name: OpenMultiBoxing-${{ steps.get_version.outputs.VERSION }}.zip
+          asset_path: .\buildkit\WOB2025-${{ steps.get_version.outputs.VERSION }}.zip
+          asset_name: WOB2025-${{ steps.get_version.outputs.VERSION }}.zip
           asset_content_type: application/zip
 
       - name: Upload Update Code
