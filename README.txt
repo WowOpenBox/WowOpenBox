@@ -1,4 +1,4 @@
-WowOpenBox / OpenMultiboxing by MooreaTV <moorea@ymail.com> (c) 2020-2023 All rights reserved
+WOB2025 by MooreaTV <moorea@ymail.com> (c) 2025 All rights reserved
 Open Source Software licensed under GPLv3 - No Warranty
 (contact the author if you need a different license)
 

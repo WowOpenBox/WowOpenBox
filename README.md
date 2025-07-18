@@ -4,7 +4,8 @@
 # WowOpenBox
 <img src="https://wowopenbox.org/sshot4_2.png" alt="WOB Screenshot w/ RR" align="right">
 
-_July 2025 Update_: **There has been recent reports of World of Warcraft bans - most likely a mis-flag given what WOB does (or rather does not do) - yet you should proceed with caution - probably only use the non RR version and exit it after setting up the windows.**
+_July 2025 Update_: **The Round Robing capability has been entirely removed in an effort to ensure full compliance with Blizzard's (vague) multiboxing
+policy.**
 
 Open source, non commercial use software for MultiBoxing World of Warcraft within the rules.
 
@@ -14,7 +15,9 @@ Web homes: https://WowOpenBox.org (for World of Warcraft) and https://OpenMultiB
 
 Github home: https://github.com/WowOpenBox/WowOpenBox#wowopenbox
 
+<!--
 The source for the [binary distribution](https://github.com/WowOpenBox/WowOpenBox/releases) (and the round robin wrapper) is built from https://github.com/WowOpenBox/BuildKit (just mentioning that if you're curious, you don't need to look there to **use** WowOpenBox / OpenMultiBoxing)
+-->
 
 See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMultiBoxing.org for other games or if you want to use Broadcasting.
 
@@ -25,7 +28,9 @@ See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMult
 - Many additional options to switch which window your keys are going to:
   - Focus follow mouse: turns on/off the Windows&trade; accessibility feature so you just hover a window to make it receive keys
   - Focus next/previous/specific windows with hotkeys.
+<!--
   - Optional Round robin: after you press configurable keys, focus switches to the next window automatically.
+-->
 - Free, OpenSource and the [Safest](https://github.com/WowOpenBox/WowOpenBox/wiki/FAQ#i-heard-wob-is-safer-than-jmb-how-so) option available: WOB respects Blizzard's new directive to not do any software input broadcasting. Multiboxing legitimately with peace of mind.
 - Online [help](https://wowopenbox.org/help), menus and tooltips on most UI element to help discovering features.
 
@@ -35,7 +40,7 @@ WowOpenBox is optimized for Microsoft Windows 10 and Windows 11.
 
 New since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest binary Zip file (e.g `OpenMultiBoxing-vX.Y.Z.zip`, not the source zip) and extract all to your desktop for instance. The binaries are built automatically by the Github CI and can be found on the [releases page](https://github.com/WowOpenBox/WowOpenBox/releases).
 
-If you want to use the optional Round Robin feature, run the `OpenMultiBoxing_RR` exe wrapper to get RR (it will launch/need the other bigger exe too, in the same folder).
+<!-- If you want to use the optional Round Robin feature, run the `OpenMultiBoxing_RR` exe wrapper to get RR (it will launch/need the other bigger exe too, in the same folder). -->
 
 Go through the Window Layout Wizard to pick how many game windows you plan on playing with and their layout, save and apply.
 

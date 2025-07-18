@@ -1,4 +1,4 @@
-﻿#  WowOpenBox / OpenMultiboxing by MooreaTV <moorea@ymail.com> (c) 2020-2021 All rights reserved
+﻿#  WOB2025 by MooreaTV <moorea@ymail.com> (c) 2020-2021 All rights reserved
 #  Open Source Software licensed under GPLv3 - No Warranty
 #  (contact the author if you need a different license)
 #
@@ -107,7 +107,7 @@ if {![info exists wobInitDone]} {
     }
     if {[HasArg "-rr"]} {
         set hasRR 1
-        Debug "OMB $vers called with -rr (hopefully from OpenMultiBoxing_RR.exe)"
+        WobError "Do Not Use!" "You must delete this _RR.exe and discontinue if you are using it for World of Wacraft. Download the 4.8.x zip instead"
     }
     if {[HasArg "-profile"]} {
         set initProfile [lindex $argv end]
@@ -155,7 +155,7 @@ proc CheckForUpdates {silent} {
     global vers update_path settings errorInfo
     set url "https://api.github.com/repos/WowOpenBox/WowOpenBox/releases/latest"
     if {[catch {set token [http::geturl $url]} err]} {
-        WobError "WoW Open Box network error" "Url fetch error $err"
+        WobError "WOB2025 network error" "Url fetch error $err"
         return
     }
     set settings(lastUpdateChecked) [clock seconds]
@@ -336,7 +336,7 @@ proc SaveSettings {args} {
     Debug "SaveSettings base $SETTINGS_FILE (from cb $args)"
     if {[catch {open $SETTINGS_FILE w+} f]} {
         WobError "Error saving settings" \
-            "Unable to save settings: $f\n\nPlease do not put OpenMultiBoxing*.exe\nin a system/special/protected folder\nput them on your Desktop instead for instance."
+            "Unable to save settings: $f\n\nPlease do not put WOB2025*.exe\nin a system/special/protected folder\nput them on your Desktop instead for instance."
         return
     }
     fconfigure $f -encoding utf-8
@@ -355,7 +355,7 @@ proc LoadProfile {} {
     set pf [ProfileFileName $profile]
     if {[catch {source -encoding utf-8 $pf} err]} {
         puts stderr "Error sourcing profile $pf\n$err"
-        WobError "WoW Open Box profile error" \
+        WobError "WOB2025 profile error" \
             "Your $pf has an error: $err\nYou can remove it and use Refresh Profiles in the menu."
         set settings(profile) "Default"
         return
@@ -374,7 +374,7 @@ proc LoadSettings {} {
     if {[file exists $SETTINGS_FILE]} {
         if {[catch {source -encoding utf-8 $SETTINGS_FILE} err]} {
             puts stderr "Could not source $SETTINGS_FILE\n$err"
-            WobError "WoW Open Box settings error" \
+            WobError "WOB2025 settings error" \
                 "Your $SETTINGS_FILE has an error: $err"
         } else {
             if {$settings(profile)!="Default"} {
@@ -569,12 +569,12 @@ proc GetLogo {} {
         }
     }
     if {[catch {set token [http::geturl "https://wowopenbox.org/WoWOpenBox70.png?v=$vers"]} err]} {
-        WobError "WoW Open Box network error" "Url fetch error $err"
+        WobError "WOB2025 network error" "Url fetch error $err"
         return $err
     }
     set body [http::data $token]
     if {[catch {set imgObj70 [image create photo -data $body]} err]} {
-        WobError "WoW Open Box logo error" "Logo error $err -:- $body"
+        WobError "WOB2025 logo error" "Logo error $err -:- $body"
         return "Invalid data $err $body"
     }
     return ""
@@ -589,12 +589,12 @@ proc GetOMBLogo {} {
         return ""
     }
     if {[catch {set token [http::geturl "https://openmultiboxing.org/OpenMultiBoxing70.png?v=$vers"]} err]} {
-        WobError "OpenMultiBoxing network error" "Url fetch error $err"
+        WobError "WOB2025 network error" "Url fetch error $err"
         return $err
     }
     set body [http::data $token]
     if {[catch {set imgOMB70 [image create photo -data $body]} err]} {
-        WobError "Open Multi Boxing logo error" "Logo error $err -:- $body"
+        WobError "WOB2025 logo error" "Logo error $err -:- $body"
         return "Invalid data $err $body"
     }
     return ""
@@ -613,7 +613,7 @@ proc SwitchLogo {} {
     set skin [expr {1-$skin}]
 }
 
-set ourTitle "WoW Open Box - Opensource MultiBoxing"
+set ourTitle "WOB2025"
 
 proc UISetup {} {
     global imgObj70 vers stayOnTop pos windowSize settings \
@@ -722,16 +722,16 @@ proc UpdateForegroundMode {} {
 proc About {} {
     global vers hasRR inExe oldVersion
     if {$hasRR} {
-        set extra "(with RoundRobin enabled)"
+        set extra "(with RoundRobin enabled) - DO NOT USE WITH World of Warcraft"
     } else {
-        set extra "(without RoundRobin, launch OpenMultiBoxing_RR-${vers}.exe to enable)."
+        set extra "(safe, without RoundRobin or any streamlining)."
     }
     if {$inExe && [info exists oldVersion] && $oldVersion !=$vers} {
         set extra "Binary version $oldVersion\n$extra"
     }
-    WobMessage -type ok -icon info -title "About Wow Open Box / Open MultiBoxing" \
+    WobMessage -type ok -icon info -title "About WOB2025" \
             -message \
-"WoW Open Box (WOB) / Open MultiBoxing (OMB) $vers\n$extra\n\nFree, OpenSource, Safe, Rules compliant, Multiboxing Software\n\nLicensed under GPLv3 - No Warranty\nThe GNU General Public License does not permit incorporating this work into proprietary programs.\n\nhttps://openmultiboxing.org https://wowopenbox.org/\n\uA9 2020-2021 MooreaTv <moorea@ymail.com>"
+"WOB2025 $vers\n$extra\n\nFree, OpenSource, Safe, Rules compliant, Multiboxing Software\n\nLicensed under GPLv3 - No Warranty\nThe GNU General Public License does not permit incorporating this work into proprietary programs.\n\nhttps://openmultiboxing.org https://wowopenbox.org/\n\uA9 2025 MooreaTv <moorea@ymail.com>"
 
 }
 
@@ -1305,7 +1305,7 @@ proc FindExisting {} {
         lassign $wl w
         Debug "found WOB $n! : $wl : $w"
         if {$settings(numWindows)==0} {
-            WobError "WoW Open Box missing settings error" \
+            WobError "WOB2025 missing settings error" \
                 "You have existing WOB 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
             exit 1
         }
@@ -1412,7 +1412,7 @@ proc RegisterHotkey {msg var callback} {
     }
     if {[catch {twapi::register_hotkey $hk [list HandleHotKey $msg $callback]} err]} {
         puts "hotkey error $hk for $msg: $err"
-        WobError "WoW Open Box HotKey error" \
+        WobError "WOB2025 HotKey error" \
          "Conflict for hotkey for $msg, change $var in settings to use something different than $hk"
     }
     lappend allHotKeys $err
@@ -1426,8 +1426,8 @@ proc FindOtherCopy {} {
         if {![IsOurs $w]} {
             catch {twapi::flash_window $w -count 3} err
             puts "Found another window of ours. Flashed it. $err"
-            WobError "WoW Open Box duplicate error" \
-                 "Another copy of WowOpenBox is running, please exit it before starting a new one (or hotkeys will conflict)."
+            WobError "WOB2025 duplicate error" \
+                 "Another copy of WOB is running, please exit it before starting a new one (or hotkeys will conflict)."
             catch {Foreground $w; Focus $w; twapi::flash_window $w -count 3} err
             puts "Bring other window in focus. $err"
             exit 1
@@ -1435,6 +1435,7 @@ proc FindOtherCopy {} {
     }
     # Check for processes too (Issue #131)
     set pList [twapi::get_process_ids -glob -name "OpenMultiBoxing-v*.exe"]
+    lappend pList {*}[twapi::get_process_ids -glob -name "WOB2025-v*.exe"]
     set ll [llength $pList]
     if {$ll>1} {
         set r [WobMessage -type yesno -title "Kill older instances" -icon warning -default yes\
@@ -1854,7 +1855,7 @@ proc Capture {} {
             return
         }
         if {[IsOurs $w]} {
-            WobError "WoW Open Box Error" "Can't capture foreground window: it's (already) ours!"
+            WobError "WOB2025 Error" "Can't capture foreground window: it's (already) ours!"
             return
         }
         set wtitle [twapi::get_window_text $w]
@@ -1868,7 +1869,7 @@ proc Capture {} {
     } else {
         set w [FindGameWindow]
         if {$w eq ""} {
-            WobError "WoW Open Box Error" "No $settings(game) window found"
+            WobError "WOB2025 Error" "No $settings(game) window found"
             return
         }
     }
@@ -1993,7 +1994,7 @@ proc WindowLayout {} {
     }
     UpdateExcluded
     toplevel $tw
-    wm title $tw "Wow Open Box Window Layout"
+    wm title $tw "WOB2025 Window Layout"
     ttk::checkbutton $tw.cbA -variable settings(layoutAuto) -text "Auto" -command ChangeLayout
     tooltip $tw.cbA "Automatically regenerate the layout on any change\nwhen checked. Uncheck for manual layout"
     ttk::checkbutton $tw.cbT -variable settings(layoutTop) -text "Main at bottom" -command ChangeLayout
@@ -2313,7 +2314,7 @@ proc SizeOfWindow {tag} {
 proc RRToggle {} {
     global rrOn hasRR vers
     if {!$hasRR} {
-        WobError "Round Robin not enabled" "You must start WOB/OMB by launching\n\n   OpenMultiBoxing_RR-${vers}.exe\n\nif you decide to enable RounRobin."
+        WobError "Round Robin not enabled" "No more Round Robin (RR) in this version."
     }
     set rrOn [expr {!$rrOn}]
     RRUpdate
@@ -2580,7 +2581,7 @@ proc OverlayConfig {} {
         return
     }
     toplevel $tw
-    wm title $tw "Wow Open Box Overlay Configuration"
+    wm title $tw "WOB2025 Overlay Configuration"
     grid [ttk::label $tw.l1 -text "Pick the location of the window number overlay:"] -columnspan 3
     grid [ttk::button $tw.b1 -text "\u2b76" -command "OverlayAnchor nw"] [ttk::button $tw.b2 -text "\u2b71" -command "OverlayAnchor n"] [ttk::button $tw.b3 -text "\u2b77" -command "OverlayAnchor ne"]
     grid [ttk::button $tw.b4 -text "\u2b70" -command "OverlayAnchor w"] [ttk::button $tw.b5 -text "\uB7" -command "OverlayAnchor c"] [ttk::button $tw.b6 -text "\u2b72" -command "OverlayAnchor e"]
@@ -3474,9 +3475,9 @@ if {![winfo exists .logo]} {
 }
 
 # --- main / tweak me ---
-puts "WowOpenBox - OpenMultiBoxing $vers started..."
+puts "WOB2025 $vers started..."
 Defer 100 FindExisting
-set bottomText "WowOpenBox, OpenMultiBoxing $vers"
+set bottomText "WOB2025 $vers"
 wm state . normal
 if {[info exists settings(mainWindowGeometry)]} {
     catch {wm geometry . $settings(mainWindowGeometry)}
