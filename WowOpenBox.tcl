@@ -474,7 +474,7 @@ proc AfterSettings {} {
     RegisterHotkey "Reset all windows to saved positions" hk,resetAll ResetAll
     for {set n 1} {$n < $maxNumW} {incr n} {
         if {[info exists slot2handle($n)]} {
-            RegisterPerWindowHotkey $n "WOB $n"
+            RegisterPerWindowHotkey $n "WoW $n"
         }
     }
     # Set mouse control to current values
@@ -1293,13 +1293,13 @@ proc FindExisting {} {
     # do +1 just in case there is one more than last save
     set firstMissing 0
     for {set n 1} {$n<=$settings(numWindows)+1} {incr n 1} {
-        set wname "WOB $n"
+        set wname "WoW $n"
         set wl [twapi::find_windows -match regexp -text "^$wname\$" -visible true]
         if {$wl eq {}} {
             if {!$firstMissing} {
                 set firstMissing $n
             }
-            Debug "WOB $n not found, skipping"
+            Debug "WoW $n not found, skipping"
             continue
         }
         lassign $wl w
@@ -1821,7 +1821,7 @@ proc AutoCapture {w} {
     for {} {[info exists slot2handle($nextWindow)]} {incr nextWindow} {
         Debug "Skipping existing nextwindow $nextWindow"
     }
-    set wname "WOB $nextWindow"
+    set wname "WoW $nextWindow"
     if {[catch {
         if {$settings(borderless)} {
             BorderLess $w 0
@@ -1873,7 +1873,7 @@ proc Capture {} {
             return
         }
     }
-    set wname "WOB $nextWindow"
+    set wname "WoW $nextWindow"
     # We are resizing just after so no need to do it twice,
     # but otherwise it is needed for the inner size of wow to be correct
     if {$settings(borderless)} {
@@ -2525,7 +2525,7 @@ proc RRCustomMenu {} {
     $m delete 0 99
     $m add checkbutton -label "Main" -variable rrCustom(0) -command RRCustomUpdateSettings
     for {set i 1} {$i<=$settings(numWindows)} {incr i} {
-        $m add checkbutton -label "WOB $i" -variable rrCustom($i) -command RRCustomUpdateSettings
+        $m add checkbutton -label "WoW $i" -variable rrCustom($i) -command RRCustomUpdateSettings
     }
 }
 
@@ -3118,7 +3118,7 @@ proc UpdateLayoutInfo {tag} {
     if {$sot($id)} {
         set x ", On top"
     }
-    set layoutinfo "WOB $id: Top Left ($x1 , $y1) Size $w x $h$x"
+    set layoutinfo "WoW $id: Top Left ($x1 , $y1) Size $w x $h$x"
 }
 
 # -- move/resize windows in layout
