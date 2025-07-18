@@ -12,7 +12,9 @@ See also https://github.com/OpenMultiBoxing/OpenMultiBoxing (and https://OpenMul
 Website https://WowOpenBox.org/
 
 Extract all the files into any same normal folder (not Program Files or system folders).
-Run the _RR exe for round-robin.
+
+The RR feature has been completely removed in fear of non compliance with
+Blizzard's multiboxing policy (without being able to confirm it despite years of asking).
 
 Right click edit and configure launchwow.bat to match your desires, if you prefer
 that to using Battle.net launcher (see links above for tradeoffs). Make multiple copies
