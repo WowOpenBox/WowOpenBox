@@ -1155,7 +1155,7 @@ proc CheckWindow {cmd n} {
     UpdateForegroundMode
     set n0 [expr {$n-1}]
     .lbw delete $n0
-    .lbw insert $n0 " WOB $n (lost)"
+    .lbw insert $n0 " WoW $n (lost)"
 }
 
 proc selectChanged {w args} {
@@ -1184,7 +1184,7 @@ proc ContextMenu {n x y} {
     Debug "In context for $n"
     catch {destroy .ctx}
     menu .ctx -tearoff 0
-    .ctx add command -label "Forget WOB $n..." -command [list Forget $n]
+    .ctx add command -label "Forget WoW $n..." -command [list Forget $n]
     tk_popup .ctx $x $y
 }
 
@@ -1202,7 +1202,7 @@ proc Forget {n} {
     UpdateForegroundMode
     set n0 [expr {$n-1}]
     .lbw delete $n0
-    .lbw insert $n0 " WOB $n (removed)"
+    .lbw insert $n0 " WoW $n (removed)"
     if {[info exists savedWindowStyle($wh)]} {
         # this would require a resize as well for the game to pickup the change
         # but this is "forget" so... that's enough we get back a title and resize
@@ -1303,7 +1303,7 @@ proc FindExisting {} {
             continue
         }
         lassign $wl w
-        Debug "found WOB $n! : $wl : $w"
+        Debug "found WoW $n! : $wl : $w"
         if {$settings(numWindows)==0} {
             WobError "WOB2025 missing settings error" \
                 "You have existing WOB 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
@@ -1927,7 +1927,7 @@ proc updateListBox {n w wname} {
     }
     # jump by more than 1
     for {set i $maxNumW} {$i < $n} {incr i} {
-        .lbw insert end " WOB $i (not present)"
+        .lbw insert end " WoW $i (not present)"
     }
     .lbw insert $n0 " $wname "
     if {$n>$settings(numWindows)} {
@@ -2244,7 +2244,7 @@ proc SetWindowOnCanvas {id x1 y1 x2 y2} {
         set sot($id) 0
         after idle "$c itemconfigure $tag&&wowWindow -fill #ffd633"
     }
-    $c create text $x1 $y1 -text "\n   ${pin}WOB $id${pin}\n   $w x $h" -anchor "nw" -tags $txtTags
+    $c create text $x1 $y1 -text "\n   ${pin}WoW $id${pin}\n   $w x $h" -anchor "nw" -tags $txtTags
     Debug "Window $id $x1,$y1 $x2,$y2 ($tags)"
 }
 
@@ -2260,7 +2260,7 @@ proc UpdateWindowText {tag w h} {
     } else {
         after idle "$c itemconfigure $tag&&wowWindow -fill #ffd633"
     }
-    $c itemconfigure $t -text "\n   ${pin}WOB $id${pin}\n   $w x $h"
+    $c itemconfigure $t -text "\n   ${pin}WoW $id${pin}\n   $w x $h"
 }
 
 proc LoadLayout {} {
@@ -2280,7 +2280,7 @@ proc LoadLayout {} {
         set i [lindex [split $k ","] 0]
         lassign $settings($k) x1 y1
         lassign $settings($i,size) w h
-        Debug "Found settings for WOB $i $x1 , $y1  $w x $h"
+        Debug "Found settings for WoW $i $x1 , $y1  $w x $h"
         if {$i>$n} {
             continue
         }
