@@ -107,7 +107,6 @@ if {![info exists wobInitDone]} {
     }
     if {[HasArg "-rr"]} {
         set hasRR 1
-        WobError "Do Not Use!" "You must delete this _RR.exe and discontinue if you are using it for World of Wacraft. Download the 4.8.x zip instead"
     }
     if {[HasArg "-profile"]} {
         set initProfile [lindex $argv end]
@@ -662,6 +661,7 @@ proc UISetup {} {
     tooltip .cbocfg "Opens the overlay config which let's you configure\nborder, color, positions, etc... for the overlay"
 
     if {$hasRR} {
+        WobError "Do Not Use!" "You must delete this _RR.exe and discontinue using it for World of Wacraft. Download the 4.8.x zip instead"
         grid [frame .sepRR -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
         grid [ttk::label .lRR -text "⟳ Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
         grid [ttk::checkbutton .cbRR -text "Round Robin ($settings(hk,rrToggle))" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
