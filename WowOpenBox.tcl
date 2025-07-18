@@ -107,7 +107,6 @@ if {![info exists wobInitDone]} {
     }
     if {[HasArg "-rr"]} {
         set hasRR 1
-        WobError "Do Not Use!" "You must delete this _RR.exe and discontinue if you are using it for World of Wacraft. Download the 4.8.x zip instead"
     }
     if {[HasArg "-profile"]} {
         set initProfile [lindex $argv end]
@@ -474,7 +473,7 @@ proc AfterSettings {} {
     RegisterHotkey "Reset all windows to saved positions" hk,resetAll ResetAll
     for {set n 1} {$n < $maxNumW} {incr n} {
         if {[info exists slot2handle($n)]} {
-            RegisterPerWindowHotkey $n "WOB $n"
+            RegisterPerWindowHotkey $n "WoW $n"
         }
     }
     # Set mouse control to current values
@@ -662,6 +661,7 @@ proc UISetup {} {
     tooltip .cbocfg "Opens the overlay config which let's you configure\nborder, color, positions, etc... for the overlay"
 
     if {$hasRR} {
+        WobError "Do Not Use!" "You must delete this _RR.exe and discontinue using it for World of Wacraft. Download the 4.8.x zip instead"
         grid [frame .sepRR -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
         grid [ttk::label .lRR -text "⟳ Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
         grid [ttk::checkbutton .cbRR -text "Round Robin ($settings(hk,rrToggle))" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
@@ -1155,7 +1155,7 @@ proc CheckWindow {cmd n} {
     UpdateForegroundMode
     set n0 [expr {$n-1}]
     .lbw delete $n0
-    .lbw insert $n0 " WOB $n (lost)"
+    .lbw insert $n0 " WoW $n (lost)"
 }
 
 proc selectChanged {w args} {
@@ -1184,7 +1184,7 @@ proc ContextMenu {n x y} {
     Debug "In context for $n"
     catch {destroy .ctx}
     menu .ctx -tearoff 0
-    .ctx add command -label "Forget WOB $n..." -command [list Forget $n]
+    .ctx add command -label "Forget WoW $n..." -command [list Forget $n]
     tk_popup .ctx $x $y
 }
 
@@ -1202,7 +1202,7 @@ proc Forget {n} {
     UpdateForegroundMode
     set n0 [expr {$n-1}]
     .lbw delete $n0
-    .lbw insert $n0 " WOB $n (removed)"
+    .lbw insert $n0 " WoW $n (removed)"
     if {[info exists savedWindowStyle($wh)]} {
         # this would require a resize as well for the game to pickup the change
         # but this is "forget" so... that's enough we get back a title and resize
@@ -1293,17 +1293,17 @@ proc FindExisting {} {
     # do +1 just in case there is one more than last save
     set firstMissing 0
     for {set n 1} {$n<=$settings(numWindows)+1} {incr n 1} {
-        set wname "WOB $n"
+        set wname "WoW $n"
         set wl [twapi::find_windows -match regexp -text "^$wname\$" -visible true]
         if {$wl eq {}} {
             if {!$firstMissing} {
                 set firstMissing $n
             }
-            Debug "WOB $n not found, skipping"
+            Debug "WoW $n not found, skipping"
             continue
         }
         lassign $wl w
-        Debug "found WOB $n! : $wl : $w"
+        Debug "found WoW $n! : $wl : $w"
         if {$settings(numWindows)==0} {
             WobError "WOB2025 missing settings error" \
                 "You have existing WOB 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
@@ -1821,7 +1821,7 @@ proc AutoCapture {w} {
     for {} {[info exists slot2handle($nextWindow)]} {incr nextWindow} {
         Debug "Skipping existing nextwindow $nextWindow"
     }
-    set wname "WOB $nextWindow"
+    set wname "WoW $nextWindow"
     if {[catch {
         if {$settings(borderless)} {
             BorderLess $w 0
@@ -1873,7 +1873,7 @@ proc Capture {} {
             return
         }
     }
-    set wname "WOB $nextWindow"
+    set wname "WoW $nextWindow"
     # We are resizing just after so no need to do it twice,
     # but otherwise it is needed for the inner size of wow to be correct
     if {$settings(borderless)} {
@@ -1927,7 +1927,7 @@ proc updateListBox {n w wname} {
     }
     # jump by more than 1
     for {set i $maxNumW} {$i < $n} {incr i} {
-        .lbw insert end " WOB $i (not present)"
+        .lbw insert end " WoW $i (not present)"
     }
     .lbw insert $n0 " $wname "
     if {$n>$settings(numWindows)} {
@@ -2244,7 +2244,7 @@ proc SetWindowOnCanvas {id x1 y1 x2 y2} {
         set sot($id) 0
         after idle "$c itemconfigure $tag&&wowWindow -fill #ffd633"
     }
-    $c create text $x1 $y1 -text "\n   ${pin}WOB $id${pin}\n   $w x $h" -anchor "nw" -tags $txtTags
+    $c create text $x1 $y1 -text "\n   ${pin}WoW $id${pin}\n   $w x $h" -anchor "nw" -tags $txtTags
     Debug "Window $id $x1,$y1 $x2,$y2 ($tags)"
 }
 
@@ -2260,7 +2260,7 @@ proc UpdateWindowText {tag w h} {
     } else {
         after idle "$c itemconfigure $tag&&wowWindow -fill #ffd633"
     }
-    $c itemconfigure $t -text "\n   ${pin}WOB $id${pin}\n   $w x $h"
+    $c itemconfigure $t -text "\n   ${pin}WoW $id${pin}\n   $w x $h"
 }
 
 proc LoadLayout {} {
@@ -2280,7 +2280,7 @@ proc LoadLayout {} {
         set i [lindex [split $k ","] 0]
         lassign $settings($k) x1 y1
         lassign $settings($i,size) w h
-        Debug "Found settings for WOB $i $x1 , $y1  $w x $h"
+        Debug "Found settings for WoW $i $x1 , $y1  $w x $h"
         if {$i>$n} {
             continue
         }
@@ -2525,7 +2525,7 @@ proc RRCustomMenu {} {
     $m delete 0 99
     $m add checkbutton -label "Main" -variable rrCustom(0) -command RRCustomUpdateSettings
     for {set i 1} {$i<=$settings(numWindows)} {incr i} {
-        $m add checkbutton -label "WOB $i" -variable rrCustom($i) -command RRCustomUpdateSettings
+        $m add checkbutton -label "WoW $i" -variable rrCustom($i) -command RRCustomUpdateSettings
     }
 }
 
@@ -3118,7 +3118,7 @@ proc UpdateLayoutInfo {tag} {
     if {$sot($id)} {
         set x ", On top"
     }
-    set layoutinfo "WOB $id: Top Left ($x1 , $y1) Size $w x $h$x"
+    set layoutinfo "WoW $id: Top Left ($x1 , $y1) Size $w x $h$x"
 }
 
 # -- move/resize windows in layout
