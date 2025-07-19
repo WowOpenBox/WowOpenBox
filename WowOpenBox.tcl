@@ -661,7 +661,6 @@ proc UISetup {} {
     tooltip .cbocfg "Opens the overlay config which let's you configure\nborder, color, positions, etc... for the overlay"
 
     if {$hasRR} {
-        WobError "Do Not Use!" "You must delete this _RR.exe and discontinue using it for World of Wacraft. Download the 4.8.x zip instead"
         grid [frame .sepRR -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
         grid [ttk::label .lRR -text "⟳ Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
         grid [ttk::checkbutton .cbRR -text "Round Robin ($settings(hk,rrToggle))" -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
@@ -1930,12 +1929,15 @@ proc updateListBox {n w wname} {
         .lbw insert end " WoW $i (not present)"
     }
     .lbw insert $n0 " $wname "
-    if {$n>$settings(numWindows)} {
+    if {$n>$settings(numWindows) && $n<10} {
         set settings(numWindows) $n
         Overlay
     }
     RRCustomMenu
     set nextWindow [expr {$n+1}]
+    if {$nextWindow>=10} {
+        set nextWindow 9
+    }
     set maxNumW $nextWindow
 }
 
@@ -2000,13 +2002,13 @@ proc WindowLayout {} {
     ttk::checkbutton $tw.cbT -variable settings(layoutTop) -text "Main at bottom" -command ChangeLayout
     tooltip $tw.cbT "Checked if you prefer the main window at the bottom instead of the top of the screen"
     set numWindowsFloat $settings(numWindows)
-    ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to $settings(layoutMaxWindows) -command ChangeNumWindow
+    ttk::scale $tw.s -variable numWindowsFloat -orien horizontal -from 0 -to 9 -command ChangeNumWindow
     tooltip $tw.s "Select how many windows in your layout."
     ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size for all" -command ChangeLayout
     ttk::checkbutton $tw.cb2 -variable settings(layoutOneRowCol) -text "One row/col for small windows" -command ChangeLayout
     ttk::checkbutton $tw.cb3 -variable settings(layoutStacked) -text "All Stacked" -command ChangeLayout
     tooltip $tw.cb1 "Check or uncheck to redo the layout with\nwindows of the same size (fastest switch later)\nor not (1 big main window and smaller minions windows)"
-    set layoutNumWindowsText "Layout for 99 windows"
+    set layoutNumWindowsText "Layout for 9 windows"
     set width [expr {2+[string length $layoutNumWindowsText]}]
     UpdateLayoutNumWindows
     grid x x x x $tw.cb2 - x -padx 8 -sticky we
@@ -3474,7 +3476,14 @@ if {![winfo exists .logo]} {
     SaveSettings
 }
 
-# --- main / tweak me ---
+# --- main ---
+proc rrWarning{} {
+    global hasRR
+    if {$hasRR} {
+        WobError "Do Not Use!" "You must delete this _RR.exe and discontinue using it for World of Wacraft. Download the 4.8.x zip instead"
+    }
+}
+
 puts "WOB2025 $vers started..."
 Defer 100 FindExisting
 set bottomText "WOB2025 $vers"
@@ -3511,3 +3520,4 @@ if {$settings(clipboardAtStart)} {
 }
 # Mouse tracking/auto pause and auto capture
 Defer 350 PeriodicChecks
+Defer 300 rrWarning
