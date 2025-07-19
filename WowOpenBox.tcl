@@ -3477,7 +3477,7 @@ if {![winfo exists .logo]} {
 }
 
 # --- main ---
-proc rrWarning{} {
+proc rrWarning {} {
     global hasRR
     if {$hasRR} {
         WobError "Do Not Use!" "You must delete this _RR.exe and discontinue using it for World of Wacraft. Download the 4.8.x zip instead"
