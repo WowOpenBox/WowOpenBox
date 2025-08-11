@@ -49,13 +49,13 @@ jobs:
 
       - name: Make the executable and zip
         run: |
+          # Get mt.exe... somehow
+          choco install winget
+          C:\ProgramData\chocolatey\lib\winget\winget.exe install --silent --disable-interactivity --id Microsoft.WindowsSDK.10.0.18362
           cd buildkit
           cp ..\WowOpenBox.tkapp OpenMultiBoxing.vfs\app
           Add-Content -Path OpenMultiBoxing.vfs\tclkit.inf -Value "ProductVersion ""${{ steps.get_version.outputs.VERSION }}""" -PassThru
           tclkit\tclkit.exe sdx\sdx.kit wrap OpenMultiBoxing.exe -runtime runtime.exe
-          # Get mt.exe... somehow
-          choco install winget
-          winget install --silent --disable-interactivity --id Microsoft.WindowsSDK.10.0.18362
           # Create DPI-aware manifest
           @"
           <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
