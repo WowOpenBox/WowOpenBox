@@ -46,7 +46,13 @@ jobs:
           # This will only work for X.Y.Z so can't get past .9 on Z for instance
           # sed -b -e "s/OpenMultiBoxing-vX.Y.Z.exe/OpenMultiBoxing-$VERSION.exe/" buildkit/OpenMultiBoxing_RR.exe > buildkit/OpenMultiBoxing_RR-$VERSION.exe
         shell: bash
-
+      - name: find mt.exe
+        shell: bash
+        run: |
+          set -x &&
+          mt=$(ls -t /c/Program\ Files*/Windows\ Kits/10/bin/*/x64/mt.exe) &&
+          test -n "$mt" &&
+          echo "${mt%%/mt.exe*}" >>$GITHUB_PATH
       - name: Make the executable and zip
         run: |
           cd buildkit
@@ -66,9 +72,6 @@ jobs:
           </assembly>
           "@ | Out-File -Encoding utf8 app.manifest
           # Embed manifest into EXE (resource ID 1)
-          # Get mt.exe... somehow
-          choco install visualstudio2019community --package-parameters "--add Microsoft.VisualStudio.Component.VC.Redist.MSM"
-          $env:PATH += ";C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64"
           mt.exe -nologo -manifest app.manifest -outputresource:OpenMultiBoxing.exe;#1
           Rename-Item OpenMultiBoxing.exe WOB2025-${{ steps.get_version.outputs.VERSION }}.exe
           Compress-Archive -Path WOB2025-${{ steps.get_version.outputs.VERSION }}.exe,..\README.txt,..\launchwow.bat,..\launchwowc.bat -DestinationPath WOB2025-${{ steps.get_version.outputs.VERSION }}.zip
