@@ -67,6 +67,7 @@ jobs:
           "@ | Out-File -Encoding utf8 app.manifest
           # Embed manifest into EXE (resource ID 1)
           # Get mt.exe... somehow
+          choco install visualstudio2019community --package-parameters "--add Microsoft.VisualStudio.Component.VC.Redist.MSM"
           $env:PATH += ";C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64"
           mt.exe -nologo -manifest app.manifest -outputresource:OpenMultiBoxing.exe;#1
           Rename-Item OpenMultiBoxing.exe WOB2025-${{ steps.get_version.outputs.VERSION }}.exe
