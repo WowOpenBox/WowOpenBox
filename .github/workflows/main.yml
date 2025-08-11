@@ -66,8 +66,7 @@ jobs:
           </assembly>
           "@ | Out-File -Encoding utf8 app.manifest
           # Embed manifest into EXE (resource ID 1)
-          choco search windows-sdk
-          choco install windows-sdk-10.0 -y
+          winget install --silent --disable-interactivity --id Microsoft.WindowsSDK.10.0.18362
           mt.exe -nologo -manifest app.manifest -outputresource:OpenMultiBoxing.exe;#1
           Rename-Item OpenMultiBoxing.exe WOB2025-${{ steps.get_version.outputs.VERSION }}.exe
           Compress-Archive -Path WOB2025-${{ steps.get_version.outputs.VERSION }}.exe,..\README.txt,..\launchwow.bat,..\launchwowc.bat -DestinationPath WOB2025-${{ steps.get_version.outputs.VERSION }}.zip
