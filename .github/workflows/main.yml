@@ -49,12 +49,12 @@ jobs:
       - name: find mt.exe
         shell: bash
         run: |
+          # This was done directly in BuildKit.
           ls -l /c/Program\ Files*/Windows\ Kits/10/bin/*/x64/mt.exe
       - name: Make the executable and zip
         run: |
           cd buildkit
           cp ..\WowOpenBox.tkapp OpenMultiBoxing.vfs\app
-          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\mt.exe' -nologo -manifest ..\app.manifest -outputresource:runtime.exe;#1
           Add-Content -Path OpenMultiBoxing.vfs\tclkit.inf -Value "ProductVersion ""${{ steps.get_version.outputs.VERSION }}""" -PassThru
           tclkit\tclkit.exe sdx\sdx.kit wrap OpenMultiBoxing -runtime runtime.exe
           Rename-Item OpenMultiBoxing WOB2025-${{ steps.get_version.outputs.VERSION }}.exe
