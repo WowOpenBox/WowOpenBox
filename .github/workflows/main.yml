@@ -46,7 +46,11 @@ jobs:
           # This will only work for X.Y.Z so can't get past .9 on Z for instance
           # sed -b -e "s/OpenMultiBoxing-vX.Y.Z.exe/OpenMultiBoxing-$VERSION.exe/" buildkit/OpenMultiBoxing_RR.exe > buildkit/OpenMultiBoxing_RR-$VERSION.exe
         shell: bash
-
+      - name: find mt.exe
+        shell: bash
+        run: |
+          # This was done directly in BuildKit.
+          ls -l /c/Program\ Files*/Windows\ Kits/10/bin/*/x64/mt.exe
       - name: Make the executable and zip
         run: |
           cd buildkit
@@ -55,8 +59,6 @@ jobs:
           tclkit\tclkit.exe sdx\sdx.kit wrap OpenMultiBoxing -runtime runtime.exe
           Rename-Item OpenMultiBoxing WOB2025-${{ steps.get_version.outputs.VERSION }}.exe
           Compress-Archive -Path WOB2025-${{ steps.get_version.outputs.VERSION }}.exe,..\README.txt,..\launchwow.bat,..\launchwowc.bat -DestinationPath WOB2025-${{ steps.get_version.outputs.VERSION }}.zip
-
-
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
