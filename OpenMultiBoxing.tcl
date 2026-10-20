@@ -570,7 +570,7 @@ proc SaveSettings {args} {
         if {[lsearch $settings(profiles) $p]==-1} {
             Debug "New profile $p"
             lappend settings(profiles) $p
-            .mbar.profile insert 1 radiobutton -label $p -variable settings(profile) -command LoadProfile
+            UpdateProfilesMenu
         }
         set pMode 1
         set pf [ProfileFileName $p]
@@ -578,7 +578,7 @@ proc SaveSettings {args} {
         fconfigure $f -encoding utf-8
         puts $f "array set settings {"
         foreach i [lsort [array names settings]] {
-            if {$i=="profile" || $i=="profiles" || $i=="games" || $i=="lastUpdateChecked"} {
+            if {$i=="profile" || $i=="profiles" || $i=="games" || $i=="lastUpdateChecked" || $i=="profilesNotRotated"} {
                 continue
             }
             #  Debug "saving $i \"$settings($i)\""
@@ -618,6 +618,87 @@ proc LoadProfile {} {
     set settings(profile) $profile
     AfterSettings
     ResetAll
+}
+
+# Profiles cycled through by the next/previous profile hotkeys
+proc RotatedProfiles {} {
+    global settings
+    set l {}
+    foreach p $settings(profiles) {
+        if {[lsearch -exact $settings(profilesNotRotated) $p] == -1} {
+            lappend l $p
+        }
+    }
+    return $l
+}
+
+proc SwitchProfile {dir} {
+    global settings
+    set rot [RotatedProfiles]
+    set n [llength $rot]
+    if {$n == 0} {
+        Debug "SwitchProfile: no profile in rotation"
+        return
+    }
+    set i [lsearch -exact $rot $settings(profile)]
+    if {$i == -1} {
+        # current profile isn't in the rotation: go to its first (next) or last (previous) one
+        set i [expr {$dir > 0 ? -1 : 0}]
+    }
+    set p [lindex $rot [expr {($i+$dir+$n)%$n}]]
+    if {$p eq $settings(profile)} {
+        Debug "SwitchProfile: $p is the only profile in rotation"
+        return
+    }
+    Debug "Switching profile $settings(profile) -> $p"
+    set settings(profile) $p
+    LoadProfile
+}
+
+# Deferred as LoadProfile re-registers all hotkeys, including the one being handled
+proc NextProfile {} {
+    Defer 0 {SwitchProfile 1}
+}
+
+proc PreviousProfile {} {
+    Defer 0 {SwitchProfile -1}
+}
+
+proc UpdateProfileRotation {} {
+    global settings profileRotated
+    set settings(profilesNotRotated) {}
+    foreach p $settings(profiles) {
+        if {!$profileRotated($p)} {
+            lappend settings(profilesNotRotated) $p
+        }
+    }
+    Debug "Profiles not rotated: $settings(profilesNotRotated)"
+    SaveSettings
+}
+
+# Stays up (unlike a menu) so several profiles can be checked/unchecked
+proc ProfileRotationDialog {} {
+    global settings profileRotated
+    set tw .profileRotation
+    if {![winfo exists $tw]} {
+        toplevel $tw
+        wm title $tw "OMB Profiles in rotation"
+        wm resizable $tw 0 0
+        grid [ttk::label $tw.l -text "Profiles cycled through by\n$settings(hk,nextProfile) (next) and $settings(hk,previousProfile) (previous):"] -padx 8 -pady 4 -sticky w
+        grid [ttk::button $tw.close -text Close -command [list destroy $tw]] -row 2 -padx 8 -pady 6
+        UpdateHandles
+    }
+    # (re)create the checkbuttons, the profiles list may have changed
+    catch {destroy $tw.f}
+    grid [ttk::frame $tw.f] -row 1 -padx 8 -sticky w
+    array unset profileRotated
+    set i 0
+    foreach p $settings(profiles) {
+        set profileRotated($p) [expr {[lsearch -exact $settings(profilesNotRotated) $p] == -1}]
+        grid [ttk::checkbutton $tw.f.cb[incr i] -text $p -variable profileRotated($p) -command UpdateProfileRotation] -sticky w
+    }
+    wm state $tw normal
+    raise $tw
 }
 
 proc LoadSettings {} {
@@ -741,6 +822,8 @@ proc RegisterAllHotkeys {} {
     RegisterHotkey "Focus main window" hk,focusMain FocusMain
     RegisterHotkey "Reset all windows to saved positions" hk,resetAll ResetAll
     RegisterHotkey "Start/Stop mouse broadcasting" hk,mouseBroadcast MouseBroadcast
+    RegisterHotkey "Next profile" hk,nextProfile NextProfile
+    RegisterHotkey "Previous profile" hk,previousProfile PreviousProfile
     # Only take that hotkey from other apps when windows to skip are configured
     if {[llength $settings(rrExcludeWindows)]} {
         RegisterHotkey "Skip windows toggle" hk,rrExcludeToggle RRExcludeToggle
@@ -1049,7 +1132,14 @@ proc UpdateProfilesMenu {} {
         $m2 add radiobutton -label $p -variable settings(profile) -command LoadProfile
     }
     $m2 add separator
+    $m2 add command -label "Next profile ($settings(hk,nextProfile))" -command NextProfile
+    $m2 add command -label "Previous profile ($settings(hk,previousProfile))" -command PreviousProfile
+    $m2 add command -label "Profiles in rotation..." -command ProfileRotationDialog
+    $m2 add separator
     $m2 add command -label "Refresh Profiles" -command RefreshProfiles
+    if {[winfo exists .profileRotation]} {
+        ProfileRotationDialog
+    }
 }
 
 proc MenuSetup {} {
@@ -4245,6 +4335,9 @@ array set settings {
     lastUpdateChecked 0
     profile "Default"
     profiles {"Default"}
+    profilesNotRotated {"Default"}
+    hk,nextProfile "Ctrl-Shift-L"
+    hk,previousProfile "Ctrl-Shift-Alt-L"
     borderless 1
     rrKeyListExclude "W A S D"
     rrModExcludeList "RCONTROL RSHIFT RALT"
