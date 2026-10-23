@@ -2,9 +2,9 @@
 
 
 # WowOpenBox
-<img src="https://wowopenbox.org/sshot4_2.png" alt="WOB Screenshot w/ RR" align="right">
+<img src="https://wowopenbox.org/wob2025_4_9.png" alt="WOB2025 Screenshot" align="right">
 
-_July 2025 Update_: **The Round Robing capability has been entirely removed in an effort to ensure full compliance with Blizzard's (vague) multiboxing
+_July 2025 Update_: **The Round Robin capability has been entirely removed in an effort to ensure full compliance with Blizzard's (vague) multiboxing
 policy.**
 
 Open source, non commercial use software for MultiBoxing World of Warcraft within the rules.
@@ -38,7 +38,7 @@ See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMult
 
 WowOpenBox is optimized for Microsoft Windows 10 and Windows 11.
 
-New since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest binary Zip file (e.g `OpenMultiBoxing-vX.Y.Z.zip`, not the source zip) and extract all to your desktop for instance. The binaries are built automatically by the Github CI and can be found on the [releases page](https://github.com/WowOpenBox/WowOpenBox/releases).
+New since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest binary Zip file (e.g `WOB2025-vX.Y.Z.zip`, not the source zip) and extract all to your desktop for instance. The binaries are built automatically by the Github CI and can be found on the [releases page](https://github.com/WowOpenBox/WowOpenBox/releases).
 
 <!-- If you want to use the optional Round Robin feature, run the `OpenMultiBoxing_RR` exe wrapper to get RR (it will launch/need the other bigger exe too, in the same folder). -->
 
