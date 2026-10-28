@@ -24,6 +24,7 @@ See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMult
 ## Main features
 
 - Window Layout wizard and manual tweaking; get your game windows exactly how you want them to be to play.
+   - Save different layouts as profiles (File > New Profile...) and cycle through them with the Ctrl-Shift-L (next) and Ctrl-Shift-Alt-L (previous) hotkeys. Pick which profiles are in the rotation with Profile > "Profiles in rotation..." (all but Default by default).
 - Instant swapping of windows; with keyboard hotkeys for fast switching to the next or any specific window.
    - Change any hotkey in File > "Hotkeys...": click it and press the new key combination (right click clears it, Undo goes back).
 - Many additional options to switch which window your keys are going to:
