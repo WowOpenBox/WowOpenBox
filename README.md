@@ -25,6 +25,7 @@ See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMult
 
 - Window Layout wizard and manual tweaking; get your game windows exactly how you want them to be to play.
 - Instant swapping of windows; with keyboard hotkeys for fast switching to the next or any specific window.
+   - Change any hotkey in File > "Hotkeys...": click it and press the new key combination (right click clears it, Undo goes back).
 - Many additional options to switch which window your keys are going to:
   - Focus follow mouse: turns on/off the Windows&trade; accessibility feature so you just hover a window to make it receive keys
   - Focus next/previous/specific windows with hotkeys.
