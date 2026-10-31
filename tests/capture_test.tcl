@@ -20,6 +20,7 @@ array set startTime {0xa 200 0xb 100}
 proc twapi::find_windows {args} {global gameWindows; return $gameWindows}
 proc twapi::get_window_process {w} {lindex $w 0}
 proc twapi::get_process_info {pid args} {global startTime; list -name wow.exe -createtime $startTime($pid)}
+proc IsOurs {w} {return 0}
 array set settings {game "World of Warcraft" dontCaptureList {}}
 Check "first started" [FindGameWindow 1] {0xb HWND}
 set wb {0xb HWND}
@@ -38,6 +39,7 @@ foreach i {1 2 3} {.lbw insert end " WoW $i "}
 proc UpdateHandles {} {}
 proc UpdateForegroundMode {} {}
 proc RegisterPerWindowHotkey {args} {}
+proc FindFocusHandle {args} {}
 proc Rename {args} {}
 set updated {}
 proc UpdateN {n} {global updated; lappend updated $n}
