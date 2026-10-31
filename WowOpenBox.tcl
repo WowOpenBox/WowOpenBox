@@ -1467,6 +1467,10 @@ proc FindExisting {} {
         updateListBox $n $w $wname
         UpdateN $n
     }
+    if {[LayoutMirrored]} {
+        # all at the main position: whichever was on top (main when we exited) goes under WoW 1
+        StackUnderMain
+    }
     if {$firstMissing} {
         set nextWindow $firstMissing
     }
