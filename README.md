@@ -4,7 +4,7 @@
 # WowOpenBox
 <img src="https://wowopenbox.org/wob2025_4_9.png" alt="WOB2025 Screenshot" align="right">
 
-_July 2025 Update_: **The Round Robin capability has been entirely removed in an effort to ensure full compliance with Blizzard's (vague) multiboxing
+_July 2025 Update_: **The Round Robin capability has been entirely removed in an effort to ensure full compliance with Blizzard's multiboxing
 policy.**
 
 Open source, non commercial use software for MultiBoxing World of Warcraft within the rules.
@@ -37,6 +37,9 @@ See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMult
 -->
 - Free, OpenSource and the [Safest](https://github.com/WowOpenBox/WowOpenBox/wiki/FAQ#i-heard-wob-is-safer-than-jmb-how-so) option available: WOB respects Blizzard's new directive to not do any software input broadcasting. Multiboxing legitimately with peace of mind.
 - Online [help](https://wowopenbox.org/help), menus and tooltips on most UI element to help discovering features.
+
+Need a great addon to help your WoW multiboxing?<br>
+We also wrote [MAMA](https://github.com/mooreatv/MAMA-multiboxing) for you!
 
 ## Installation
 
