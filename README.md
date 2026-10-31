@@ -4,7 +4,7 @@
 # WowOpenBox
 <img src="https://wowopenbox.org/wob2025_4_9.png" alt="WOB2025 Screenshot" align="right">
 
-_July 2025 Update_: **The Round Robin capability has been entirely removed in an effort to ensure full compliance with Blizzard's (vague) multiboxing
+_July 2025 Update_: **The Round Robin capability has been entirely removed in an effort to ensure full compliance with Blizzard's multiboxing
 policy.**
 
 Open source, non commercial use software for MultiBoxing World of Warcraft within the rules.
