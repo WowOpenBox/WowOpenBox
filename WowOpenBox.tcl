@@ -1,4 +1,4 @@
-﻿#  WOB2025 by MooreaTV <moorea@ymail.com> (c) 2025-2026 All rights reserved
+﻿#  WOB2027 by MooreaTV <moorea@ymail.com> (c) 2025-2026 All rights reserved
 #  Open Source Software licensed under GPLv3 - No Warranty
 #  (contact the author if you need a different license)
 #
@@ -154,7 +154,7 @@ proc CheckForUpdates {silent} {
     global vers update_path settings errorInfo
     set url "https://api.github.com/repos/WowOpenBox/WowOpenBox/releases/latest"
     if {[catch {set token [http::geturl $url]} err]} {
-        WobError "WOB2025 network error" "Url fetch error $err"
+        WobError "WOB2027 network error" "Url fetch error $err"
         return
     }
     set settings(lastUpdateChecked) [clock seconds]
@@ -335,7 +335,7 @@ proc SaveSettings {args} {
     Debug "SaveSettings base $SETTINGS_FILE (from cb $args)"
     if {[catch {open $SETTINGS_FILE w+} f]} {
         WobError "Error saving settings" \
-            "Unable to save settings: $f\n\nPlease do not put WOB2025*.exe\nin a system/special/protected folder\nput them on your Desktop instead for instance."
+            "Unable to save settings: $f\n\nPlease do not put WOB20*.exe\nin a system/special/protected folder\nput them on your Desktop instead for instance."
         return
     }
     fconfigure $f -encoding utf-8
@@ -354,7 +354,7 @@ proc LoadProfile {} {
     set pf [ProfileFileName $profile]
     if {[catch {source -encoding utf-8 $pf} err]} {
         puts stderr "Error sourcing profile $pf\n$err"
-        WobError "WOB2025 profile error" \
+        WobError "WOB2027 profile error" \
             "Your $pf has an error: $err\nYou can remove it and use Refresh Profiles in the menu."
         set settings(profile) "Default"
         return
@@ -460,7 +460,7 @@ proc LoadSettings {} {
     if {[file exists $SETTINGS_FILE]} {
         if {[catch {source -encoding utf-8 $SETTINGS_FILE} err]} {
             puts stderr "Could not source $SETTINGS_FILE\n$err"
-            WobError "WOB2025 settings error" \
+            WobError "WOB2027 settings error" \
                 "Your $SETTINGS_FILE has an error: $err"
         } else {
             if {$settings(profile)!="Default"} {
@@ -649,12 +649,12 @@ proc GetLogo {} {
         }
     }
     if {[catch {set token [http::geturl "https://wowopenbox.org/WoWOpenBox70.png?v=$vers"]} err]} {
-        WobError "WOB2025 network error" "Url fetch error $err"
+        WobError "WOB2027 network error" "Url fetch error $err"
         return $err
     }
     set body [http::data $token]
     if {[catch {set imgObj70 [image create photo -data $body]} err]} {
-        WobError "WOB2025 logo error" "Logo error $err -:- $body"
+        WobError "WOB2027 logo error" "Logo error $err -:- $body"
         return "Invalid data $err $body"
     }
     return ""
@@ -669,12 +669,12 @@ proc GetOMBLogo {} {
         return ""
     }
     if {[catch {set token [http::geturl "https://openmultiboxing.org/OpenMultiBoxing70.png?v=$vers"]} err]} {
-        WobError "WOB2025 network error" "Url fetch error $err"
+        WobError "WOB2027 network error" "Url fetch error $err"
         return $err
     }
     set body [http::data $token]
     if {[catch {set imgOMB70 [image create photo -data $body]} err]} {
-        WobError "WOB2025 logo error" "Logo error $err -:- $body"
+        WobError "WOB2027 logo error" "Logo error $err -:- $body"
         return "Invalid data $err $body"
     }
     return ""
@@ -693,7 +693,7 @@ proc SwitchLogo {} {
     set skin [expr {1-$skin}]
 }
 
-set ourTitle "WOB2025"
+set ourTitle "WOB2027"
 
 proc UISetup {} {
     global imgObj70 vers stayOnTop pos windowSize settings \
@@ -828,9 +828,9 @@ proc About {} {
     if {$inExe && [info exists oldVersion] && $oldVersion !=$vers} {
         set extra "Binary version $oldVersion\n$extra"
     }
-    WobMessage -type ok -icon info -title "About WOB2025" \
+    WobMessage -type ok -icon info -title "About WOB2027" \
             -message \
-"WOB2025 $vers\n$extra\n\nFree, OpenSource, Safe, Rules compliant, Multiboxing Software\n\nLicensed under GPLv3 - No Warranty\nThe GNU General Public License does not permit incorporating this work into proprietary programs.\n\nhttps://openmultiboxing.org https://wowopenbox.org/\n\uA9 2025-2026 MooreaTv <moorea@ymail.com>"
+"WOB2027 $vers\n$extra\n\nFree, OpenSource, Safe, Rules compliant, Multiboxing Software\n\nLicensed under GPLv3 - No Warranty\nThe GNU General Public License does not permit incorporating this work into proprietary programs.\n\nhttps://openmultiboxing.org https://wowopenbox.org/\n\uA9 2025-2026 MooreaTv <moorea@ymail.com>"
 
 }
 
@@ -1448,7 +1448,7 @@ proc FindExisting {} {
         lassign $wl w
         Debug "found WoW $n! : $wl : $w"
         if {$settings(numWindows)==0} {
-            WobError "WOB2025 missing settings error" \
+            WobError "WOB2027 missing settings error" \
                 "You have existing WOB 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
             exit 1
         }
@@ -1961,7 +1961,7 @@ proc FindOtherCopy {} {
         if {![IsOurs $w]} {
             catch {twapi::flash_window $w -count 3} err
             puts "Found another window of ours. Flashed it. $err"
-            WobError "WOB2025 duplicate error" \
+            WobError "WOB2027 duplicate error" \
                  "Another copy of WOB is running, please exit it before starting a new one (or hotkeys will conflict)."
             catch {Foreground $w; Focus $w; twapi::flash_window $w -count 3} err
             puts "Bring other window in focus. $err"
@@ -1970,7 +1970,8 @@ proc FindOtherCopy {} {
     }
     # Check for processes too (Issue #131)
     set pList [twapi::get_process_ids -glob -name "OpenMultiBoxing-v*.exe"]
-    lappend pList {*}[twapi::get_process_ids -glob -name "WOB2025-v*.exe"]
+    # also the previous WOB2027 ones
+    lappend pList {*}[twapi::get_process_ids -glob -name "WOB20*-v*.exe"]
     set ll [llength $pList]
     if {$ll>1} {
         set r [WobMessage -type yesno -title "Kill older instances" -icon warning -default yes\
@@ -2425,7 +2426,7 @@ proc Capture {} {
             return
         }
         if {[IsOurs $w]} {
-            WobError "WOB2025 Error" "Can't capture foreground window: it's (already) ours!"
+            WobError "WOB2027 Error" "Can't capture foreground window: it's (already) ours!"
             return
         }
         set wtitle [twapi::get_window_text $w]
@@ -2439,7 +2440,7 @@ proc Capture {} {
     } else {
         set w [FindGameWindow]
         if {$w eq ""} {
-            WobError "WOB2025 Error" "No $settings(game) window found"
+            WobError "WOB2027 Error" "No $settings(game) window found"
             return
         }
     }
@@ -2587,7 +2588,7 @@ proc WindowLayout {} {
     }
     UpdateExcluded
     toplevel $tw
-    wm title $tw "WOB2025 Window Layout"
+    wm title $tw "WOB2027 Window Layout"
     RememberGeometry $tw layoutGeometry
     ttk::checkbutton $tw.cbA -variable settings(layoutAuto) -text "Auto" -command ChangeLayout
     tooltip $tw.cbA "Automatically regenerate the layout on any change\nwhen checked. Uncheck for manual layout"
@@ -3275,7 +3276,7 @@ proc OverlayConfig {} {
         return
     }
     toplevel $tw
-    wm title $tw "WOB2025 Overlay Configuration"
+    wm title $tw "WOB2027 Overlay Configuration"
     RememberGeometry $tw overlayConfigGeometry
     grid [ttk::label $tw.l1 -text "Pick the location of the window number overlay:"] -columnspan 3
     grid [ttk::button $tw.b1 -text "\u2b76" -command "OverlayAnchor nw"] [ttk::button $tw.b2 -text "\u2b71" -command "OverlayAnchor n"] [ttk::button $tw.b3 -text "\u2b77" -command "OverlayAnchor ne"]
@@ -4127,7 +4128,7 @@ proc MirrorCheckBinary {} {
         set binVers " ($oldVersion)"
     }
     set ans [WobMessage -type yesno -icon warning -title "Outdated binary for Mirrors" \
-        -message "Mirrors need the WOB2025 v4.11.0 or newer .exe (your .exe$binVers is older and lacks the needed component, only the script got updated).\n\nDownload and extract the latest WOB2025 zip (Help menu: Get the newest binary release).\n\nOpen the download page now?"]
+        -message "Mirrors need the WOB2027 v4.11.0 or newer .exe (your .exe$binVers is older and lacks the needed component, only the script got updated).\n\nDownload and extract the latest WOB2027 zip (Help menu: Get the newest binary release).\n\nOpen the download page now?"]
     if {$ans eq "yes"} {
         Releases
     }
@@ -5094,9 +5095,9 @@ proc rrWarning {} {
     }
 }
 
-puts "WOB2025 $vers started..."
+puts "WOB2027 $vers started..."
 Defer 100 FindExisting
-set bottomText "WOB2025 $vers"
+set bottomText "WOB2027 $vers"
 wm state . normal
 if {![RememberGeometry . mainWindowGeometry 1]} {
     FitMenuBar

@@ -57,8 +57,8 @@ jobs:
           cp ..\WowOpenBox.tkapp OpenMultiBoxing.vfs\app
           Add-Content -Path OpenMultiBoxing.vfs\tclkit.inf -Value "ProductVersion ""${{ steps.get_version.outputs.VERSION }}""" -PassThru
           tclkit\tclkit.exe sdx\sdx.kit wrap OpenMultiBoxing -runtime runtime.exe
-          Rename-Item OpenMultiBoxing WOB2025-${{ steps.get_version.outputs.VERSION }}.exe
-          Compress-Archive -Path WOB2025-${{ steps.get_version.outputs.VERSION }}.exe,..\README.txt,..\launchwow.bat,..\launchwowc.bat -DestinationPath WOB2025-${{ steps.get_version.outputs.VERSION }}.zip
+          Rename-Item OpenMultiBoxing WOB2027-${{ steps.get_version.outputs.VERSION }}.exe
+          Compress-Archive -Path WOB2027-${{ steps.get_version.outputs.VERSION }}.exe,..\README.txt,..\launchwow.bat,..\launchwowc.bat -DestinationPath WOB2027-${{ steps.get_version.outputs.VERSION }}.zip
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -66,7 +66,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           tag_name: ${{ github.ref }}
-          release_name: WOB2025 ${{ steps.get_version.outputs.VERSION }}
+          release_name: WOB2027 ${{ steps.get_version.outputs.VERSION }}
           draft: true
           prerelease: ${{ steps.get_version.outputs.PRERELEASE }}
 
@@ -77,8 +77,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: .\buildkit\WOB2025-${{ steps.get_version.outputs.VERSION }}.zip
-          asset_name: WOB2025-${{ steps.get_version.outputs.VERSION }}.zip
+          asset_path: .\buildkit\WOB2027-${{ steps.get_version.outputs.VERSION }}.zip
+          asset_name: WOB2027-${{ steps.get_version.outputs.VERSION }}.zip
           asset_content_type: application/zip
 
       - name: Upload Update Code

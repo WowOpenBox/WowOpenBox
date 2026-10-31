@@ -1,4 +1,4 @@
-WOB2025 by MooreaTV <moorea@ymail.com> (c) 2025-2026 All rights reserved
+WOB2027 by MooreaTV <moorea@ymail.com> (c) 2025-2026 All rights reserved
 Open Source Software licensed under GPLv3 - No Warranty
 (contact the author if you need a different license)
 

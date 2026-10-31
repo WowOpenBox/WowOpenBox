@@ -27,7 +27,7 @@ See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMult
    - Save different layouts as profiles (File > New Profile...) and cycle through them with the Ctrl-Shift-L (next) and Ctrl-Shift-Alt-L (previous) hotkeys. Pick which profiles are in the rotation with Profile > "Profiles in rotation..." (all but Default by default).
 - Instant swapping of windows; with keyboard hotkeys for fast switching to the next or any specific window.
    - Change any hotkey in File > "Hotkeys...": click it and press the new key combination (right click clears it, Undo goes back).
-- **Mirrors** (v4.11.0+): live, zoomable copies of an area of any game window (e.g. a bigger minimap, or the portraits of the small windows), anywhere on screen. File > "Mirrors...": "Add a mirror", click a window, drag the area; then drag to move, drag the sides to extend/shrink the area, mouse wheel to zoom, right click for options. Mirrors stay on their window as it gets swapped (or follow whichever window is main) and let mouse clicks through outside of edit mode. See the [help](https://wowopenbox.org/help#mirrors).
+- **Mirrors** (WOB2027 v4.11.0+, needs its new .exe): live, zoomable copies of an area of any game window (e.g. a bigger minimap, or the portraits of the small windows), anywhere on screen. File > "Mirrors...": "Add a mirror", click a window, drag the area; then drag to move, drag the sides to extend/shrink the area, mouse wheel to zoom, right click for options. Mirrors stay on their window as it gets swapped (or follow whichever window is main) and let mouse clicks through outside of edit mode. See the [help](https://wowopenbox.org/help#mirrors).
 - **Mirrored layout**: "Mirrored" in Window Layout stacks all the game windows under the main one and shows the other positions as live mirrors of them: swaps are instant (no resizing), click a mirror to make that window main. Focus follows mouse only works for the main window; use a profile with a regular layout (and the profile hotkeys) when you need the real windows.
 - Many additional options to switch which window your keys are going to:
   - Focus follow mouse: turns on/off the Windows&trade; accessibility feature so you just hover a window to make it receive keys (instantly: WOB sets the hover delay to 0 ms, below the 100 ms minimum of the Windows slider)
@@ -42,7 +42,7 @@ See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMult
 
 WowOpenBox is optimized for Microsoft Windows 10 and Windows 11.
 
-New since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest binary Zip file (e.g `WOB2025-vX.Y.Z.zip`, not the source zip) and extract all to your desktop for instance. The binaries are built automatically by the Github CI and can be found on the [releases page](https://github.com/WowOpenBox/WowOpenBox/releases).
+New since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest binary Zip file (e.g `WOB2027-vX.Y.Z.zip`, not the source zip) and extract all to your desktop for instance. The binaries are built automatically by the Github CI and can be found on the [releases page](https://github.com/WowOpenBox/WowOpenBox/releases).
 
 <!-- If you want to use the optional Round Robin feature, run the `OpenMultiBoxing_RR` exe wrapper to get RR (it will launch/need the other bigger exe too, in the same folder). -->
 

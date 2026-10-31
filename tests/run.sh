@@ -5,7 +5,7 @@
 # OMB_TEST_APP: the .tcl under test, else ../$name.tcl.
 name=WowOpenBox
 repo=WowOpenBox/WowOpenBox
-exe_glob='WOB2025-v*.exe'
+exe_glob='WOB20*-v*.exe'
 # name of its built-in script
 runner_as=WowOpenBox.tkapp
 set -e
