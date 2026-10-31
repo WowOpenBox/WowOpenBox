@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: WowOpenBox/BuildKit
+          ref: zip-runtime # TEMP until BuildKit#5 is merged
           path: buildkit
 
       - name: Get and set the version
