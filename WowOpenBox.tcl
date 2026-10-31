@@ -96,6 +96,18 @@ proc HasArg {argName} {
     expr {[lsearch $argv $argName]!=-1}
 }
 
+# Microsoft Store (MSIX) install, marked by a WowOpenBox.store file next to the exe: that folder is read-only and
+# the Store does the updates, so settings and profiles go in Documents\WowOpenBox. Returns "" when not in the Store.
+proc StoreDataDir {exeDir} {
+    if {![file exists [file join $exeDir "WowOpenBox.store"]]} {
+        return ""
+    }
+    if {[catch {twapi::get_shell_folder csidl_personal} docs] || $docs eq ""} {
+        set docs [file join $::env(USERPROFILE) Documents]
+    }
+    return [file join [file normalize $docs] WowOpenBox]
+}
+
 if {![info exists wobInitDone]} {
     set wobInitDone 1
     set forceDebug 0
@@ -131,10 +143,20 @@ if {![info exists wobInitDone]} {
     # Normalize appdir in case we're inside the binary
     set inExe [regsub -nocase {/[^/]+\.exe/app$} $app_dir {} app_dir]
     Debug "Post exe detection app_dir: $app_dir"
+    set inStore 0
+    if {$inExe} {
+        set storeDir [StoreDataDir $app_dir]
+        if {$storeDir ne ""} {
+            file mkdir $storeDir
+            set app_dir $storeDir
+            set inStore 1
+            Debug "Microsoft Store install, settings in $app_dir"
+        }
+    }
     set SETTINGS_FILE [file join $app_dir $SETTINGS_BASE]
     set update_path [file join $app_dir $script_name]
     Debug "Base settings: $SETTINGS_FILE"
-    if {$inExe} {
+    if {$inExe && !$inStore} {
         # We're inside the exe, check for updated code
         Debug "In EXE, checking for code outside: $update_path"
         if {[file readable $update_path]} {
@@ -151,7 +173,14 @@ if {![info exists wobInitDone]} {
 }
 
 proc CheckForUpdates {silent} {
-    global vers update_path settings errorInfo
+    global vers update_path settings errorInfo inStore
+    if {[info exists inStore] && $inStore} {
+        if {!$silent} {
+            WobMessage -type ok -icon info -title "Updates" \
+                -message "This WowOpenBox is from the Microsoft Store, which installs its updates."
+        }
+        return
+    }
     set url "https://api.github.com/repos/WowOpenBox/WowOpenBox/releases/latest"
     if {[catch {set token [http::geturl $url]} err]} {
         WobError "WOB2027 network error" "Url fetch error $err"
@@ -4980,10 +5009,10 @@ array set settings {
     focusAlsoFG 1
     swapAlsoFocus 1
     numWindows 0
-    aspectRatio "Any"
+    aspectRatio "Same"
     ignoreMonitorIdx 0
     avoidTaskbar 1
-    layoutOneSize 1
+    layoutOneSize 0
     layoutOneRowCol 0
     layoutStacked 0
     layoutMirrored 0
@@ -4993,10 +5022,10 @@ array set settings {
     layoutAuto 1
     layoutTop 0
     showOverlay 1
-    overlayFocusColor "#ff0080"
+    overlayFocusColor "#0080ff"
     overlayAlpha 0.7
     overlayAnchor n
-    overlayShowBorder 1
+    overlayShowBorder 0
     overlayClickable 1
     overlayAllClickable 0
     overlayFontSize1 48
