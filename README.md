@@ -45,7 +45,13 @@ We also wrote [MAMA](https://github.com/mooreatv/MAMA-multiboxing) for you!
 
 WowOpenBox is optimized for Microsoft Windows 10 and Windows 11.
 
-New since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest binary Zip file (e.g `WOB2027-vX.Y.Z.zip`, not the source zip) and extract all to your desktop for instance. The binaries are built automatically by the Github CI and can be found on the [releases page](https://github.com/WowOpenBox/WowOpenBox/releases).
+Easiest: get it from the Microsoft Store, which installs and updates it for you (no Windows warning on first run):
+
+<a href="https://apps.microsoft.com/detail/9P57VRK9036Q"><img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200" alt="Get it from Microsoft"/></a>
+
+The Store version keeps its settings and profiles in `Documents\WowOpenBox` (copy your `wowopenboxSettings*.tcl` files there to bring yours).
+
+Or the zip: new since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest binary Zip file (e.g `WOB2027-vX.Y.Z.zip`, not the source zip) and extract all to your desktop for instance. The binaries are built automatically by the Github CI and can be found on the [releases page](https://github.com/WowOpenBox/WowOpenBox/releases).
 
 <!-- If you want to use the optional Round Robin feature, run the `OpenMultiBoxing_RR` exe wrapper to get RR (it will launch/need the other bigger exe too, in the same folder). -->
 
