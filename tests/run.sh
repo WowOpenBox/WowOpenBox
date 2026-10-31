@@ -5,13 +5,19 @@
 # OMB_TEST_APP: the .tcl under test, else ../$name.tcl.
 name=WowOpenBox
 repo=WowOpenBox/WowOpenBox
-exe_glob='WOB2025-v*.exe'
+exe_glob='WOB20*-v*.exe'
 # name of its built-in script
 runner_as=WowOpenBox.tkapp
 set -e
 dir=$(cd "$(dirname "$0")" && pwd -W)
 app=${OMB_TEST_APP:-$dir/../$name.tcl}
-exe=${OMB_EXE:-$(ls "$dir"/bin/$exe_glob 2>/dev/null | head -1)}
+exe=$OMB_EXE
+# another app's binary would start that app for real
+if [ -n "$exe" ] && [[ "$(basename "$exe")" != $exe_glob ]]; then
+    echo "Ignoring OMB_EXE=$exe (not $exe_glob)"
+    exe=
+fi
+[ -z "$exe" ] && exe=$(ls "$dir"/bin/$exe_glob 2>/dev/null | head -1)
 if [ -z "$exe" ]; then
     url=$(curl -fsS https://api.github.com/repos/$repo/releases/latest |
         grep -o '"browser_download_url": *"[^"]*\.zip"' | grep -o 'https://[^"]*')
