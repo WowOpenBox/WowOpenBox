@@ -90,3 +90,24 @@ array set slot2position {1 3 2 2 3 1}
 LayoutMirrorClick 3
 LayoutMirrorClick 4
 Check "click mirror swaps" $mainSet 1
+
+# clicks on a layout mirror (WOB: the mouse stays on it, a double click swaps once)
+wm withdraw .
+array set settings {numWindows 2 2,posXY {100 100} 2,size {320 180}}
+array unset slot2handle
+array set slot2position {1 2 2 1}
+proc MirrorClickThrough {args} {}
+proc UpdateHandles {} {}
+LayoutMirrorsRefresh
+Check "layout mirror created" [winfo exists .lmirror2] 1
+set mainSet {}
+proc Click {time} {
+    event generate .lmirror2 <ButtonPress-1> -x 10 -y 10 -time $time
+    event generate .lmirror2 <ButtonRelease-1> -x 10 -y 10 -time [expr {$time+50}]
+}
+Click 1000
+Click 1150
+Check "double click swaps once" $mainSet 1
+Click 5000
+Check "later click swaps back" $mainSet {1 1}
+destroy .lmirror2

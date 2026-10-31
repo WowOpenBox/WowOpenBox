@@ -2613,7 +2613,7 @@ proc WindowLayout {} {
     ttk::checkbutton $tw.cb3 -variable settings(layoutStacked) -text "All Stacked" -command LayoutStackedChanged
     ttk::checkbutton $tw.cb4 -variable layoutMirrored -text "Mirrored" -command LayoutMirroredChanged
     tooltip $tw.cb1 "Check or uncheck to redo the layout with\nwindows of the same size (fastest switch later)\nor not (1 big main window and smaller minions windows)"
-    tooltip $tw.cb4 "All the game windows stacked under the main one,\nthe other positions show live mirrors of them:\nswaps are instant (no resizing). Click a mirror to make it main.\nFocus follows mouse only works for the main window."
+    tooltip $tw.cb4 "All the game windows stacked under the main one,\nthe other positions show live mirrors of them:\nswaps are instant (no resizing). Click a mirror to make it main\n(the mouse stays on the mirror: the swap hotkeys work better).\nFocus follows mouse only works for the main window:\nuse a regular layout if you play that way."
     tooltip $tw.cb3 "All the windows at the same place, filling the biggest monitor:\nonly the one on top (main) is visible, swap to see another one\n(Mirrored also shows the others)"
     set layoutNumWindowsText "Layout for 9 windows"
     set width [expr {2+[string length $layoutNumWindowsText]}]
@@ -4404,6 +4404,9 @@ proc LayoutMirrorsRefresh {} {
             wm overrideredirect $t 1
             wm attributes $t -alpha 0.99
             bind $t <ButtonPress-1> [list LayoutMirrorClick $p]
+            # the mouse stays on the mirror, now of the previous main: a double click swaps once
+            # (clicking again later swaps back)
+            bind $t <Double-ButtonPress-1> [list Debug "Double click on mirror $p: swapped once"]
             wm geometry $t ${w}x$h+$x+$y
             update idletasks
             MirrorClickThrough $t 0
