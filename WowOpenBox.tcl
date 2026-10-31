@@ -349,10 +349,14 @@ proc SaveSettings {args} {
 }
 
 proc LoadProfile {} {
-    global settings
+    global settings layoutMirrored
     set profile $settings(profile)
     set pf [ProfileFileName $profile]
+    # profiles saved before mirrors existed don't have them: none rather than the previous profile's
+    set prev [list mirrors $settings(mirrors) layoutMirrored $settings(layoutMirrored)]
+    array set settings {mirrors {} layoutMirrored 0}
     if {[catch {source -encoding utf-8 $pf} err]} {
+        array set settings $prev
         puts stderr "Error sourcing profile $pf\n$err"
         WobError "WOB2027 profile error" \
             "Your $pf has an error: $err\nYou can remove it and use Refresh Profiles in the menu."
@@ -361,6 +365,8 @@ proc LoadProfile {} {
     }
     # Otherwise can be reset when switching from Profile N back to Default
     set settings(profile) $profile
+    # the Window Layout checkbox, applied by its Save and Apply
+    set layoutMirrored $settings(layoutMirrored)
     AfterSettings
     ResetAll
     # at startup that's done once the main window is shown (creating the mirrors would create it
@@ -1333,6 +1339,11 @@ proc Forget {n} {
     }
     set wh $slot2handle($n)
     set forgottenSlot($wh) $n
+    if {$n != 1 && [info exists slot2position($n)] && $slot2position($n) == 1 && [info exists slot2handle(1)]
+            && [LayoutMirrored]} {
+        # main in the mirrored layout (it would stay on top of the others): window 1 goes back to main first
+        SetAsMain 1
+    }
     catch {Rename $wh $settings(game)}
     unset slot2handle($n)
     UpdateHandles
@@ -1970,7 +1981,7 @@ proc FindOtherCopy {} {
     }
     # Check for processes too (Issue #131)
     set pList [twapi::get_process_ids -glob -name "OpenMultiBoxing-v*.exe"]
-    # also the previous WOB2027 ones
+    # also the WOB2025 ones
     lappend pList {*}[twapi::get_process_ids -glob -name "WOB20*-v*.exe"]
     set ll [llength $pList]
     if {$ll>1} {
@@ -4392,7 +4403,7 @@ proc LayoutMirrorsRefresh {} {
             toplevel $t -background black -cursor hand2
             wm overrideredirect $t 1
             wm attributes $t -alpha 0.99
-            bind $t <ButtonPress-1> [list LayoutMirrorClick $p %x %y]
+            bind $t <ButtonPress-1> [list LayoutMirrorClick $p]
             wm geometry $t ${w}x$h+$x+$y
             update idletasks
             MirrorClickThrough $t 0
@@ -4422,29 +4433,13 @@ proc LayoutMirrorsRefresh {} {
     }
 }
 
-# Clicking a mirror of the mirrored layout makes that window the main one, with the mouse
-# at the same place in it
-proc LayoutMirrorClick {p x y} {
-    global settings
+# Clicking a mirror of the mirrored layout makes that window the main one (unlike OMB, the mouse
+# isn't moved to the same place in it: WOB has no cursor control, SetCursorPos is removed at startup)
+proc LayoutMirrorClick {p} {
     set n [SlotAtPosition $p]
-    if {$n eq ""} {
-        return
+    if {$n ne ""} {
+        SetAsMain $n
     }
-    SetAsMain $n
-    if {![ValidWindowSettingsN 1] || [catch {MirrorSourceSize $n} csize]} {
-        return
-    }
-    lassign $settings(1,posXY) mx my
-    lassign [MirrorToSource $x $y {*}$settings($p,size) {*}$csize] sx sy
-    twapi::move_mouse [expr {$mx+$sx}] [expr {$my+$sy}]
-}
-
-# Source client coordinates of x,y in a w x h mirror of a whole cw x ch window (letterboxed)
-proc MirrorToSource {x y w h cw ch} {
-    lassign [MirrorFit $cw $ch $w $h] l t r b
-    set fx [expr {min(1.0, max(0.0, 1.0*($x-$l)/($r-$l)))}]
-    set fy [expr {min(1.0, max(0.0, 1.0*($y-$t)/($b-$t)))}]
-    list [expr {min($cw-1, round($fx*$cw))}] [expr {min($ch-1, round($fy*$ch))}]
 }
 
 # In the mirrored layout, the main window goes on top of the ones stacked under it

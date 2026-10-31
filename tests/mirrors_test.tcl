@@ -84,6 +84,9 @@ Check "fit same ratio" [MirrorFit 1600 900 320 180] {0 0 320 180}
 Check "fit wider spot" [MirrorFit 1600 900 400 180] {40 0 360 180}
 Check "fit taller spot" [MirrorFit 1600 900 320 240] {0 30 320 210}
 
-Check "to source middle" [MirrorToSource 160 90 320 180 1600 900] {800 450}
-Check "to source letterboxed" [MirrorToSource 40 90 400 180 1600 900] {0 450}
-Check "to source in the bar" [MirrorToSource 5 300 400 180 1600 900] {0 899}
+set mainSet {}
+proc SetAsMain {n} {global mainSet; lappend mainSet $n}
+array set slot2position {1 3 2 2 3 1}
+LayoutMirrorClick 3
+LayoutMirrorClick 4
+Check "click mirror swaps" $mainSet 1
