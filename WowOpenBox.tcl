@@ -1,4 +1,4 @@
-﻿#  WOB2025 by MooreaTV <moorea@ymail.com> (c) 2020-2021 All rights reserved
+﻿#  WOB2027 by MooreaTV <moorea@ymail.com> (c) 2025-2026 All rights reserved
 #  Open Source Software licensed under GPLv3 - No Warranty
 #  (contact the author if you need a different license)
 #
@@ -154,7 +154,7 @@ proc CheckForUpdates {silent} {
     global vers update_path settings errorInfo
     set url "https://api.github.com/repos/WowOpenBox/WowOpenBox/releases/latest"
     if {[catch {set token [http::geturl $url]} err]} {
-        WobError "WOB2025 network error" "Url fetch error $err"
+        WobError "WOB2027 network error" "Url fetch error $err"
         return
     }
     set settings(lastUpdateChecked) [clock seconds]
@@ -335,7 +335,7 @@ proc SaveSettings {args} {
     Debug "SaveSettings base $SETTINGS_FILE (from cb $args)"
     if {[catch {open $SETTINGS_FILE w+} f]} {
         WobError "Error saving settings" \
-            "Unable to save settings: $f\n\nPlease do not put WOB2025*.exe\nin a system/special/protected folder\nput them on your Desktop instead for instance."
+            "Unable to save settings: $f\n\nPlease do not put WOB20*.exe\nin a system/special/protected folder\nput them on your Desktop instead for instance."
         return
     }
     fconfigure $f -encoding utf-8
@@ -349,19 +349,31 @@ proc SaveSettings {args} {
 }
 
 proc LoadProfile {} {
-    global settings
+    global settings layoutMirrored
     set profile $settings(profile)
     set pf [ProfileFileName $profile]
+    # profiles saved before mirrors existed don't have them: none rather than the previous profile's
+    set prev [list mirrors $settings(mirrors) layoutMirrored $settings(layoutMirrored)]
+    array set settings {mirrors {} layoutMirrored 0}
     if {[catch {source -encoding utf-8 $pf} err]} {
+        array set settings $prev
         puts stderr "Error sourcing profile $pf\n$err"
-        WobError "WOB2025 profile error" \
+        WobError "WOB2027 profile error" \
             "Your $pf has an error: $err\nYou can remove it and use Refresh Profiles in the menu."
         set settings(profile) "Default"
         return
     }
     # Otherwise can be reset when switching from Profile N back to Default
     set settings(profile) $profile
+    # the Window Layout checkbox, applied by its Save and Apply
+    set layoutMirrored $settings(layoutMirrored)
     AfterSettings
+    # before ResetAll: the previous profile's mirrors don't match the new settings(mirrors)
+    # at startup that's done once the main window is shown (creating the mirrors would create it
+    # hidden at the Windows default position, where it would go back when shown)
+    if {[winfo exists .logo]} {
+        MirrorsRebuild
+    }
     ResetAll
 }
 
@@ -429,6 +441,7 @@ proc ProfileRotationDialog {} {
         toplevel $tw
         wm title $tw "WOB Profiles in rotation"
         wm resizable $tw 0 0
+        RememberGeometry $tw profileRotationGeometry
         grid [ttk::label $tw.l -text "Profiles cycled through by\n[HK nextProfile] (next) and [HK previousProfile] (previous):"] -padx 8 -pady 4 -sticky w
         grid [ttk::button $tw.close -text Close -command [list destroy $tw]] -row 2 -padx 8 -pady 6
         UpdateHandles
@@ -454,7 +467,7 @@ proc LoadSettings {} {
     if {[file exists $SETTINGS_FILE]} {
         if {[catch {source -encoding utf-8 $SETTINGS_FILE} err]} {
             puts stderr "Could not source $SETTINGS_FILE\n$err"
-            WobError "WOB2025 settings error" \
+            WobError "WOB2027 settings error" \
                 "Your $SETTINGS_FILE has an error: $err"
         } else {
             if {$settings(profile)!="Default"} {
@@ -480,45 +493,48 @@ proc IsInside {x y x1 y1 x2 y2} {
     expr {$x>=$x1 && $x<=$x2 && $y>=$y1 && $y<=$y2}
 }
 
-proc Offscreen {x y} {
-    global displayInfo
-    if {![info exists displayInfo]} {
-        # only extract it the first time
-        set displayInfo [twapi::get_multiple_display_monitor_info]
-        Debug "displayInfo = $displayInfo"
+# Whether the top left corner of a saved WxH+X+Y geometry is on one of the current monitors
+# (the monitors may have changed since; that's enough to drag it back, and some like them barely visible)
+proc GeometryOnScreen {g} {
+    if {![regexp {\+(-?\d+)\+(-?\d+)$} $g -> x y]} {
+        return 0
     }
-    set i 0
-    foreach monitor $displayInfo {
-        incr i 1
-        array set info $monitor
-        lassign $info(-extent) x1 y1 x2 y2
-        Debug "Monitor $i Extent   $x1,$y1  - $x2,$y2"
+    foreach monitor [MonitorsInfo] {
+        lassign [dict get $monitor -extent] x1 y1 x2 y2
         if {[IsInside $x $y $x1 $y1 $x2 $y2]} {
-            return false
+            return 1
         }
     }
-    return true
+    Debug "Saved geometry $g is off screen"
+    return 0
 }
 
-proc OffscreenGeometryCheck {} {
+# Puts toplevel tw back where it was (settings(key), with its size if withSize) unless that's off screen,
+# and keeps settings(key) up to date. Returns 1 if restored
+proc RememberGeometry {tw key {withSize 0}} {
     global settings
-    foreach k {mainWindowGeometry clipGeometry} {
-        if {![info exists settings($k)]} {
-            continue
+    set restored 0
+    if {[info exists settings($key)] && [GeometryOnScreen $settings($key)]} {
+        set g $settings($key)
+        if {!$withSize} {
+            regexp {[+-]-?\d+[+-]-?\d+$} $g g
         }
-        regexp {\+(.*?)\+(.*?)$} $settings($k) all x y
-        Debug "geometry for $k is at $x,$y"
-        if {[Offscreen $x $y]} {
-            Debug "unsetting offscreen geometry $k"
-            unset settings($k)
-        }
+        set restored [expr {![catch {wm geometry $tw $g}]}]
+    }
+    bind $tw <Configure> [list RecordGeometry $tw $key %W]
+    return $restored
+}
+
+proc RecordGeometry {tw key w} {
+    global settings
+    # also called for the widgets inside
+    if {$w eq $tw} {
+        set settings($key) [wm geometry $tw]
     }
 }
 
 proc AfterSettings {} {
     global settings maxNumW slot2handle
-    # Handle off screen/geometry change
-    OffscreenGeometryCheck
     if {$settings(hk,swapNextWindow)=="Binding for next window swap is set on 'hk1,swap'"} {
         set settings(hk,swapNextWindow) "Ctrl-0xC0"
     }
@@ -591,6 +607,7 @@ proc exit {{status 0}} {
     Debug "Exit $status called"
     catch {destroy .clip}
     after cancel [after info]
+    catch UnstackWindows
     RevertMouseFollow
     update
     after cancel [after info]
@@ -639,12 +656,12 @@ proc GetLogo {} {
         }
     }
     if {[catch {set token [http::geturl "https://wowopenbox.org/WoWOpenBox70.png?v=$vers"]} err]} {
-        WobError "WOB2025 network error" "Url fetch error $err"
+        WobError "WOB2027 network error" "Url fetch error $err"
         return $err
     }
     set body [http::data $token]
     if {[catch {set imgObj70 [image create photo -data $body]} err]} {
-        WobError "WOB2025 logo error" "Logo error $err -:- $body"
+        WobError "WOB2027 logo error" "Logo error $err -:- $body"
         return "Invalid data $err $body"
     }
     return ""
@@ -659,12 +676,12 @@ proc GetOMBLogo {} {
         return ""
     }
     if {[catch {set token [http::geturl "https://openmultiboxing.org/OpenMultiBoxing70.png?v=$vers"]} err]} {
-        WobError "WOB2025 network error" "Url fetch error $err"
+        WobError "WOB2027 network error" "Url fetch error $err"
         return $err
     }
     set body [http::data $token]
     if {[catch {set imgOMB70 [image create photo -data $body]} err]} {
-        WobError "WOB2025 logo error" "Logo error $err -:- $body"
+        WobError "WOB2027 logo error" "Logo error $err -:- $body"
         return "Invalid data $err $body"
     }
     return ""
@@ -683,7 +700,7 @@ proc SwitchLogo {} {
     set skin [expr {1-$skin}]
 }
 
-set ourTitle "WOB2025"
+set ourTitle "WOB2027"
 
 proc UISetup {} {
     global imgObj70 vers stayOnTop pos windowSize settings \
@@ -818,9 +835,9 @@ proc About {} {
     if {$inExe && [info exists oldVersion] && $oldVersion !=$vers} {
         set extra "Binary version $oldVersion\n$extra"
     }
-    WobMessage -type ok -icon info -title "About WOB2025" \
+    WobMessage -type ok -icon info -title "About WOB2027" \
             -message \
-"WOB2025 $vers\n$extra\n\nFree, OpenSource, Safe, Rules compliant, Multiboxing Software\n\nLicensed under GPLv3 - No Warranty\nThe GNU General Public License does not permit incorporating this work into proprietary programs.\n\nhttps://openmultiboxing.org https://wowopenbox.org/\n\uA9 2025 MooreaTv <moorea@ymail.com>"
+"WOB2027 $vers\n$extra\n\nFree, OpenSource, Safe, Rules compliant, Multiboxing Software\n\nLicensed under GPLv3 - No Warranty\nThe GNU General Public License does not permit incorporating this work into proprietary programs.\n\nhttps://openmultiboxing.org https://wowopenbox.org/\n\uA9 2025-2026 MooreaTv <moorea@ymail.com>"
 
 }
 
@@ -861,10 +878,7 @@ proc ClipboardManager {} {
     grid [ttk::label $tw.help -text "Type in the entry box, only *s will show,\nClick Copy, then Ctrl-V as many times to paste,\nClose this popup or click Clear to erase."] -padx 4 -pady 6 -columnspan 2
     UpdateHandles
     focus $tw.e
-    if {[info exists settings(clipGeometry)]} {
-        catch {wm geometry .clip $settings(clipGeometry)}
-    }
-    bind .clip <Configure> {set settings(clipGeometry) [wm geometry .clip]}
+    RememberGeometry $tw clipGeometry 1
 }
 
 #### end of clipboard management ####
@@ -933,6 +947,7 @@ proc MenuSetup {} {
     $m1 add command -label "Reload settings" -command LoadSettings
     $m1 add separator
     $m1 add command -label "Clipboard copy/paster..." -command ClipboardManager
+    $m1 add command -label "Mirrors..." -command MirrorsDialog
     $m1 add separator
     $m1 add command -label "Reset all windows ([HK resetAll])" -command ResetAll
     $m1 add separator
@@ -1006,6 +1021,7 @@ proc MouseTracking {} {
     }
     toplevel $tw
     wm title $tw "WOB/OMB Mouse Tracking"
+    RememberGeometry $tw mouseTrackingGeometry
     grid [ttk::button $tw.bml -width 14 -text "Track mouse" -command StartStopMouseTrack] [entry $tw.emt -textvariable mouseCoords -width 14] -padx 4 -sticky w
     tooltip $tw.bml "Start/Stop mouse tracking\nHotkey: [HK mouseTrack]"
     grid [ttk::label $tw.la -text "Coords in area"] [entry $tw.ema -textvariable mouseArea -width 14] -padx 4 -sticky w
@@ -1107,12 +1123,14 @@ proc PeriodicChecks {} {
     global settings isPaused prevRR prevMF prevOL prevRRMouse hasRR rrOn rrMouse mouseFollow maxNumW pauseSchedule lastFocusWindow slot2handle
     after cancel $pauseSchedule
     set pauseSchedule {}
-    if {$settings(autoCapture) && ($maxNumW<=$settings(numWindows))} {
-        set w [FindGameWindow]
+    set freeSlot [FirstFreeSlot]
+    if {$settings(autoCapture) && $freeSlot ne ""} {
+        set w [FindGameWindow $freeSlot]
         if {$w != ""} {
             AutoCapture $w
         }
     }
+    CheckWindowsExist
     if {$settings(mouseWatchInterval)} {
         set pauseSchedule [after $settings(mouseWatchInterval) PeriodicChecks]
     }
@@ -1169,6 +1187,23 @@ proc PeriodicChecks {} {
         }
     }
     set isPaused $shouldPause
+}
+
+# Every 200ms or so, notices closed game windows (e.g. so their mirrors go away)
+set lastWindowsCheck 0
+proc CheckWindowsExist {} {
+    global slot2handle lastWindowsCheck
+    set now [clock milliseconds]
+    if {$now-$lastWindowsCheck < 200} {
+        return
+    }
+    set lastWindowsCheck $now
+    foreach {n wh} [array get slot2handle] {
+        if {![twapi::window_exists $wh]} {
+            Debug "WoW $n window is gone"
+            WindowLost $n
+        }
+    }
 }
 
 proc mouseTrack {} {
@@ -1243,10 +1278,22 @@ proc CheckWindow {cmd n} {
         return
     }
     Debug "Error processing $cmd for $n: $err"
+    WindowLost $n
+}
+
+proc WindowLost {n} {
+    global slot2handle slot2position
     if {[info exists slot2handle($n)]} {
         set w slot2handle($n)
         unset slot2handle($n)
         UpdateHandles
+    }
+    # main gone in the mirrored layout (would show whichever window was under it): window 1,
+    # that was swapped into the lost window's position, goes back to main
+    if {$n != 1 && [info exists slot2position($n)] && $slot2position($n) == 1 && [info exists slot2handle(1)]
+            && [LayoutMirrored]} {
+        Debug "Main WoW $n lost, back to WoW 1"
+        SetAsMain 1
     }
     .b2 configure -text " Capture "
     UpdateForegroundMode
@@ -1286,12 +1333,18 @@ proc ContextMenu {n x y} {
 }
 
 proc Forget {n} {
-    global slot2handle slot2position settings savedWindowStyle
+    global slot2handle slot2position settings savedWindowStyle forgottenSlot
     if {![info exists slot2handle($n)]} {
         Debug "Nothing to forget for $n"
         return
     }
     set wh $slot2handle($n)
+    set forgottenSlot($wh) $n
+    if {$n != 1 && [info exists slot2position($n)] && $slot2position($n) == 1 && [info exists slot2handle(1)]
+            && [LayoutMirrored]} {
+        # main in the mirrored layout (it would stay on top of the others): window 1 goes back to main first
+        SetAsMain 1
+    }
     catch {Rename $wh $settings(game)}
     unset slot2handle($n)
     UpdateHandles
@@ -1336,13 +1389,18 @@ proc GetY {} {
 
 # --- Windows API: https://twapi.magicsplat.com/v4.4/ui.html
 
-proc FindGameWindow {} {
-    global settings
+# freeSlot: for auto capture into that window number, skips forgotten windows unless it's lower
+# than the one they were forgotten from (Forget WoW 3 with 1 lost: it becomes WoW 1)
+proc FindGameWindow {{freeSlot ""}} {
+    global settings forgottenSlot
     # consider doing exact match with ^ $ or...
     set wList [twapi::find_windows -match string -text "$settings(game)" -visible true]
     set minTime 0
     set minW ""
     foreach w $wList {
+        if {$freeSlot ne "" && [info exists forgottenSlot($w)] && $freeSlot >= $forgottenSlot($w)} {
+            continue
+        }
         if {[catch {twapi::get_window_process $w} pid]} {
             Debug "Api error for get_window_process $w: $pid"
             continue
@@ -1402,12 +1460,16 @@ proc FindExisting {} {
         lassign $wl w
         Debug "found WoW $n! : $wl : $w"
         if {$settings(numWindows)==0} {
-            WobError "WOB2025 missing settings error" \
+            WobError "WOB2027 missing settings error" \
                 "You have existing WOB 1... window(s) but empty settings, please copy your settings file ($SETTINGS_BASE) from your old location (or exit Wow 1)"
             exit 1
         }
         updateListBox $n $w $wname
         UpdateN $n
+    }
+    if {[LayoutMirrored]} {
+        # all at the main position: whichever was on top (main when we exited) goes under WoW 1
+        StackUnderMain
     }
     if {$firstMissing} {
         set nextWindow $firstMissing
@@ -1518,6 +1580,8 @@ set hotkeyList {
     hk,nextProfile "Next profile" NextProfile
     hk,previousProfile "Previous profile" PreviousProfile
     hk,mouseTrack "Start/Stop mouse tracking" MouseTracking
+    hk,mirrorsToggle "Show/hide mirrors" MirrorsToggle
+    hk,mirrorsEdit "Mirrors edit mode toggle" MirrorsEditToggle
 }
 
 proc RegisterAllHotkeys {} {
@@ -1682,6 +1746,7 @@ proc HotkeysDialog {} {
         toplevel $tw
         wm title $tw "WOB Hotkeys"
         wm resizable $tw 0 0
+        RememberGeometry $tw hotkeysGeometry
         wm protocol $tw WM_DELETE_WINDOW {HotkeysDialogClose 1}
         ttk::style configure WobHotkeyFailed.TButton -foreground red
         ttk::style configure WobHotkeyCapture.TButton -font WOBBold
@@ -1912,7 +1977,7 @@ proc FindOtherCopy {} {
         if {![IsOurs $w]} {
             catch {twapi::flash_window $w -count 3} err
             puts "Found another window of ours. Flashed it. $err"
-            WobError "WOB2025 duplicate error" \
+            WobError "WOB2027 duplicate error" \
                  "Another copy of WOB is running, please exit it before starting a new one (or hotkeys will conflict)."
             catch {Foreground $w; Focus $w; twapi::flash_window $w -count 3} err
             puts "Bring other window in focus. $err"
@@ -1921,7 +1986,8 @@ proc FindOtherCopy {} {
     }
     # Check for processes too (Issue #131)
     set pList [twapi::get_process_ids -glob -name "OpenMultiBoxing-v*.exe"]
-    lappend pList {*}[twapi::get_process_ids -glob -name "WOB2025-v*.exe"]
+    # also the WOB2025 ones
+    lappend pList {*}[twapi::get_process_ids -glob -name "WOB20*-v*.exe"]
     set ll [llength $pList]
     if {$ll>1} {
         set r [WobMessage -type yesno -title "Kill older instances" -icon warning -default yes\
@@ -1966,12 +2032,20 @@ proc FocusNinternal {n fg} {
     Debug "FocusN $n called, at position $p - fg is $fg"
     if {$hasRR} {
         Foreground $wh
+    } elseif {$fg && $settings(focusAlsoFG)} {
+        # activating it also gives it the keys, while set_focus waits for both games to handle
+        # the focus change (100s of ms for one stacked under main in the mirrored layout)
+        Debug "Making $n foreground"
+        if {![Foreground $wh]} {
+            Debug "Foreground of $n refused, setting focus"
+            Focus $wh
+        }
     } else {
         Focus $wh
-        if {$fg && $settings(focusAlsoFG)} {
-            Debug "Also making $n foreground"
-            Foreground $wh
-        }
+    }
+    if {$p != 1 && [LayoutMirrored]} {
+        # keys go to that window but main stays visible (on top of it)
+        LowerUnderMain $wh
     }
     if {$settings(showOverlay)} {
         windowIndicatorN $lastFocusWindow configure -foreground white
@@ -1993,7 +2067,12 @@ proc FocusMain {} {
 proc StayOnTopToggle {} {
     global lastFocusWindow settings slot2handle
     set settings($lastFocusWindow,stayOnTop) [expr {!$settings($lastFocusWindow,stayOnTop)}]
-    catch {SetStayOnTop $slot2handle($lastFocusWindow) $settings($lastFocusWindow,stayOnTop)}
+    if {[RealPosition $lastFocusWindow] == $lastFocusWindow} {
+        catch {SetStayOnTop $slot2handle($lastFocusWindow) $settings($lastFocusWindow,stayOnTop)}
+    } else {
+        # windows stacked under main: that's for their mirror
+        MirrorsRefreshAll
+    }
     Debug "StayOnTopToggle $lastFocusWindow now $settings($lastFocusWindow,stayOnTop)"
 }
 
@@ -2104,14 +2183,19 @@ proc UpdateN {n} {
     # local/temp only
     set wh $slot2handle($n)
     set p $slot2position($n)
-    lassign $settings($p,posXY) lx ly
-    lassign $settings($p,size) lw lh
+    set rp [RealPosition $p]
+    lassign $settings($rp,posXY) lx ly
+    lassign $settings($rp,size) lw lh
     set lstayOnTop 0
-    if {[info exists settings($p,stayOnTop)]} {
+    # in the mirrored layout, stay on top applies to the mirrors of the windows under main
+    if {$rp == $p && [info exists settings($p,stayOnTop)]} {
         set lstayOnTop $settings($p,stayOnTop)
     }
-    Debug "Update for $n in pos $p : $lx,$ly ${lw}x$lh - $lstayOnTop"
+    Debug "Update for $n in pos $p ($rp) : $lx,$ly ${lw}x$lh - $lstayOnTop"
     set raised [Update $wh $lx $ly $lw $lh $lstayOnTop]
+    if {$p == 1 && [LayoutMirrored]} {
+        RaiseMain
+    }
     if {$settings(showOverlay) && [winfo exists .o$p]} {
         .o$p.l configure -text $n
         if {$p!=1 && $settings(overlayClickable)} {
@@ -2127,6 +2211,8 @@ proc UpdateN {n} {
             #twapi::set_window_zorder [list [twapi::tkpath_to_hwnd .o$p]] toplayer
         }
     }
+    # swapped or resized
+    MirrorsRefreshAll
 }
 
 proc windowIndicatorN {n args} {
@@ -2145,10 +2231,15 @@ proc SetAsMain {n} {
     global settings lastFocusWindow swappedWindow
     windowIndicatorN $lastFocusWindow configure -foreground white
     SetAsMainInt $n
+    MirrorPickSwapped
     set swappedWindow $n
     if {$settings(swapAlsoFocus)} {
         CheckWindow [list FocusN $n true] $n
     } else {
+        if {[LayoutMirrored]} {
+            # raising main isn't allowed over another game's foreground window: lower the others
+            StackUnderMain
+        }
         windowIndicatorN $lastFocusWindow configure -foreground $settings(overlayFocusColor)
     }
 }
@@ -2248,7 +2339,7 @@ proc UpdateOurWindowHandles {} {
     foreach w [array names topw] {
         set wh [twapi::tkpath_to_hwnd $w]
         set tl [TopLevelWindow $wh]
-        if {$w==".ctx"} {
+        if {$w in {.ctx .mirrorMenu}} {
             Debug "Ignoring $w $wh $tl"
             continue
         }
@@ -2259,7 +2350,7 @@ proc UpdateOurWindowHandles {} {
         }
         Debug "$w -> $wh -> $tl"
         set val 2
-        if {$w in {. .clip .newProfile .profileRotation .hotkeys}} {
+        if {$w in {. .clip .newProfile .profileRotation .hotkeys .mirrors}} {
             Debug "Found $w to pause"
             set val 1
         }
@@ -2283,6 +2374,8 @@ proc UpdateOurWindowHandles {} {
         }
     }
     set handleRetryCount 2
+    # windows captured or gone
+    MirrorsRefreshAll
 }
 
 # now 4 states: game window and overlay/misc UI is 1 and 2, our main UI 3, neither is 0
@@ -2302,11 +2395,24 @@ proc IsOurs {w} {
 
 set autoCaptureErrorCount 0
 
+# Lowest window number of the layout without a captured window (never captured, lost or forgotten), "" if none
+proc FirstFreeSlot {} {
+    global settings slot2handle
+    for {set n 1} {$n <= $settings(numWindows)} {incr n} {
+        if {![info exists slot2handle($n)]} {
+            return $n
+        }
+    }
+    return ""
+}
+
 proc AutoCapture {w} {
     global nextWindow settings stayOnTop lastUpdate slot2handle autoCaptureErrorCount
-    for {} {[info exists slot2handle($nextWindow)]} {incr nextWindow} {
-        Debug "Skipping existing nextwindow $nextWindow"
+    set n [FirstFreeSlot]
+    if {$n eq ""} {
+        return
     }
+    set nextWindow $n
     set wname "WoW $nextWindow"
     if {[catch {
         if {$settings(borderless)} {
@@ -2341,7 +2447,7 @@ proc Capture {} {
             return
         }
         if {[IsOurs $w]} {
-            WobError "WOB2025 Error" "Can't capture foreground window: it's (already) ours!"
+            WobError "WOB2027 Error" "Can't capture foreground window: it's (already) ours!"
             return
         }
         set wtitle [twapi::get_window_text $w]
@@ -2355,7 +2461,7 @@ proc Capture {} {
     } else {
         set w [FindGameWindow]
         if {$w eq ""} {
-            WobError "WOB2025 Error" "No $settings(game) window found"
+            WobError "WOB2027 Error" "No $settings(game) window found"
             return
         }
     }
@@ -2370,11 +2476,21 @@ proc Capture {} {
 }
 
 proc PostCapture {w wname} {
-    global nextWindow stayOnTop lastUpdate
+    global nextWindow stayOnTop lastUpdate settings
     # Need to really update if we captured/forgot before
     catch {unset lastUpdate($w)}
-    Update $w [GetX] [GetY] [GetWidth] [GetHeight] $stayOnTop
+    if {[RealPosition $nextWindow] != $nextWindow && [ValidWindowSettingsN 1]} {
+        # mirrored layout: under the main window
+        Update $w {*}$settings(1,posXY) {*}$settings(1,size) 0
+    } else {
+        Update $w [GetX] [GetY] [GetWidth] [GetHeight] $stayOnTop
+    }
     updateListBox $nextWindow $w $wname
+    if {[LayoutMirrored]} {
+        # the new window under main, or the others under it if it's main
+        StackUnderMain
+        MirrorsRefreshAll
+    }
 }
 
 proc RegisterPerWindowHotkey {n wname} {
@@ -2394,9 +2510,16 @@ proc RegisterPerWindowHotkey {n wname} {
 }
 
 proc updateListBox {n w wname} {
-    global ourWindowHandles slot2handle slot2position nextWindow maxNumW settings
+    global ourWindowHandles slot2handle slot2position nextWindow maxNumW settings forgottenSlot
     set slot2handle($n) $w
+    unset -nocomplain forgottenSlot($w)
+    # lost while swapped: the window that is in its position goes back to its own
+    set m [SlotAtPosition $n]
     set slot2position($n) $n
+    if {$m ne "" && $m != $n} {
+        set slot2position($m) $m
+        CheckWindow [list UpdateN $m] $m
+    }
     set ourWindowHandles($w) 3
     RegisterPerWindowHotkey $n $wname
     # 0 based index
@@ -2473,8 +2596,11 @@ proc ChangeNumWindow {v} {
 }
 
 proc WindowLayout {} {
-    global settings monitorInfo scale skipMonitorText layoutinfo layoutNumWindowsText scaleText snapMenuText numWindowsFloat
+    global settings monitorInfo scale skipMonitorText layoutinfo layoutNumWindowsText scaleText snapMenuText numWindowsFloat \
+        layoutMirrored
     set tw .layout
+    # applied by Save and Apply
+    set layoutMirrored $settings(layoutMirrored)
     if {[winfo exists $tw]} {
         wm state $tw normal
         raise $tw
@@ -2483,7 +2609,8 @@ proc WindowLayout {} {
     }
     UpdateExcluded
     toplevel $tw
-    wm title $tw "WOB2025 Window Layout"
+    wm title $tw "WOB2027 Window Layout"
+    RememberGeometry $tw layoutGeometry
     ttk::checkbutton $tw.cbA -variable settings(layoutAuto) -text "Auto" -command ChangeLayout
     tooltip $tw.cbA "Automatically regenerate the layout on any change\nwhen checked. Uncheck for manual layout"
     ttk::checkbutton $tw.cbT -variable settings(layoutTop) -text "Main at bottom" -command ChangeLayout
@@ -2493,12 +2620,15 @@ proc WindowLayout {} {
     tooltip $tw.s "Select how many windows in your layout."
     ttk::checkbutton $tw.cb1 -variable settings(layoutOneSize) -text "Same size for all" -command ChangeLayout
     ttk::checkbutton $tw.cb2 -variable settings(layoutOneRowCol) -text "One row/col for small windows" -command ChangeLayout
-    ttk::checkbutton $tw.cb3 -variable settings(layoutStacked) -text "All Stacked" -command ChangeLayout
+    ttk::checkbutton $tw.cb3 -variable settings(layoutStacked) -text "All Stacked" -command LayoutStackedChanged
+    ttk::checkbutton $tw.cb4 -variable layoutMirrored -text "Mirrored" -command LayoutMirroredChanged
     tooltip $tw.cb1 "Check or uncheck to redo the layout with\nwindows of the same size (fastest switch later)\nor not (1 big main window and smaller minions windows)"
+    tooltip $tw.cb4 "All the game windows stacked under the main one,\nthe other positions show live mirrors of them:\nswaps are instant (no resizing).\nUse the swap hotkeys: clicking a mirror also makes it main,\nbut then the mouse needs to go back to the main window.\nFocus follows mouse only works for the main window:\nuse a regular layout if you play that way."
+    tooltip $tw.cb3 "All the windows at the same place, filling the biggest monitor:\nonly the one on top (main) is visible, swap to see another one\n(Mirrored also shows the others)"
     set layoutNumWindowsText "Layout for 9 windows"
     set width [expr {2+[string length $layoutNumWindowsText]}]
     UpdateLayoutNumWindows
-    grid x x x x $tw.cb2 - x -padx 8 -sticky we
+    grid x x x $tw.cb2 - $tw.cb4 -padx 8 -sticky we
     grid $tw.cbA -column 0 -row 0 -sticky {}
     grid [ttk::label $tw.l1 -textvariable layoutNumWindowsText -width $width -anchor c -justify center] $tw.s - $tw.cb1  $tw.cbT $tw.cb3 -sticky we -padx 8
     tooltip $tw.l1 "After automatic layout,\ndrag any window to adjust as necessary,\nuse arrow keys for fine pixel adjustment.\nClick on text to toggle stay on top... etc..."
@@ -2510,6 +2640,7 @@ proc WindowLayout {} {
     ttk::radiobutton $tw.asrf.ar4 -value "16/9" -text "16:9" -variable settings(aspectRatio) -command ChangeLayout
     ttk::radiobutton $tw.asrf.ar5 -value "21/9" -text "21:9" -variable settings(aspectRatio) -command ChangeLayout
     ttk::radiobutton $tw.asrf.ar6 -value "Same" -text "Same" -variable settings(aspectRatio) -command ChangeLayout
+    tooltip $tw.asrf.ar0 "Biggest windows that fit, whatever their aspect ratio\n(but not taller than wide: 5:4 for portrait spaces)"
     tooltip $tw.asrf.ar6 "Biggest small windows (as with Any),\nthen their aspect ratio for all windows\n(so swapping windows and mouse clicks match)"
     pack [ttk::label $tw.asrf.l2 -text "Aspect ratio:" -anchor w -justify left] $tw.asrf.ar0  $tw.asrf.ar1  $tw.asrf.ar2  $tw.asrf.ar3  $tw.asrf.ar4  $tw.asrf.ar5 $tw.asrf.ar6 -side left -expand 1
     grid $tw.asrf -padx 3 -pady 6 -columnspan 6 -sticky we
@@ -2553,6 +2684,29 @@ proc WindowLayout {} {
         grid columnconfigure $tw $i -weight 1
     }
     SetUpMonitors
+}
+
+proc LayoutStackedChanged {} {
+    global settings layoutMirrored
+    if {$settings(layoutStacked)} {
+        set layoutMirrored 0
+    }
+    ChangeLayout
+}
+
+proc LayoutMirroredChanged {} {
+    global settings layoutMirrored
+    if {!$layoutMirrored} {
+        return
+    }
+    if {![MirrorCheckBinary]} {
+        set layoutMirrored 0
+        return
+    }
+    if {$settings(layoutStacked)} {
+        set settings(layoutStacked) 0
+        ChangeLayout
+    }
 }
 
 proc AddRemoveExcluded {i} {
@@ -3143,7 +3297,8 @@ proc OverlayConfig {} {
         return
     }
     toplevel $tw
-    wm title $tw "WOB2025 Overlay Configuration"
+    wm title $tw "WOB2027 Overlay Configuration"
+    RememberGeometry $tw overlayConfigGeometry
     grid [ttk::label $tw.l1 -text "Pick the location of the window number overlay:"] -columnspan 3
     grid [ttk::button $tw.b1 -text "\u2b76" -command "OverlayAnchor nw"] [ttk::button $tw.b2 -text "\u2b71" -command "OverlayAnchor n"] [ttk::button $tw.b3 -text "\u2b77" -command "OverlayAnchor ne"]
     grid [ttk::button $tw.b4 -text "\u2b70" -command "OverlayAnchor w"] [ttk::button $tw.b5 -text "\uB7" -command "OverlayAnchor c"] [ttk::button $tw.b6 -text "\u2b72" -command "OverlayAnchor e"]
@@ -3358,8 +3513,9 @@ proc ResetAll {} {
 }
 
 proc SaveLayout {} {
-    global settings slot2position scale sot
+    global settings slot2position scale sot layoutMirrored
     set c .layout.c
+    set settings(layoutMirrored) $layoutMirrored
     for {set i 1} {$i<=$settings(numWindows)} {incr i} {
         set coords [SizeOfWindow "wow$i"]
         if {$coords == ""} {
@@ -3375,6 +3531,13 @@ proc SaveLayout {} {
         CheckWindow [list UpdateN $i] $i
         Debug "Sot for $i is $settings($i,stayOnTop) $sot($i)"
     }
+    if {[LayoutMirrored]} {
+        # moving windows under main doesn't change their stacking order
+        StackUnderMain
+        RaiseMain
+    }
+    # mirrors of the new layout positions, or none
+    MirrorsRefreshAll
     SaveSettings
     Overlay
     updateIndex
@@ -3931,6 +4094,870 @@ proc UpdateMouseDelay {} {
     SetMouseDelay $mouseDelay
 }
 
+#---- Mirrors: live, scaled copies of an area of a game window (DWM thumbnails)
+
+# settings(mirrors) is a list of dicts:
+#   source: "main" (whichever window is in position 1) or a window number
+#   area: {x y w h} part of the source client area, as fractions of its size
+#   geom: {x y w h} of the mirror on screen
+#   top: stay on top
+if {![info exists mirrorEdit]} {
+    set mirrorEdit 0
+}
+
+# Returns 1 if the binary has cffi (needed to call the DWM functions)
+proc MirrorInit {} {
+    global env mirrorNoSupport
+    if {[info commands ::DwmRegisterThumbnail] ne ""} {
+        return 1
+    }
+    if {[info exists mirrorNoSupport]} {
+        return 0
+    }
+    if {[catch {
+        package require cffi
+        cffi::Wrapper create ::wobDwmapi [file join $env(windir) system32 dwmapi.dll]
+        cffi::Wrapper create ::wobUser32 [file join $env(windir) system32 user32.dll]
+        cffi::Struct create ::WobRECT {left long top long right long bottom long}
+        cffi::Struct create ::WobPOINT {x long y long}
+        cffi::Struct create ::WobDWM_THUMBNAIL_PROPERTIES {
+            dwFlags ulong rcDestination struct.WobRECT rcSource struct.WobRECT
+            opacity uchar fVisible int fSourceClientAreaOnly int
+        }
+        # HWND/HTHUMBNAIL as 64 bit ints (win64 binary)
+        ::wobUser32 stdcall ClientToScreen int {hwnd ulonglong pt {struct.WobPOINT inout}}
+        ::wobDwmapi stdcall DwmUpdateThumbnailProperties long {thumb ulonglong props {struct.WobDWM_THUMBNAIL_PROPERTIES byref}}
+        ::wobDwmapi stdcall DwmUnregisterThumbnail long {thumb ulonglong}
+        # last as it's the one checked above
+        ::wobDwmapi stdcall DwmRegisterThumbnail long {dest ulonglong src ulonglong thumb {ulonglong out}}
+    } err]} {
+        Debug "No mirror support: $err"
+        set mirrorNoSupport 1
+        return 0
+    }
+    return 1
+}
+
+# Old binaries (before v4.11) can run this script after an update but lack cffi
+proc MirrorCheckBinary {} {
+    global oldVersion vers
+    if {[MirrorInit]} {
+        return 1
+    }
+    set binVers ""
+    if {[info exists oldVersion] && $oldVersion ne $vers} {
+        set binVers " ($oldVersion)"
+    }
+    set ans [WobMessage -type yesno -icon warning -title "Outdated binary for Mirrors" \
+        -message "Mirrors need the WOB2027 v4.11.0 or newer .exe (your .exe$binVers is older and lacks the needed component, only the script got updated).\n\nDownload and extract the latest WOB2027 zip (Help menu: Get the newest binary release).\n\nOpen the download page now?"]
+    if {$ans eq "yes"} {
+        Releases
+    }
+    return 0
+}
+
+# Window number currently in layout position p, "" if none
+proc SlotAtPosition {p} {
+    global slot2position
+    foreach {n np} [array get slot2position] {
+        if {$np == $p} {
+            return $n
+        }
+    }
+    return ""
+}
+
+# Window number for a mirror source
+proc MirrorSourceSlot {source} {
+    if {$source ne "main"} {
+        return $source
+    }
+    set n [SlotAtPosition 1]
+    if {$n eq ""} {
+        return 1
+    }
+    return $n
+}
+
+# Mirrored layout: all the game windows stacked at the main position, the other positions
+# show mirrors of them (swaps don't resize the windows)
+proc LayoutMirrored {} {
+    global settings mirroredExiting
+    expr {$settings(layoutMirrored) && !$settings(layoutStacked) && ![info exists mirroredExiting] && [MirrorInit]}
+}
+
+# On exit the mirrors go away: the windows stacked under main go to their layout positions
+# (the mirrored layout setting stays on, they get stacked again at the next start)
+proc UnstackWindows {} {
+    global slot2handle mirroredExiting
+    if {![LayoutMirrored]} {
+        return
+    }
+    set mirroredExiting 1
+    foreach n [array names slot2handle] {
+        CheckWindow [list UpdateN $n] $n
+    }
+}
+
+# Layout position whose geometry the window in position p actually has
+proc RealPosition {p} {
+    if {$p != 1 && [LayoutMirrored]} {
+        return 1
+    }
+    return $p
+}
+
+# Client size of window n: the layout size we give it (borderless, as for mouse broadcast scaling),
+# rather than its current size which lags as windows are resized asynchronously
+proc MirrorSourceSize {n} {
+    global settings slot2position slot2handle
+    if {[info exists slot2position($n)]} {
+        set p [RealPosition $slot2position($n)]
+        if {[info exists settings($p,size)]} {
+            return $settings($p,size)
+        }
+    }
+    twapi::get_window_client_area_size $slot2handle($n)
+}
+
+# {left top right bottom} of the biggest cw x ch aspect ratio area centered in w x h
+proc MirrorFit {cw ch w h} {
+    if {$w*$ch > $h*$cw} {
+        # wider: bars on the sides
+        set fw [expr {round(1.0*$h*$cw/$ch)}]
+        set l [expr {($w-$fw)/2}]
+        return [list $l 0 [expr {$l+$fw}] $h]
+    }
+    set fh [expr {round(1.0*$w*$ch/$cw)}]
+    set t [expr {($h-$fh)/2}]
+    list 0 $t $w [expr {$t+$fh}]
+}
+
+# {left top right bottom} in client pixels of an area given as fractions
+proc MirrorSourceRect {area cw ch} {
+    lassign $area fx fy fw fh
+    list [expr {round($fx*$cw)}] [expr {round($fy*$ch)}] [expr {round(($fx+$fw)*$cw)}] [expr {round(($fy+$fh)*$ch)}]
+}
+
+# Edit mode border of about 2 pixels: crops kx/ky source pixels and the matching bx/by mirror pixels
+# on each side so the zoom and the content position don't change. {kx ky bx by}
+proc MirrorEditInset {sw sh w h} {
+    set kx [expr {int(ceil(2.0*$sw/$w))}]
+    set ky [expr {int(ceil(2.0*$sh/$h))}]
+    if {2*$kx >= $sw || 2*$ky >= $sh} {
+        return {0 0 0 0}
+    }
+    list $kx $ky [expr {round(1.0*$kx*$w/$sw)}] [expr {round(1.0*$ky*$h/$sh)}]
+}
+
+proc HwndInt {wh} {
+    expr {[lindex $wh 0]}
+}
+
+proc MirrorSet {i key value} {
+    global settings
+    set m [lindex $settings(mirrors) $i]
+    dict set m $key $value
+    lset settings(mirrors) $i $m
+}
+
+proc MirrorSaveSoon {} {
+    global mirrorSaveId
+    after cancel $mirrorSaveId
+    set mirrorSaveId [after 1000 SaveSettings]
+}
+set mirrorSaveId ""
+
+proc MirrorDetach {i} {
+    global mirrorThumb mirrorSrc mirrorLast
+    if {[info exists mirrorThumb($i)]} {
+        catch {DwmUnregisterThumbnail $mirrorThumb($i)}
+        unset mirrorThumb($i)
+    }
+    unset -nocomplain mirrorSrc($i) mirrorLast($i)
+}
+
+proc MirrorHide {i} {
+    MirrorDetach $i
+    wm withdraw .mirror$i
+}
+
+# Clicks go through the mirror unless in edit mode; never takes focus nor shows in the taskbar
+proc MirrorClickThrough {t on} {
+    set wh [list [expr {[wm frame $t]}] HWND]
+    lassign [twapi::get_window_style $wh] style exstyle
+    # WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT (needs WS_EX_LAYERED, from -alpha)
+    set ex [expr {($exstyle | 0x08000080) & ~0x20}]
+    if {$on} {
+        set ex [expr {$ex | 0x20}]
+    }
+    twapi::set_window_style $wh $style $ex
+}
+
+proc MirrorCreate {i} {
+    global settings mirrorEdit
+    set t .mirror$i
+    set m [lindex $settings(mirrors) $i]
+    lassign [dict get $m geom] x y w h
+    if {![winfo exists $t]} {
+        # background shows as a border in edit mode
+        toplevel $t -background $settings(overlayFocusColor) -cursor fleur
+        wm overrideredirect $t 1
+        wm attributes $t -alpha 0.99
+        bind $t <ButtonPress-1> [list MirrorDragStart $i %X %Y]
+        bind $t <B1-Motion> [list MirrorDrag $i %X %Y]
+        bind $t <Motion> [list MirrorCursor $i %x %y]
+        bind $t <ButtonRelease-1> [list MirrorDragEnd $i]
+        bind $t <MouseWheel> [list MirrorZoom $i %D]
+        bind $t <ButtonPress-3> [list MirrorMenu $i %X %Y]
+    }
+    wm attributes $t -topmost [dict get $m top]
+    wm geometry $t ${w}x$h+$x+$y
+    update idletasks
+    MirrorClickThrough $t [expr {!$mirrorEdit}]
+}
+
+# (Re)attach the mirror to its source window and update its areas
+proc MirrorRefresh {i} {
+    global settings slot2handle mirrorEdit
+    set t .mirror$i
+    # (an error here, through UpdateN, would make all the windows lost)
+    if {![winfo exists $t] || $i >= [llength $settings(mirrors)]} {
+        return
+    }
+    set m [lindex $settings(mirrors) $i]
+    set n [MirrorSourceSlot [dict get $m source]]
+    if {!$settings(mirrorsShown) || ![info exists slot2handle($n)]} {
+        MirrorHide $i
+        return
+    }
+    set wh $slot2handle($n)
+    if {![twapi::window_exists $wh] || [catch {MirrorSourceSize $n} csize]} {
+        Debug "Mirror $i source $n gone"
+        MirrorHide $i
+        return
+    }
+    lassign $csize cw ch
+    if {[wm state $t] ne "normal"} {
+        wm deiconify $t
+        update idletasks
+        MirrorClickThrough $t [expr {!$mirrorEdit}]
+    }
+    lassign [dict get $m geom] x y w h
+    lassign [MirrorSourceRect [dict get $m area] $cw $ch] l tp r bt
+    lassign {0 0 0 0} kx ky bx by
+    if {$mirrorEdit} {
+        lassign [MirrorEditInset [expr {$r-$l}] [expr {$bt-$tp}] $w $h] kx ky bx by
+    }
+    MirrorThumbnail $i $t $n \
+        [list [expr {$l+$kx}] [expr {$tp+$ky}] [expr {$r-$kx}] [expr {$bt-$ky}]] \
+        [list $bx $by [expr {$w-$bx}] [expr {$h-$by}]]
+}
+
+# Shows the src {left top right bottom} client area of window n in the dst area of toplevel t,
+# for mirror i (an index in settings(mirrors), or L<position> for the mirrored layout ones)
+proc MirrorThumbnail {i t n src dst} {
+    global slot2handle mirrorThumb mirrorSrc mirrorLast
+    set hwnd [HwndInt $slot2handle($n)]
+    if {![info exists mirrorSrc($i)] || $mirrorSrc($i) != $hwnd} {
+        MirrorDetach $i
+        set hr [DwmRegisterThumbnail [expr {[wm frame $t]}] $hwnd thumb]
+        if {$hr != 0} {
+            Debug "Mirror $i DwmRegisterThumbnail error $hr"
+            return
+        }
+        set mirrorThumb($i) $thumb
+        set mirrorSrc($i) $hwnd
+        Debug "Mirror $i now showing WoW $n"
+    }
+    # skip if unchanged
+    set key [list $src $dst]
+    if {[info exists mirrorLast($i)] && $mirrorLast($i) eq $key} {
+        return
+    }
+    set mirrorLast($i) $key
+    lassign $src sl st sr sb
+    lassign $dst dl dt dr db
+    set props [dict create dwFlags 0x1f \
+        rcDestination [dict create left $dl top $dt right $dr bottom $db] \
+        rcSource [dict create left $sl top $st right $sr bottom $sb] \
+        opacity 255 fVisible 1 fSourceClientAreaOnly 1]
+    DwmUpdateThumbnailProperties $mirrorThumb($i) $props
+}
+
+# Mirrors of the windows stacked under the main one, in their layout positions (2 and up)
+proc LayoutMirrorsRefresh {} {
+    global settings slot2handle
+    set on [LayoutMirrored]
+    foreach t [winfo children .] {
+        if {[regexp {^\.lmirror(\d+)$} $t -> p] && (!$on || $p > $settings(numWindows))} {
+            MirrorDetach L$p
+            destroy $t
+        }
+    }
+    if {!$on} {
+        return
+    }
+    set created 0
+    for {set p 2} {$p <= $settings(numWindows)} {incr p} {
+        if {![ValidWindowSettingsN $p]} {
+            continue
+        }
+        set t .lmirror$p
+        lassign $settings($p,posXY) x y
+        lassign $settings($p,size) w h
+        set top 0
+        if {[info exists settings($p,stayOnTop)]} {
+            set top $settings($p,stayOnTop)
+        }
+        if {![winfo exists $t]} {
+            toplevel $t -background black -cursor hand2
+            wm overrideredirect $t 1
+            wm attributes $t -alpha 0.99
+            bind $t <ButtonPress-1> [list LayoutMirrorClick $p]
+            # the mouse stays on the mirror, now of the previous main: a double click swaps once
+            # (clicking again later swaps back)
+            bind $t <Double-ButtonPress-1> [list Debug "Double click on mirror $p: swapped once"]
+            wm geometry $t ${w}x$h+$x+$y
+            update idletasks
+            MirrorClickThrough $t 0
+            set created 1
+        }
+        wm attributes $t -topmost $top
+        if {[wm geometry $t] ne "${w}x$h+$x+$y"} {
+            wm geometry $t ${w}x$h+$x+$y
+        }
+        set n [SlotAtPosition $p]
+        if {$n eq "" || ![info exists slot2handle($n)] || ![twapi::window_exists $slot2handle($n)]
+                || [catch {MirrorSourceSize $n} csize]} {
+            MirrorDetach L$p
+            wm withdraw $t
+            continue
+        }
+        if {[wm state $t] ne "normal"} {
+            wm deiconify $t
+            update idletasks
+            MirrorClickThrough $t 0
+        }
+        lassign $csize cw ch
+        MirrorThumbnail L$p $t $n [list 0 0 $cw $ch] [MirrorFit $cw $ch $w $h]
+    }
+    if {$created} {
+        UpdateHandles
+    }
+}
+
+# Clicking a mirror of the mirrored layout makes that window the main one (unlike OMB, the mouse
+# isn't moved to the same place in it: WOB has no cursor control, SetCursorPos is removed at startup)
+proc LayoutMirrorClick {p} {
+    set n [SlotAtPosition $p]
+    if {$n ne ""} {
+        SetAsMain $n
+    }
+}
+
+# In the mirrored layout, the main window goes on top of the ones stacked under it
+proc RaiseMain {} {
+    global slot2handle
+    set n [SlotAtPosition 1]
+    if {$n eq "" || ![info exists slot2handle($n)]} {
+        return
+    }
+    # HWND_TOP, SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOSENDCHANGING|SWP_ASYNCWINDOWPOS
+    twapi::SetWindowPos $slot2handle($n) 0 0 0 0 0 0x4613
+}
+
+# Puts game window wh just under the main one (always allowed, unlike raising main above
+# another process' foreground window)
+proc LowerUnderMain {wh} {
+    global slot2handle
+    set n [SlotAtPosition 1]
+    if {$n eq "" || ![info exists slot2handle($n)] || $slot2handle($n) eq $wh} {
+        return
+    }
+    twapi::SetWindowPos $wh $slot2handle($n) 0 0 0 0 0x4613
+}
+
+proc StackUnderMain {} {
+    global slot2handle
+    foreach {n wh} [array get slot2handle] {
+        LowerUnderMain $wh
+    }
+}
+
+proc MirrorsRefreshAll {} {
+    LayoutMirrorsRefresh
+    if {[info commands ::DwmRegisterThumbnail] eq ""} {
+        return
+    }
+    for {set i 0} {[winfo exists .mirror$i]} {incr i} {
+        MirrorRefresh $i
+    }
+}
+
+# Recreate all the mirrors from the settings (startup, profile change, deletion)
+proc MirrorsRebuild {} {
+    global settings
+    for {set i 0} {[winfo exists .mirror$i]} {incr i} {
+        MirrorDetach $i
+        destroy .mirror$i
+    }
+    if {[llength $settings(mirrors)] == 0} {
+        return
+    }
+    if {![MirrorInit]} {
+        Debug "Mirrors configured but not supported by this binary"
+        return
+    }
+    for {set i 0} {$i < [llength $settings(mirrors)]} {incr i} {
+        MirrorCreate $i
+        MirrorRefresh $i
+    }
+    UpdateHandles
+}
+
+proc MirrorsEdit {on} {
+    global mirrorEdit
+    set mirrorEdit $on
+    for {set i 0} {[winfo exists .mirror$i]} {incr i} {
+        if {[wm state .mirror$i] eq "normal"} {
+            MirrorClickThrough .mirror$i [expr {!$on}]
+        }
+    }
+    MirrorsRefreshAll
+    if {!$on} {
+        SaveSettings
+    }
+}
+
+proc MirrorsEditToggle {} {
+    global mirrorEdit
+    MirrorsEdit [expr {!$mirrorEdit}]
+}
+
+proc MirrorsToggle {} {
+    global settings
+    set settings(mirrorsShown) [expr {!$settings(mirrorsShown)}]
+    MirrorsRefreshAll
+}
+
+# Sides (some of l r t b) of a w x h mirror near local x,y
+proc MirrorEdges {x y w h} {
+    set e [expr {min(8, $w/4, $h/4)}]
+    set edges ""
+    if {$x < $e} {
+        append edges l
+    } elseif {$x >= $w-$e} {
+        append edges r
+    }
+    if {$y < $e} {
+        append edges t
+    } elseif {$y >= $h-$e} {
+        append edges b
+    }
+    return $edges
+}
+
+proc MirrorCursor {i x y} {
+    global mirrorDrag
+    if {$mirrorDrag ne ""} {
+        return
+    }
+    set t .mirror$i
+    switch [MirrorEdges $x $y [winfo width $t] [winfo height $t]] {
+        l - r {set c size_we}
+        t - b {set c size_ns}
+        lt - rb {set c size_nw_se}
+        rt - lb {set c size_ne_sw}
+        default {set c fleur}
+    }
+    $t configure -cursor $c
+}
+
+# Moving dx,dy screen pixels the edges of a mirror: same zoom, the source area grows or shrinks
+# by whole source pixels (no zoom wobble), within the cw x ch source window. Returns the new {geom area}
+proc MirrorEdgeDrag {edges geom area cw ch dx dy} {
+    lassign $geom x y w h
+    lassign $area fx fy fw fh
+    # mirror pixels per source pixel
+    set zx [expr {$w/($fw*$cw)}]
+    set zy [expr {$h/($fh*$ch)}]
+    # in source pixels
+    set dx [expr {round($dx/$zx)}]
+    set dy [expr {round($dy/$zy)}]
+    set minx [expr {int(ceil(16/$zx))}]
+    set miny [expr {int(ceil(16/$zy))}]
+    set sw [expr {round($fw*$cw)}]
+    set sh [expr {round($fh*$ch)}]
+    if {[string match *l* $edges]} {
+        set dx [expr {max(-round($fx*$cw), min($dx, $sw-$minx))}]
+        set fx [expr {$fx+1.0*$dx/$cw}]
+        set fw [expr {$fw-1.0*$dx/$cw}]
+        set x [expr {$x+$dx*$zx}]
+    } elseif {[string match *r* $edges]} {
+        set dx [expr {min(round((1-$fx-$fw)*$cw), max($dx, $minx-$sw))}]
+        set fw [expr {$fw+1.0*$dx/$cw}]
+    }
+    if {[string match *t* $edges]} {
+        set dy [expr {max(-round($fy*$ch), min($dy, $sh-$miny))}]
+        set fy [expr {$fy+1.0*$dy/$ch}]
+        set fh [expr {$fh-1.0*$dy/$ch}]
+        set y [expr {$y+$dy*$zy}]
+    } elseif {[string match *b* $edges]} {
+        set dy [expr {min(round((1-$fy-$fh)*$ch), max($dy, $miny-$sh))}]
+        set fh [expr {$fh+1.0*$dy/$ch}]
+    }
+    set w [expr {$fw*$cw*$zx}]
+    set h [expr {$fh*$ch*$zy}]
+    list [list [expr {round($x)}] [expr {round($y)}] [expr {round($w)}] [expr {round($h)}]] [list $fx $fy $fw $fh]
+}
+
+# Source area of mirror i in pixels {w h} (error if the source is gone)
+proc MirrorSourcePixels {i} {
+    global settings
+    set m [lindex $settings(mirrors) $i]
+    lassign [MirrorSourceRect [dict get $m area] {*}[MirrorSourceSize [MirrorSourceSlot [dict get $m source]]]] l t r b
+    list [expr {$r-$l}] [expr {$b-$t}]
+}
+
+# Current zoom of mirror i, relative to the source window at its current size
+proc MirrorZoomOf {i} {
+    global settings
+    lassign [MirrorSourcePixels $i] sw
+    lassign [dict get [lindex $settings(mirrors) $i] geom] x y w
+    expr {1.0*$w/$sw}
+}
+
+# Next (dir>0) or previous round zoom from z, for the edit mode mouse wheel only (mirrors can have any zoom)
+proc MirrorNextZoom {z dir} {
+    set mirrorZooms [list 0.1 0.2 0.25 [expr {1/3.}] 0.5 [expr {2/3.}] 0.75 1 1.25 1.5 1.75 2 2.5 3 3.5 4 5 6 8]
+    if {$dir > 0} {
+        foreach s $mirrorZooms {
+            if {$s > $z*1.01} {
+                return $s
+            }
+        }
+        return [lindex $mirrorZooms end]
+    }
+    foreach s [lreverse $mirrorZooms] {
+        if {$s < $z/1.01} {
+            return $s
+        }
+    }
+    return [lindex $mirrorZooms 0]
+}
+
+proc MirrorSetZoom {i z} {
+    if {[catch {MirrorSourcePixels $i} spx]} {
+        return
+    }
+    lassign $spx sw sh
+    MirrorResize $i [expr {max(16, round($sw*$z))}] [expr {max(16, round($sh*$z))}]
+}
+
+# Drag from the middle moves the mirror, from a side changes the area
+proc MirrorDragStart {i x y} {
+    global mirrorDrag settings
+    set t .mirror$i
+    set m [lindex $settings(mirrors) $i]
+    set edges [MirrorEdges [expr {$x-[winfo rootx $t]}] [expr {$y-[winfo rooty $t]}] [winfo width $t] [winfo height $t]]
+    set csize {0 0}
+    if {$edges ne "" && [catch {MirrorSourceSize [MirrorSourceSlot [dict get $m source]]} csize]} {
+        set edges ""
+    }
+    set mirrorDrag [list $x $y [winfo rootx $t] [winfo rooty $t] $edges [dict get $m geom] [dict get $m area] {*}$csize]
+}
+
+proc MirrorDrag {i x y} {
+    global mirrorDrag
+    if {$mirrorDrag eq ""} {
+        return
+    }
+    lassign $mirrorDrag mx my wx wy edges geom area cw ch
+    if {$edges eq ""} {
+        wm geometry .mirror$i +[expr {$wx+$x-$mx}]+[expr {$wy+$y-$my}]
+        return
+    }
+    lassign [MirrorEdgeDrag $edges $geom $area $cw $ch [expr {$x-$mx}] [expr {$y-$my}]] ngeom narea
+    MirrorSet $i geom $ngeom
+    MirrorSet $i area $narea
+    lassign $ngeom nx ny nw nh
+    wm geometry .mirror$i ${nw}x$nh+$nx+$ny
+    MirrorRefresh $i
+}
+
+proc MirrorDragEnd {i} {
+    global settings mirrorDrag
+    if {$mirrorDrag eq ""} {
+        return
+    }
+    if {[lindex $mirrorDrag 4] eq ""} {
+        lassign [dict get [lindex $settings(mirrors) $i] geom] x y w h
+        MirrorSet $i geom [list [winfo rootx .mirror$i] [winfo rooty .mirror$i] $w $h]
+    }
+    set mirrorDrag ""
+    MirrorSaveSoon
+}
+set mirrorDrag ""
+
+proc MirrorResize {i w h} {
+    global settings
+    lassign [dict get [lindex $settings(mirrors) $i] geom] x y
+    MirrorSet $i geom [list $x $y $w $h]
+    wm geometry .mirror$i ${w}x$h
+    MirrorRefresh $i
+    MirrorSaveSoon
+}
+
+# Mouse wheel zoom, to the next/previous round zoom
+proc MirrorZoom {i delta} {
+    if {[catch {MirrorZoomOf $i} z]} {
+        return
+    }
+    MirrorSetZoom $i [MirrorNextZoom $z $delta]
+}
+
+proc MirrorMenu {i x y} {
+    global settings mirrorMenuSource mirrorMenuTop
+    set mn .mirrorMenu
+    destroy $mn
+    menu $mn -tearoff 0
+    set m [lindex $settings(mirrors) $i]
+    set mirrorMenuSource [dict get $m source]
+    set mirrorMenuTop [dict get $m top]
+    $mn add command -label "Select area again..." -command [list MirrorSelect $i]
+    set label Zoom
+    if {![catch {MirrorZoomOf $i} z]} {
+        # relative to the source as it currently is (smaller when in a small layout position)
+        set label [format "Zoom (now %.2fx of WoW %s)" $z [MirrorSourceSlot $mirrorMenuSource]]
+    }
+    menu $mn.zoom -tearoff 0
+    foreach z {0.5 1 1.5 2 3 4} {
+        $mn.zoom add command -label "${z}x" -command [list MirrorSetZoom $i $z]
+    }
+    $mn add cascade -label $label -menu $mn.zoom
+    $mn add checkbutton -label "Stay on top" -variable mirrorMenuTop -command [list MirrorChangeTop $i]
+    $mn add separator
+    $mn add radiobutton -label "Source: main window" -value main -variable mirrorMenuSource -command [list MirrorChangeSource $i]
+    for {set n 1} {$n <= $settings(numWindows)} {incr n} {
+        $mn add radiobutton -label "Source: WoW $n" -value $n -variable mirrorMenuSource -command [list MirrorChangeSource $i]
+    }
+    $mn add separator
+    $mn add command -label "Delete" -command [list MirrorDelete $i]
+    $mn add command -label "Done editing" -command {MirrorsEdit 0}
+    tk_popup $mn $x $y
+}
+
+proc MirrorChangeSource {i} {
+    global mirrorMenuSource
+    MirrorSet $i source $mirrorMenuSource
+    MirrorRefresh $i
+    MirrorSaveSoon
+}
+
+proc MirrorChangeTop {i} {
+    global mirrorMenuTop
+    MirrorSet $i top $mirrorMenuTop
+    wm attributes .mirror$i -topmost $mirrorMenuTop
+    MirrorSaveSoon
+}
+
+proc MirrorDelete {i} {
+    global settings
+    set settings(mirrors) [lreplace $settings(mirrors) $i $i]
+    MirrorsRebuild
+    SaveSettings
+}
+
+# Semi transparent toplevel t over the client area of game window n, with a centered text.
+# Returns the client area {x y w h} on screen
+proc MirrorOverlay {t n cursor text} {
+    global slot2handle
+    set wh $slot2handle($n)
+    set pt [dict create x 0 y 0]
+    ClientToScreen [HwndInt $wh] pt
+    lassign [twapi::get_window_client_area_size $wh] cw ch
+    set x [dict get $pt x]
+    set y [dict get $pt y]
+    destroy $t
+    toplevel $t -cursor $cursor
+    wm overrideredirect $t 1
+    wm attributes $t -topmost 1 -alpha 0.4
+    wm geometry $t ${cw}x$ch+$x+$y
+    canvas $t.c -background gray20 -highlightthickness 0
+    pack $t.c -fill both -expand 1
+    $t.c create text [expr {$cw/2}] [expr {$ch/2}] -fill white -font WOBBold -justify center -text $text -tags label
+    list $x $y $cw $ch
+}
+
+proc MirrorPickClose {} {
+    foreach t [winfo children .] {
+        if {[string match .mirrorPick* $t]} {
+            destroy $t
+        }
+    }
+}
+
+# Windows all at the main position (only the one on top can be picked)
+proc MirrorPickStacked {} {
+    global settings
+    expr {$settings(layoutStacked) || [LayoutMirrored]}
+}
+
+proc MirrorPickText {n} {
+    set s "WoW $n\nClick to mirror an area of this window"
+    if {[MirrorPickStacked]} {
+        append s "\n(swap first to mirror another one)"
+    }
+    append s "\n(Escape to cancel)"
+}
+
+# Step 1 of adding a mirror: an overlay on each game window, click one to then select its area
+proc MirrorPick {} {
+    global slot2handle
+    if {![MirrorCheckBinary]} {
+        return
+    }
+    MirrorPickClose
+    set t ""
+    foreach n [array names slot2handle] {
+        if {![MirrorPickStacked]} {
+            set t .mirrorPick$n
+        } elseif {$n eq [SlotAtPosition 1]} {
+            set t .mirrorPickMain
+        } else {
+            continue
+        }
+        if {[catch {MirrorOverlay $t $n hand2 [MirrorPickText $n]} err]} {
+            Debug "Mirror pick WoW $n: $err"
+            destroy $t
+            continue
+        }
+        bind $t.c <ButtonRelease-1> "MirrorPickClose; MirrorSelect {} $n"
+        bind $t <Escape> MirrorPickClose
+    }
+    update
+    if {[winfo exists $t]} {
+        focus -force $t.c
+    } else {
+        WobError "No window to mirror" "No WoW window could be found, there is nothing to mirror"
+    }
+}
+
+# Stacked windows: the pick overlay is for the window now on top
+proc MirrorPickSwapped {} {
+    set t .mirrorPickMain
+    set n [SlotAtPosition 1]
+    if {![winfo exists $t] || $n eq ""} {
+        return
+    }
+    $t.c itemconfigure label -text [MirrorPickText $n]
+    bind $t.c <ButtonRelease-1> "MirrorPickClose; MirrorSelect {} $n"
+    raise $t
+}
+
+# Transparent overlay on the source window to drag the area to mirror. i is the mirror to change,
+# empty to add a new one of window n
+proc MirrorSelect {i {n ""}} {
+    global settings slot2handle mirrorSelect
+    if {![MirrorCheckBinary]} {
+        return
+    }
+    if {$i eq ""} {
+        # new mirrors stay on the window they were taken from (right click to follow main instead)
+        set source $n
+    } else {
+        set source [dict get [lindex $settings(mirrors) $i] source]
+        set n [MirrorSourceSlot $source]
+    }
+    if {![info exists slot2handle($n)]} {
+        WobError "No window to mirror" "WoW $n isn't captured, there is nothing to mirror"
+        return
+    }
+    set t .mirrorSel
+    if {[catch {MirrorOverlay $t $n crosshair "Drag a rectangle around the area of WoW $n to mirror\n(Escape to cancel)"} rect]} {
+        destroy $t
+        WobError "No window to mirror" "WoW $n can't be found: $rect"
+        return
+    }
+    set mirrorSelect [list $i $source {*}$rect]
+    bind $t.c <ButtonPress-1> {
+        set mirrorSelStart [list %x %y]
+        .mirrorSel.c delete sel
+        .mirrorSel.c create rectangle %x %y %x %y -outline red -width 2 -tags sel
+    }
+    bind $t.c <B1-Motion> {.mirrorSel.c coords sel {*}$mirrorSelStart %x %y}
+    bind $t.c <ButtonRelease-1> {MirrorSelectDone {*}$mirrorSelStart %x %y}
+    bind $t <Escape> {destroy .mirrorSel}
+    update
+    focus -force $t.c
+}
+
+proc MirrorSelectDone {x1 y1 x2 y2} {
+    global settings mirrorSelect
+    set w [expr {abs($x2-$x1)}]
+    set h [expr {abs($y2-$y1)}]
+    if {$w < 4 || $h < 4} {
+        return
+    }
+    destroy .mirrorSel
+    lassign $mirrorSelect i source sx sy cw ch
+    set l [expr {min($x1,$x2)}]
+    set t [expr {min($y1,$y2)}]
+    set area [list [expr {1.0*$l/$cw}] [expr {1.0*$t/$ch}] [expr {1.0*$w/$cw}] [expr {1.0*$h/$ch}]]
+    Debug "Mirror $i of $source area $area"
+    if {$i eq ""} {
+        # 1:1, shifted from the source area so it's visible, to be moved in edit mode
+        lappend settings(mirrors) [dict create source $source area $area \
+            geom [list [expr {$sx+$l+30}] [expr {$sy+$t+30}] $w $h] top 1]
+        set settings(mirrorsShown) 1
+        MirrorsRebuild
+        MirrorsEdit 1
+    } else {
+        # keep the width, new aspect ratio
+        MirrorSet $i area $area
+        lassign [dict get [lindex $settings(mirrors) $i] geom] x y mw
+        MirrorResize $i $mw [expr {max(16, round(1.0*$mw*$h/$w))}]
+    }
+    SaveSettings
+}
+
+proc MirrorsDialog {} {
+    global settings mirrorEdit
+    if {![MirrorCheckBinary]} {
+        return
+    }
+    set tw .mirrors
+    if {![winfo exists $tw]} {
+        toplevel $tw
+        wm title $tw "WOB Mirrors"
+        wm resizable $tw 0 0
+        RememberGeometry $tw mirrorsGeometry
+        wm protocol $tw WM_DELETE_WINDOW MirrorsDialogClose
+        set help "Mirrors are live copies of an area of a game window, e.g. the minimap.\n"
+        append help "They show the window they were taken from, wherever it is\n"
+        append help "(or whichever window is main: right click, Source: main window).\n"
+        append help "While this window is open (edit mode), drag mirrors to move them,\n"
+        append help "drag their sides to extend or shrink the mirrored area,\n"
+        append help "use the mouse wheel to zoom and right click for options.\n"
+        append help "Otherwise mirrors let mouse clicks through."
+        grid [ttk::label $tw.l -justify left -text $help] -padx 8 -pady 6 -sticky w
+        grid [ttk::button $tw.add -text "Add a mirror: click a window, then drag the area to mirror..." -command MirrorPick] -padx 8 -pady 4 -sticky we
+        grid [ttk::checkbutton $tw.edit -text "Edit mode" -variable mirrorEdit -command {MirrorsEdit $mirrorEdit}] -padx 8 -sticky w
+        grid [ttk::checkbutton $tw.shown -text "Show mirrors" -variable settings(mirrorsShown) -command "MirrorsRefreshAll; SaveSettings"] -padx 8 -sticky w
+        grid [ttk::button $tw.close -text Close -command MirrorsDialogClose] -padx 8 -pady 6
+        UpdateHandles
+    }
+    wm state $tw normal
+    raise $tw
+    MirrorsEdit 1
+}
+
+proc MirrorsDialogClose {} {
+    destroy .mirrors
+    MirrorsEdit 0
+}
+
 #---- settings and initial setup
 
 # default hotkeys (change/add more in you wowopenboxSettings.tcl)
@@ -3959,6 +4986,7 @@ array set settings {
     layoutOneSize 1
     layoutOneRowCol 0
     layoutStacked 0
+    layoutMirrored 0
     layoutScale "1/6"
     layoutSnap 4
     layoutMaxWindows 32
@@ -4009,6 +5037,10 @@ array set settings {
     autoCapture 1
     clipboardAtStart 0
     dontCaptureList {explorer.exe SndVol.exe}
+    mirrors {}
+    mirrorsShown 1
+    hk,mirrorsToggle ""
+    hk,mirrorsEdit ""
 }
 set settings(mouseInsideGameWindowFocuses) $hasRR
 array set hotkeyDefaults [array get settings hk*,*]
@@ -4104,16 +5136,20 @@ proc rrWarning {} {
     }
 }
 
-puts "WOB2025 $vers started..."
+puts "WOB2027 $vers started..."
 Defer 100 FindExisting
-set bottomText "WOB2025 $vers"
+set bottomText "WOB2027 $vers"
 wm state . normal
-if {[info exists settings(mainWindowGeometry)]} {
-    catch {wm geometry . $settings(mainWindowGeometry)}
-} else {
+if {![RememberGeometry . mainWindowGeometry 1]} {
     FitMenuBar
 }
-bind . <Configure> {set settings(mainWindowGeometry) [wm geometry .]}
+# -debug console position (in its own interpreter)
+if {$forceDebug && ![catch {console eval {winfo exists .}}]} {
+    if {[info exists settings(consoleGeometry)] && [GeometryOnScreen $settings(consoleGeometry)]} {
+        catch {console eval [list wm geometry . $settings(consoleGeometry)]}
+    }
+    catch {console eval {bind . <Configure> {consoleinterp eval [list set settings(consoleGeometry) [wm geometry .]]}}}
+}
 
 Defer 150 {raise .}
 if {$settings(numWindows)==0} {
@@ -4142,4 +5178,5 @@ if {$settings(clipboardAtStart)} {
 }
 # Mouse tracking/auto pause and auto capture
 Defer 350 PeriodicChecks
+Defer 400 MirrorsRebuild
 Defer 300 rrWarning
