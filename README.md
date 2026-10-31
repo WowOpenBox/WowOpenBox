@@ -28,7 +28,7 @@ See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMult
 - Instant swapping of windows; with keyboard hotkeys for fast switching to the next or any specific window.
    - Change any hotkey in File > "Hotkeys...": click it and press the new key combination (right click clears it, Undo goes back).
 - Many additional options to switch which window your keys are going to:
-  - Focus follow mouse: turns on/off the Windows&trade; accessibility feature so you just hover a window to make it receive keys
+  - Focus follow mouse: turns on/off the Windows&trade; accessibility feature so you just hover a window to make it receive keys (instantly: WOB sets the hover delay to 0 ms, below the 100 ms minimum of the Windows slider)
   - Focus next/previous/specific windows with hotkeys.
 <!--
   - Optional Round robin: after you press configurable keys, focus switches to the next window automatically.
