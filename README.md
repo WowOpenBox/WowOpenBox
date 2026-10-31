@@ -47,7 +47,7 @@ WowOpenBox is optimized for Microsoft Windows 10 and Windows 11.
 
 Easiest: get it from the Microsoft Store, which installs and updates it for you (no Windows warning on first run):
 
-<a href="https://apps.microsoft.com/detail/9P57VRK9036Q?mode=direct"><img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200" alt="Get it from Microsoft"/></a>
+<a href="https://apps.microsoft.com/detail/9P57VRK9036Q"><img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200" alt="Get it from Microsoft"/></a>
 
 The Store version keeps its settings and profiles in `Documents\WowOpenBox` (copy your `wowopenboxSettings*.tcl` files there to bring yours).
 
