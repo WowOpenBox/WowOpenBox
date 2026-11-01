@@ -52,6 +52,10 @@ jobs:
           cp ..\WowOpenBox.tkapp OpenMultiBoxing.vfs\app
           .\build.ps1 -Out WOB2027-${{ steps.get_version.outputs.VERSION }}.exe -Version ${{ steps.get_version.outputs.VERSION }}
           Compress-Archive -Path WOB2027-${{ steps.get_version.outputs.VERSION }}.exe,..\README.txt,..\launchwow.bat,..\launchwowc.bat -DestinationPath WOB2027-${{ steps.get_version.outputs.VERSION }}.zip
+      # before any release is made: the tests with the new exe
+      - name: Tests
+        run: OMB_EXE=buildkit/WOB2027-${{ steps.get_version.outputs.VERSION }}.exe bash tests/run.sh
+        shell: bash
       - name: Make the Microsoft Store package
         run: |
           msix\pack.ps1 -Exe buildkit\WOB2027-${{ steps.get_version.outputs.VERSION }}.exe -Version ${{ steps.get_version.outputs.VERSION }} -Out WowOpenBox-${{ steps.get_version.outputs.VERSION }}.msix
