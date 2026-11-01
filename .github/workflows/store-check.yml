@@ -3,8 +3,6 @@ name: Store check
 
 on:
   workflow_dispatch:
-  push: # TEMP
-    branches: [store-ci]
 
 jobs:
   check:
@@ -12,19 +10,6 @@ jobs:
     steps:
       - name: Setup Microsoft Store Developer CLI
         uses: microsoft/microsoft-store-apppublisher@v1.1
-      - name: TEMP compare secrets
-        env:
-          TENANT_ID: ${{ secrets.MSSTORE_TENANT_ID }}
-          SELLER_ID: ${{ secrets.MSSTORE_SELLER_ID }}
-          CLIENT_ID: ${{ secrets.MSSTORE_CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.MSSTORE_CLIENT_SECRET }}
-        run: |
-          foreach ($n in 'TENANT_ID','SELLER_ID','CLIENT_ID','CLIENT_SECRET') {
-            $v = [Environment]::GetEnvironmentVariable($n)
-            $t = $v.Trim()
-            $h = [BitConverter]::ToString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($t))).Replace('-','').Substring(0,8)
-            Write-Output "$n raw=$($v.Length) trimmed=$($t.Length) sha=$h"
-          }
       - name: Get the app and its submission status
         env:
           TENANT_ID: ${{ secrets.MSSTORE_TENANT_ID }}
