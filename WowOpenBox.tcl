@@ -175,9 +175,13 @@ if {![info exists wobInitDone]} {
 proc CheckForUpdates {silent} {
     global vers update_path settings errorInfo inStore
     if {[info exists inStore] && $inStore} {
+        # no network access from the Store build: the Store checks, when the user wants
         if {!$silent} {
-            WobMessage -type ok -icon info -title "Updates" \
-                -message "This WowOpenBox is from the Microsoft Store, which installs its updates."
+            set ans [WobMessage -type yesno -icon info -title "Updates" \
+                -message "This WowOpenBox ($vers) is from the Microsoft Store, which installs its updates.\n\nOpen its Store page to check for an update now?"]
+            if {$ans eq "yes"} {
+                StorePage
+            }
         }
         return
     }
@@ -1567,8 +1571,18 @@ proc Help {} {
 }
 
 proc Releases {} {
-    global vers
+    global vers inStore
+    if {[info exists inStore] && $inStore} {
+        # the Store installs the new binaries
+        StorePage
+        return
+    }
     twapi::shell_execute -path https://github.com/WowOpenBox/WowOpenBox/releases?v=$vers
+}
+
+# WOB's page in the Microsoft Store app, with its Update button when there's one
+proc StorePage {} {
+    twapi::shell_execute -path ms-windows-store://pdp/?ProductId=9P57VRK9036Q
 }
 
 proc EditSettings {} {
