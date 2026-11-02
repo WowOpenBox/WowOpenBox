@@ -7,16 +7,421 @@
 #
 #  Releases detail/changes are on https://github.com/WowOpenBox/WowOpenBox/releases
 #
+# This script needs the Tcl/Tk 9 .exe. An older .exe runs it after an update or when it's next to it: tell the user
+# to get the new .exe, set the file aside (and restore the previous one), and keep running the old version.
+if {![package vsatisfies [package provide Tcl] 9-]} {
+    # sourced by CheckForUpdates (same detection as further below)
+    set wobUpdateFrame {}
+    catch {set wobUpdateFrame [info frame -1]}
+    apply {{caller} {
+        set script [file normalize [info script]]
+        set update [expr {[dict exists $caller proc] && [dict get $caller proc] eq "::CheckForUpdates"}]
+        catch {file rename -force $script $script.needs-new-exe}
+        set backups [glob -nocomplain $script.*.bak]
+        if {[llength $backups] == 1} {
+            catch {file rename [lindex $backups 0] $script}
+        }
+        set ans [tk_messageBox -type yesno -icon warning -title "WOB2027: new .exe needed" \
+            -message "This WOB2027 update needs the new WOB2027 .exe (Tcl/Tk 9).\n\nDownload and extract the latest WOB2027 zip (Help menu: Get the newest binary release), your current version keeps running until then.\n\nOpen the download page now?"]
+        if {$ans eq "yes"} {
+            catch {twapi::shell_execute -path https://github.com/WowOpenBox/WowOpenBox/releases/latest}
+        }
+        if {!$update} {
+            # started with this file next to the exe: run the exe's own (or the restored) script instead
+            set own [file join [info nameofexecutable] app [file tail $script]]
+            if {[file readable $script]} {
+                set own $script
+            }
+            uplevel #0 [list source -encoding utf-8 $own]
+        }
+    }} $wobUpdateFrame
+    return
+}
 package require Tk
 package require twapi
 package require http
 package require twapi_crypto
 http::register https 443 ::twapi::tls_socket
 package require tooltip
-package require tkdnd
 namespace import tooltip::tooltip
-# tkk native
-ttk::style theme use winnative
+# Native Windows look until the settings pick the appearance (ApplyAppearance)
+ttk::style theme use vista
+
+# -- Appearance: native "vista" ttk theme when light, our palette on "clam" when dark.
+# settings(appearance): auto (follows the Windows app mode, live with Tk 9.1+), light or dark
+proc AppearanceInit {} {
+    global wobDark wobClassicColors wobClassicDbNames wobFieldClasses wobIsDark
+    array set wobDark {
+        bg #202020 fg #e8e8e8 field #2b2b2b border #3c3c3c sel #2f60d8 dis #6a6a6a
+        hover #333333 accent #4c8dff slider #6a6a6a
+    }
+    # Classic (non ttk) widgets options -> wobDark color, changed only while at their default
+    set wobClassicColors {
+        -background bg -foreground fg -activebackground hover -activeforeground fg
+        -highlightbackground bg -highlightcolor accent -selectbackground sel -selectforeground fg
+        -insertbackground fg -disabledforeground dis -readonlybackground field -selectcolor fg
+    }
+    # their option database names
+    set wobClassicDbNames {
+        -background background -foreground foreground -activebackground activeBackground
+        -activeforeground activeForeground -highlightbackground highlightBackground -highlightcolor highlightColor
+        -selectbackground selectBackground -selectforeground selectForeground -insertbackground insertBackground
+        -disabledforeground disabledForeground -readonlybackground readonlyBackground -selectcolor selectColor
+    }
+    # field colored (instead of bg) classic widget classes
+    set wobFieldClasses {Entry Listbox Canvas Text Spinbox}
+    # not applied yet
+    set wobIsDark ""
+}
+AppearanceInit
+
+proc IsDark {} {
+    global settings
+    # settings not loaded yet (<<AppearanceChanged>> can come early): auto
+    set mode auto
+    catch {set mode $settings(appearance)}
+    switch -- $mode {
+        dark {return 1}
+        light {return 0}
+    }
+    return [WindowsAppsDark]
+}
+
+# The Windows app mode (Settings > Personalization > Colors), from the registry like Tk 9.1's `winfo isdark`,
+# which crashes (Tk 9.1.0) for a window not shown yet, like our main window at startup
+proc WindowsAppsDark {} {
+    if {[catch {
+        package require registry
+        registry get {HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize} AppsUseLightTheme
+    } light]} {
+        return 0
+    }
+    expr {$light == 0}
+}
+
+proc DarkClassicColor {class opt} {
+    global wobDark wobClassicColors wobFieldClasses
+    set key [dict get $wobClassicColors $opt]
+    if {$opt eq "-background" && $class in $wobFieldClasses} {
+        set key field
+    }
+    return $wobDark($key)
+}
+
+# Classic widgets of the tree under w: dark colors for options at their default, back to the default when light
+proc ClassicWidgetsColors {w dark} {
+    global wobClassicColors
+    set class [winfo class $w]
+    # ttk widget classes are T<Name> (styled by the theme), the menu bar is drawn by Windows
+    set ttk [expr {[string match T* $class] && $class ni {Toplevel Text}}]
+    if {$w ne ".mbar" && !$ttk} {
+        foreach opt [dict keys $wobClassicColors] {
+            if {[catch {$w configure $opt} spec] || [llength $spec] != 5} {
+                continue
+            }
+            lassign $spec - - - default current
+            set darkColor [DarkClassicColor $class $opt]
+            if {$dark && $current eq $default} {
+                $w configure $opt $darkColor
+            } elseif {!$dark && $current eq $darkColor} {
+                $w configure $opt $default
+            }
+        }
+    }
+    foreach c [winfo children $w] {
+        ClassicWidgetsColors $c $dark
+    }
+}
+
+proc ClamDarkTheme {} {
+    global wobDark
+    array set c [array get wobDark]
+    ttk::style theme use clam
+    ttk::style configure . -background $c(bg) -foreground $c(fg) -fieldbackground $c(field) \
+        -bordercolor $c(border) -lightcolor $c(bg) -darkcolor $c(bg) -troughcolor $c(field) \
+        -selectbackground $c(sel) -selectforeground white -insertcolor $c(fg) -focuscolor $c(accent) \
+        -arrowcolor $c(fg)
+    ttk::style map . -foreground [list disabled $c(dis)] -background [list active $c(hover) disabled $c(bg)]
+    ttk::style configure TButton -background $c(field) -lightcolor $c(field) -darkcolor $c(field) -padding {6 2}
+    ttk::style map TButton -background [list pressed $c(sel) active $c(hover)] \
+        -lightcolor [list pressed $c(sel) active $c(hover)] -darkcolor [list pressed $c(sel) active $c(hover)]
+    ttk::style configure TMenubutton -background $c(field) -lightcolor $c(field) -darkcolor $c(field)
+    ttk::style map TMenubutton -background [list active $c(hover)]
+    foreach s {TCheckbutton TRadiobutton} {
+        ttk::style configure $s -indicatorbackground $c(field) -indicatorforeground white -upperbordercolor $c(border) \
+            -lowerbordercolor $c(border)
+        ttk::style map $s -indicatorbackground [list selected $c(sel) active $c(hover)]
+    }
+    ttk::style configure TEntry -lightcolor $c(field) -darkcolor $c(field)
+    ttk::style map TEntry -bordercolor [list focus $c(accent)]
+    ttk::style configure TScale -background $c(slider) -lightcolor $c(slider) -darkcolor $c(slider) \
+        -troughcolor $c(field) -bordercolor $c(border) -gripsize 0 -gripcount 0
+    ttk::style map TScale -background [list active $c(accent)] -lightcolor [list active $c(accent)] \
+        -darkcolor [list active $c(accent)]
+    ttk::style configure TScrollbar -background $c(slider) -lightcolor $c(slider) -darkcolor $c(slider) \
+        -troughcolor $c(bg) -bordercolor $c(bg) -arrowcolor $c(fg) -gripsize 0 -gripcount 0
+    ttk::style configure TLabelframe -bordercolor $c(border)
+    # flat menu bar (MenuBarAppearance)
+    ttk::style layout WobMenuBar.TMenubutton {
+        Menubutton.border -sticky nswe -children {Menubutton.padding -sticky nswe -children {Menubutton.label}}
+    }
+    ttk::style configure WobMenuBar.TMenubutton -background $c(bg) -lightcolor $c(bg) -darkcolor $c(bg) \
+        -bordercolor $c(bg) -relief flat -padding {8 3} -width 0
+    ttk::style map WobMenuBar.TMenubutton -background [list pressed $c(sel) active $c(hover)] \
+        -lightcolor [list pressed $c(sel) active $c(hover)] -darkcolor [list pressed $c(sel) active $c(hover)] \
+        -bordercolor [list pressed $c(sel) active $c(hover)]
+    ttk::style configure WobMenuBar.TFrame -background $c(bg)
+}
+
+# Windows draws the native menu bar light only: when dark, our own bar (row 0 of the main window) with the same menus
+proc MenuBarAppearance {} {
+    global wobIsDark
+    if {![winfo exists .mbar]} {
+        return
+    }
+    set bar .darkMenuBar
+    catch {destroy $bar}
+    foreach b [bind .] {
+        if {[string match "<Alt-Key-*>" $b] && [string match "*$bar*" [bind . $b]]} {
+            bind . $b {}
+        }
+    }
+    if {$wobIsDark ne "1"} {
+        . configure -menu .mbar
+        DarkMenuResetBackgrounds
+        return
+    }
+    . configure -menu {}
+    ttk::frame $bar -style WobMenuBar.TFrame
+    for {set i 0} {$i <= [.mbar index end]} {incr i} {
+        if {[.mbar type $i] ne "cascade"} {
+            continue
+        }
+        set label [.mbar entrycget $i -label]
+        set mb $bar.m$i
+        pack [ttk::menubutton $mb -text $label -menu [.mbar entrycget $i -menu] -style WobMenuBar.TMenubutton] \
+            -side left
+        if {[info procs ::ttk::menubutton::Popdown] ne ""} {
+            bind $mb <Button-1> {DarkMenuPost %W; break}
+            bind $mb <<Invoke>> {DarkMenuPost %W; break}
+        }
+        # Alt+first letter opens it, like the native bar
+        bind . <Alt-Key-[string tolower [string index $label 0]]> [list event generate $mb <<Invoke>>]
+    }
+    grid $bar -row 0 -column 0 -columnspan 2 -sticky ew
+}
+
+# The dark bar's menus are popups (Windows menu loop, during which our timers still run). Like the native bar:
+# moving to another bar entry opens its menu instead, and the popup's frame (its background brush) is dark too.
+proc DarkMenuInit {} {
+    global env darkMenuSupport
+    if {[info exists darkMenuSupport]} {
+        return $darkMenuSupport
+    }
+    set darkMenuSupport 0
+    if {[catch {
+        package require cffi
+        package require twapi
+        cffi::Wrapper create ::wobMenuUser32 [file join $env(windir) system32 user32.dll]
+        cffi::Wrapper create ::wobMenuGdi32 [file join $env(windir) system32 gdi32.dll]
+        cffi::Struct create ::WobMENUINFO {
+            cbSize ulong fMask ulong dwStyle ulong cyMax uint hbrBack ulonglong dwContextHelpID ulong
+            dwMenuData ulonglong
+        }
+        cffi::Struct create ::WobMENUBARINFO {
+            cbSize ulong left long top long right long bottom long hMenu ulonglong hwndMenu ulonglong flags ulong
+        }
+        # handles as 64 bit ints (win64 binary)
+        ::wobMenuUser32 stdcall {GetMenuBarInfo WobGetMenuBarInfo} int \
+            {hwnd ulonglong idObject long idItem long mbi {struct.WobMENUBARINFO inout}}
+        ::wobMenuUser32 stdcall {SetMenuInfo WobSetMenuInfo} int {hmenu ulonglong mi {struct.WobMENUINFO byref}}
+        ::wobMenuUser32 stdcall {RedrawWindow WobRedrawWindow} int {hwnd ulonglong rect ulonglong rgn ulonglong flags uint}
+        ::wobMenuUser32 stdcall {GetMenuInfo WobGetMenuInfo} int {hmenu ulonglong mi {struct.WobMENUINFO inout}}
+        ::wobMenuUser32 stdcall {EndMenu WobEndMenu} int {}
+        ::wobMenuGdi32 stdcall {CreateSolidBrush WobCreateSolidBrush} ulonglong {color ulong}
+    } err]} {
+        Debug "No dark menu support: $err"
+        return 0
+    }
+    set darkMenuSupport 1
+}
+
+proc DarkMenuPost {mb} {
+    global darkMenuNext darkMenuWatch
+    if {[$mb instate disabled] || [set menu [$mb cget -menu]] eq ""} {
+        return
+    }
+    set darkMenuNext ""
+    $mb state pressed
+    if {[DarkMenuInit]} {
+        set darkMenuWatch [after 1 [list DarkMenuWatch $mb $menu 1]]
+    }
+    # returns once the menu is closed
+    ttk::menubutton::Popdown $mb
+    catch {after cancel $darkMenuWatch}
+    if {[winfo exists $mb]} {
+        $mb state !pressed
+    }
+    if {$darkMenuNext ne "" && [winfo exists $darkMenuNext]} {
+        after idle [list DarkMenuPost $darkMenuNext]
+    }
+}
+
+# Context menus: tk_popup with the dark frame too
+proc WobPopup {menu x y} {
+    global wobIsDark
+    set id ""
+    if {$wobIsDark eq "1" && [DarkMenuInit]} {
+        set id [after 1 [list catch [list DarkMenuBackground $menu]]]
+    }
+    # returns once the menu is closed
+    tk_popup $menu $x $y
+    after cancel $id
+}
+
+proc DarkMenuWatch {mb menu first} {
+    global darkMenuNext darkMenuWatch
+    if {![winfo exists $mb]} {
+        return
+    }
+    if {$first} {
+        catch {DarkMenuBackground $menu}
+    }
+    set w [winfo containing {*}[winfo pointerxy $mb]]
+    if {$w ne "" && $w ne $mb && [winfo parent $w] eq [winfo parent $mb] && [winfo class $w] eq "TMenubutton"} {
+        set darkMenuNext $w
+        WobEndMenu
+        return
+    }
+    set darkMenuWatch [after 50 [list DarkMenuWatch $mb $menu 0]]
+}
+
+# Background brush of the open popup menu (Tk only draws the entries)
+proc DarkMenuBackground {menu} {
+    global darkMenuBrush darkMenuBrushed
+    lassign [winfo rgb $menu [$menu cget -background]] r g b
+    set color [expr {(($b >> 8) << 16) | (($g >> 8) << 8) | ($r >> 8)}]
+    foreach popup [twapi::find_windows -class "#32768" -pids [list [pid]]] {
+        set hwnd [lindex $popup 0]
+        # its menu (OBJID_CLIENT of a popup menu window)
+        set mbi [dict create cbSize [::WobMENUBARINFO size] left 0 top 0 right 0 bottom 0 hMenu 0 hwndMenu 0 flags 0]
+        set hmenu 0
+        if {[WobGetMenuBarInfo $hwnd -4 0 mbi]} {
+            set hmenu [dict get $mbi hMenu]
+        }
+        if {!$hmenu} {
+            continue
+        }
+        if {![info exists darkMenuBrush($color)]} {
+            set darkMenuBrush($color) [WobCreateSolidBrush $color]
+        }
+        # for the reset to light: by menu path, so recreated menus don't add up
+        set darkMenuBrushed($menu) $hmenu
+        set mi [dict create cbSize [::WobMENUINFO size] fMask 2 dwStyle 0 cyMax 0 hbrBack 0 dwContextHelpID 0 \
+            dwMenuData 0]
+        if {[WobGetMenuInfo $hmenu mi] && [dict get $mi hbrBack] == $darkMenuBrush($color)} {
+            continue
+        }
+        DarkMenuSetBrush $hmenu $darkMenuBrush($color)
+        # RDW_INVALIDATE RDW_ERASE RDW_FRAME RDW_ALLCHILDREN RDW_UPDATENOW
+        WobRedrawWindow $hwnd 0 0 0x585
+    }
+}
+
+proc DarkMenuSetBrush {hmenu brush} {
+    # MIM_BACKGROUND | MIM_APPLYTOSUBMENUS
+    WobSetMenuInfo $hmenu [dict create cbSize [::WobMENUINFO size] fMask 0x80000002 dwStyle 0 cyMax 0 \
+        hbrBack $brush dwContextHelpID 0 dwMenuData 0]
+}
+
+# Back to the default background (light)
+proc DarkMenuResetBackgrounds {} {
+    global darkMenuBrushed
+    foreach {menu hmenu} [array get darkMenuBrushed] {
+        if {[winfo exists $menu]} {
+            catch {DarkMenuSetBrush $hmenu 0}
+        }
+    }
+    array unset darkMenuBrushed
+}
+
+# Our own ttk styles: they belong to a theme, so again after each theme change
+proc WobStyles {} {
+    global settings
+    if {[llength [info commands OverlayFontSizes]] && [info exists settings(overlayFontSize1)]} {
+        OverlayFontSizes
+    }
+    ttk::style configure WobHotkeyFailed.TButton -foreground red
+    if {"WOBBold" in [font names]} {
+        ttk::style configure WobHotkeyCapture.TButton -font WOBBold
+        ttk::style configure WobBoldButton.TButton -font WOBBold
+    }
+}
+
+proc TitleBarAppearance {w {again 0}} {
+    global settings
+    # (not on hidden windows: no effect there)
+    if {![winfo exists $w] || [winfo toplevel $w] ne $w || [wm overrideredirect $w] || ![winfo ismapped $w]} {
+        return
+    }
+    # Tk 9.1+, auto follows Windows
+    catch {wm attributes $w -appearance $settings(appearance)}
+    if {$again} {
+        # just mapped: sometimes too early for the title bar to show it, set it again a bit later
+        after 100 [list TitleBarAppearance $w]
+    }
+}
+
+proc AllToplevels {{w .}} {
+    set res {}
+    if {[winfo toplevel $w] eq $w} {
+        lappend res $w
+    }
+    foreach c [winfo children $w] {
+        lappend res {*}[AllToplevels $c]
+    }
+    return $res
+}
+
+proc ApplyAppearance {args} {
+    global wobIsDark wobDark wobClassicColors wobClassicDbNames wobFieldClasses
+    set dark [IsDark]
+    foreach w [AllToplevels] {
+        TitleBarAppearance $w
+    }
+    if {$dark eq $wobIsDark} {
+        return
+    }
+    Debug "Appearance: dark $dark"
+    set wobIsDark $dark
+    if {$dark} {
+        ClamDarkTheme
+        # classic widgets created from now on
+        foreach {opt key} $wobClassicColors {
+            option add *[dict get $wobClassicDbNames $opt] $wobDark($key) widgetDefault
+        }
+        foreach class $wobFieldClasses {
+            option add *$class.background $wobDark(field) widgetDefault
+        }
+    } else {
+        ttk::style theme use vista
+        option clear
+    }
+    WobStyles
+    ClassicWidgetsColors . $dark
+    MenuBarAppearance
+    LayoutRecolor
+}
+
+# Once the settings are loaded: new windows get the forced light/dark title bar too, follow Windows changes
+proc AppearanceBindings {} {
+    # once, the script can be sourced again on update
+    if {[string first TitleBarAppearance [bind all <Map>]] < 0} {
+        bind all <Map> {+TitleBarAppearance %W 1}
+    }
+    bind . <<AppearanceChanged>> ApplyAppearance
+}
+
 
 # start not showing top level for error dialogs
 wm state . withdrawn
@@ -65,12 +470,22 @@ proc EnableDisableWindows {enable} {
 }
 
 
+# Windows' message box is always light: when dark, Tk's own (ttk, so our dark theme)
+proc MessageBox {args} {
+    global wobIsDark
+    if {[info exists wobIsDark] && $wobIsDark eq "1" && ([info procs ::tk::MessageBox] ne ""
+            || [auto_load ::tk::MessageBox])} {
+        return [::tk::MessageBox {*}$args]
+    }
+    tk_messageBox {*}$args
+}
+
 proc WobMessage {args} {
     global hotkeyOk
     set hotkeyOk 0
     Debug "WOB message $args"
     EnableDisableWindows 0
-    set ret [tk_messageBox {*}$args]
+    set ret [MessageBox {*}$args]
     EnableDisableWindows 1
     set hotkeyOk 1
     return $ret
@@ -142,6 +557,11 @@ if {![info exists wobInitDone]} {
     Debug "Original app_dir: $app_dir (script [info script])"
     # Normalize appdir in case we're inside the binary
     set inExe [regsub -nocase {/[^/]+\.exe/app$} $app_dir {} app_dir]
+    # Tcl 9 exe: its zip is mounted at //zipfs:/app (and we're in its app/)
+    if {!$inExe && [string match -nocase "//zipfs:/app/*" $app_dir]} {
+        set app_dir [file dirname [file normalize [info nameofexecutable]]]
+        set inExe 1
+    }
     Debug "Post exe detection app_dir: $app_dir"
     set inStore 0
     if {$inExe} {
@@ -288,6 +708,8 @@ proc NewProfile {} {
     ttk::button $t.ok -text OK -command {set doneDialog 1}
     ttk::button $t.cancel -text Cancel -command "set profileName {}; set doneDialog 1"
     bind $t.e <Escape> "$t.cancel invoke"
+    # closing the window cancels (else waits forever with the main window busy)
+    wm protocol $t WM_DELETE_WINDOW "$t.cancel invoke"
     grid $t.l - -sticky news -padx 4 -pady 4
     grid $t.e - -sticky news -padx 4 -pady 4
     grid $t.ok $t.cancel -padx 4 -pady 4
@@ -748,18 +1170,19 @@ proc UISetup {} {
         if {$skin} {
             set txt "Opensource\nMulti\nBoxing"
         }
-        grid [ttk::label .logo -text $txt] -rowspan 3
+        grid [ttk::label .logo -text $txt] -row 1 -column 0 -rowspan 3
     } else {
-        grid [ttk::label .logo] -rowspan 3 -pady 6 -padx 12
+        grid [ttk::label .logo] -row 1 -column 0 -rowspan 3 -pady 6 -padx 12
         bind .logo <ButtonPress> SwitchLogo
         SwitchLogo
     }
+    # (row 0 is for the dark mode menu bar, MenuBarAppearance)
     set labelW 18
-    grid [ttk::button .bH -text "Help" -width $labelW -command Help]  -row 0 -column 1 -padx 4
+    grid [ttk::button .bH -text "Help" -width $labelW -command Help]  -row 1 -column 1 -padx 4
     tooltip .bH "Opens online help page"
-    grid [ttk::button .bwl -text "Window Layout" -width $labelW -command WindowLayout] -row 1 -column 1
+    grid [ttk::button .bwl -text "Window Layout" -width $labelW -command WindowLayout] -row 2 -column 1
     tooltip .bwl "View or change the Window Layout"
-    grid [ttk::button .b1  -text "Edit Settings" -width $labelW -command EditSettings] -row 2 -column 1
+    grid [ttk::button .b1  -text "Edit Settings" -width $labelW -command EditSettings] -row 3 -column 1
     tooltip .b1 "Opens the editor to edit raw settings\nand reload them after save.\nHotkeys are changed with File > Hotkeys..."
     # label width - enough to fit "-9999 -9999"
     set width 10
@@ -779,7 +1202,7 @@ proc UISetup {} {
 
     if {$hasRR} {
         grid [frame .sepRR -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
-        grid [ttk::label .lRR -text "⟳ Round robin settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
+        grid [ttk::label .lRR -text "⟳ Round robin settings:" -font WOBBold -anchor sw] -padx 4 -columnspan 2 -sticky w
         grid [ttk::checkbutton .cbRR -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
         grid [ttk::label .lrrK -text "Round Robin to all windows keys:"] -padx 4 -columnspan 2 -sticky w
         grid [entry .eRR -textvariable settings(rrKeyListAll) -width $width] -columnspan 2 -padx 4 -sticky ew
@@ -807,7 +1230,7 @@ proc UISetup {} {
     }
 
     grid [frame .sep2 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
-    grid [ttk::label .l6 -text "🖰 Mouse settings:" -font "*-*-bold" -anchor sw] -padx 4 -columnspan 2 -sticky w
+    grid [ttk::label .l6 -text "🖰 Mouse settings:" -font WOBBold -anchor sw] -padx 4 -columnspan 2 -sticky w
     grid [ttk::checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
 #    grid [ttk::label .lmd -text "Delay (ms)"] [entry .emd -textvariable mouseDelay -width $width]  -padx 4 -sticky w
 #    tooltip .emd "Focus follow mouse activation delay\nHit <Return> after change to take effect."
@@ -816,7 +1239,8 @@ proc UISetup {} {
     grid [ttk::label .l_bottom -textvariable bottomText -justify center -anchor c] -padx 2 -columnspan 2
     bind .l_bottom <ButtonPress> [list CheckForUpdates 0]
     tooltip .l_bottom "Click to check for update from $vers"
-    grid rowconfigure . 9 -weight 1
+    # the captured windows list
+    grid rowconfigure . 10 -weight 1
     grid columnconfigure . 1 -weight 1
     UpdateHotkeyTexts
 }
@@ -1031,6 +1455,10 @@ proc MenuSetup {} {
     $m3 add separator
     $m3 add checkbutton -label "Pause when mouse is outside windows" -variable settings(mouseOutsideWindowsPauses)
     $m3 add checkbutton -label "Focus back when mouse in game window" -variable settings(mouseInsideGameWindowFocuses)
+    $m3 add separator
+    foreach {v label} {auto "Appearance: same as Windows" light "Appearance: light" dark "Appearance: dark"} {
+        $m3 add radiobutton -label $label -value $v -variable settings(appearance) -command "ApplyAppearance; SaveSettings"
+    }
 
     menu .mbar.help -tearoff 0
     .mbar add cascade -label Help -menu .mbar.help
@@ -1041,6 +1469,7 @@ proc MenuSetup {} {
     .mbar.help add command -label "Get the newest binary release..." -command Releases
     .mbar.help add command -label "Check for update" -command [list CheckForUpdates 0]
     .mbar.help add command -label About -command About
+    MenuBarAppearance
  }
 
 proc MouseTracking {} {
@@ -1362,7 +1791,7 @@ proc ContextMenu {n x y} {
     catch {destroy .ctx}
     menu .ctx -tearoff 0
     .ctx add command -label "Forget WoW $n..." -command [list Forget $n]
-    tk_popup .ctx $x $y
+    WobPopup .ctx $x $y
 }
 
 proc Forget {n} {
@@ -2986,6 +3415,26 @@ proc ConstrainWindow {x1 y1 x2 y2 aspectRatio} {
     return [list $x1 $y1 [expr $x1+$wA] $y2]
 }
 
+# Game windows in the layout: yellow, more orange when stay on top; muted when dark
+proc LayoutWindowColor {pinned} {
+    global wobIsDark
+    if {[info exists wobIsDark] && $wobIsDark eq "1"} {
+        return [lindex {#b8962e #b07d12} $pinned]
+    }
+    lindex {#ffd633 #ffcc00} $pinned
+}
+
+proc LayoutRecolor {} {
+    global sot
+    set c .layout.c
+    if {![winfo exists $c]} {
+        return
+    }
+    foreach id [array names sot] {
+        $c itemconfigure wow$id&&wowWindow -fill [LayoutWindowColor $sot($id)]
+    }
+}
+
 proc SetWindowOnCanvas {id x1 y1 x2 y2} {
     global sot stayOnTop settings
     set c .layout.c
@@ -2997,7 +3446,7 @@ proc SetWindowOnCanvas {id x1 y1 x2 y2} {
     lappend tags "wowWindow"
     set w [expr {$x2-$x1}]
     set h [expr {$y2-$y1}]
-    $c create rectangle $x1 $y1 $x2 $y2 -fill #ffd633 -tags $tags
+    $c create rectangle $x1 $y1 $x2 $y2 -fill [LayoutWindowColor 0] -tags $tags
     set pin ""
     set hasPin $stayOnTop
     if {[info exists settings($id,stayOnTop)]} {
@@ -3006,10 +3455,10 @@ proc SetWindowOnCanvas {id x1 y1 x2 y2} {
     if {$hasPin} {
         set pin "📌"
         set sot($id) 1
-        after idle "$c raise $tag; $c raise mirrorShape; $c itemconfigure $tag&&wowWindow -fill #ffcc00"
+        after idle "$c raise $tag; $c raise mirrorShape; $c itemconfigure $tag&&wowWindow -fill [LayoutWindowColor 1]"
     } else {
         set sot($id) 0
-        after idle "$c itemconfigure $tag&&wowWindow -fill #ffd633"
+        after idle "$c itemconfigure $tag&&wowWindow -fill [LayoutWindowColor 0]"
     }
     $c create text $x1 $y1 -text "\n   ${pin}WoW $id${pin}\n   $w x $h" -anchor "nw" -tags $txtTags
     Debug "Window $id $x1,$y1 $x2,$y2 ($tags)"
@@ -3080,9 +3529,9 @@ proc UpdateWindowText {tag w h} {
     set pin ""
     if {$sot($id)} {
         set pin "📌"
-        after idle "$c raise $tag; $c raise mirrorShape; $c itemconfigure $tag&&wowWindow -fill #ffcc00"
+        after idle "$c raise $tag; $c raise mirrorShape; $c itemconfigure $tag&&wowWindow -fill [LayoutWindowColor 1]"
     } else {
-        after idle "$c itemconfigure $tag&&wowWindow -fill #ffd633"
+        after idle "$c itemconfigure $tag&&wowWindow -fill [LayoutWindowColor 0]"
     }
     $c itemconfigure $t -text "\n   ${pin}WoW $id${pin}\n   $w x $h"
 }
@@ -3426,17 +3875,17 @@ proc OverlayConfig {} {
     grid [ttk::checkbutton $tw.clickable -text "Clickable overlay" -variable settings(overlayClickable) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
     grid [ttk::checkbutton $tw.bigAll -text "Click to swap all area on windows 2+" -variable settings(overlayAllClickable) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
     if {$hasRR} {
-        grid [ttk::label $tw.lr1 -text "Round Robin indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
+        grid [ttk::label $tw.lr1 -text "Round Robin indicator:" -font WOBBold -anchor w] -columnspan 3 -sticky ew -padx 6
         grid [ttk::label $tw.lr2 -text "Label:" -anchor e] [entry $tw.re1 -width 5 -textvariable settings(rrIndicator,label)] -sticky ew -padx 6
         bind $tw.re1 <Return> "RRUpdate; SaveSettings"
         tooltip $tw.re1 "What is shown when RR is on"
     }
-    grid [ttk::label $tw.lm1 -text "Mouse Focus indicator:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
+    grid [ttk::label $tw.lm1 -text "Mouse Focus indicator:" -font WOBBold -anchor w] -columnspan 3 -sticky ew -padx 6
     grid [ttk::label $tw.lm2 -text "Label:" -anchor e] [entry $tw.me1 -width 5 -textvariable settings(mfIndicator,label)] -sticky ew -padx 6
     tooltip $tw.me1 "What is shown when Focus Follow Mouse is on"
     bind $tw.me1 <Return> "AddMouseToRRLabel; SaveSettings"
     if {$hasRR} {
-        grid [ttk::label $tw.lp1 -text "⟳ and 🖰 indicators position:" -font "*-*-bold" -anchor w] -columnspan 3 -sticky ew -padx 6
+        grid [ttk::label $tw.lp1 -text "⟳ and 🖰 indicators position:" -font WOBBold -anchor w] -columnspan 3 -sticky ew -padx 6
     }
     grid [ttk::label $tw.lr3 -text "X:" -anchor e] [entry $tw.re2 -width 5 -textvariable settings(rrIndicator,x)] -sticky ew -padx 6
     bind $tw.re2 <Return> OverlayIndicatorPlace
@@ -4873,7 +5322,7 @@ proc MirrorMenu {i x y} {
     $mn add separator
     $mn add command -label "Delete" -command [list MirrorDelete $i]
     $mn add command -label "Done editing" -command {MirrorsEdit 0}
-    tk_popup $mn $x $y
+    WobPopup $mn $x $y
 }
 
 proc MirrorChangeSource {i} {
@@ -5095,6 +5544,7 @@ for {set i 1} {$i<=12} {incr i} {
 }
 
 array set settings {
+    appearance auto
     hk,capture "Ctrl-Shift-C"
     hk,mouseTrack "Ctrl-Shift-M"
     hk,focusNextWindow "Ctrl-Shift-N"
@@ -5175,6 +5625,9 @@ array set hotkeyDefaults [array get settings hk*,*]
 
 
 # globals
+# default appearance (follows Windows) already for the duplicate error
+ApplyAppearance
+AppearanceBindings
 FindOtherCopy
 if {![info exists pos]} {
     # position of the next move window
@@ -5210,6 +5663,8 @@ if {[info exists initProfile]} {
     unset initProfile
     LoadProfile
 }
+ApplyAppearance
+AppearanceBindings
 
 if {$settings(captureForegroundWindow) || $settings(game) != "World of Warcraft"} {
     set skin 1
