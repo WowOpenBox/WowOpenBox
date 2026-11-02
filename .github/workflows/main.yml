@@ -25,7 +25,7 @@ jobs:
       - name: Checkout tools repo
         uses: actions/checkout@v4
         with:
-          repository: WowOpenBox/BuildKit
+          repository: OpenMultiBoxing/BuildKit
           path: buildkit
 
       - name: Get and set the version
@@ -50,7 +50,7 @@ jobs:
         run: |
           cd buildkit
           cp ..\WowOpenBox.tkapp OpenMultiBoxing.vfs\app
-          .\build.ps1 -Out WOB2027-${{ steps.get_version.outputs.VERSION }}.exe -Version ${{ steps.get_version.outputs.VERSION }}
+          .\build.ps1 -Out WOB2027-${{ steps.get_version.outputs.VERSION }}.exe -Version ${{ steps.get_version.outputs.VERSION }} -Assets ..\msix\Assets -Inf wob.inf
           Compress-Archive -Path WOB2027-${{ steps.get_version.outputs.VERSION }}.exe,..\README.txt,..\launchwow.bat,..\launchwowc.bat -DestinationPath WOB2027-${{ steps.get_version.outputs.VERSION }}.zip
       # before any release is made: the tests with the new exe
       - name: Tests
