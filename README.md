@@ -65,3 +65,7 @@ Then start your game windows (e.g World of Warcraft, Classic, Wrath or Dragonfli
 Want to compare MultiBoxing solutions: See the [Analysis Matrix](https://github.com/WowOpenBox/WowOpenBox/wiki/compare) in our Wiki (feedback welcome).
 
 Also checkout our [FAQ](https://github.com/WowOpenBox/WowOpenBox/wiki/FAQ)
+
+In dark mode (WOB2027 v4.14.0+, Option menu > Appearance):
+
+![WOB dark mode Screenshot](https://wowopenbox.org/wob2027_4_14.png?src=github)
