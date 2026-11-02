@@ -823,7 +823,7 @@ proc WriteSettingsFile {path content} {
         set where ""
     }
     WobError "Error saving settings" \
-        "Unable to save the settings to\n[file nativename $path]\n($err)\n\n${where}Most likely Windows Security's \"Controlled folder access\" (Ransomware protection) blocked it: it stops apps it doesn't know from changing files in Documents, Desktop... (Windows shows \"Unauthorized changes blocked\"). To allow WOB2027: Windows Security > Virus & threat protection > Protection history, open the \"Protected folder access blocked\" entry, Actions > Allow on device.\n\nUntil then your changes aren't saved (this message is shown once)."
+        "Unable to save the settings to\n[file nativename $path]\n($err)\n\n${where}Most likely Windows Security's \"Controlled folder access\" blocked it: it stops apps it doesn't know from changing files in Documents, Desktop... (Windows shows \"Unauthorized changes blocked\"). To allow WOB2027: Windows Security > Virus & threat protection > Protection history, open the \"Protected folder access blocked\" entry, Actions > Allow on device.\n\nUntil then your changes aren't saved (this message is shown once)."
     return 0
 }
 
