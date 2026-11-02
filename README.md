@@ -23,6 +23,7 @@ See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMult
 
 ## Main features
 
+- **Dark mode** (WOB2027 v4.14.0+, needs its new .exe): Option menu > Appearance: same as Windows (the default, follows it when you change it), light or dark. See the [help](https://wowopenbox.org/help#appearance-dark-mode).
 - Window Layout wizard and manual tweaking; get your game windows exactly how you want them to be to play.
    - Save different layouts as profiles (File > New Profile...) and cycle through them with the Ctrl-Shift-L (next) and Ctrl-Shift-Alt-L (previous) hotkeys. Pick which profiles are in the rotation with Profile > "Profiles in rotation..." (all but Default by default).
 - Instant swapping of windows; with keyboard hotkeys for fast switching to the next or any specific window.
