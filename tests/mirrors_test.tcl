@@ -137,6 +137,16 @@ Click 5000
 Check "later click swaps back" $mainSet {1 1}
 destroy .lmirror2
 
+# opacity setting: missing means opaque, alpha stays below 1.0 (layered for click through)
+set settings(mirrors) [list [dict create source 1 area {0 0 1 1} geom {0 0 10 10} top 1] \
+    [dict create source 1 area {0 0 1 1} geom {0 0 10 10} top 1 opacity 60] \
+    [dict create source 1 area {0 0 1 1} geom {0 0 10 10} top 1 opacity 0] \
+    [dict create source 1 area {0 0 1 1} geom {0 0 10 10} top 1 opacity bad]]
+Check "opacity default" [list [MirrorOpacity 0] [MirrorAlpha 0]] {100 0.99}
+Check "opacity set" [list [MirrorOpacity 1] [MirrorAlpha 1]] {60 0.6}
+Check "opacity clamped" [MirrorOpacity 2] 10
+Check "opacity invalid" [MirrorOpacity 3] 100
+
 # mirrors shown in the Window Layout window
 set settings(mirrors) [list [dict create source 1 area {0 0 1 1} geom {0 0 10 10} top 1] \
     [dict create source main area {0 0 1 1} geom {0 0 10 10} top 1]]
