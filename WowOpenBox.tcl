@@ -2017,7 +2017,6 @@ proc Focus {wh} {
 proc Foreground {wh} {
     twapi::set_foreground_window $wh
 }
-
 proc Help {} {
     global vers
     twapi::shell_execute -path https://wowopenbox.org/help?v=$vers
@@ -4711,10 +4710,10 @@ proc UpdateMouseDelay {} {
 #   geom: {x y w h} of the mirror on screen
 #   top: stay on top
 #   opacity: optional percentage, see MirrorAlpha
+#   focus: optional, see MirrorFocuses
 if {![info exists mirrorEdit]} {
     set mirrorEdit 0
 }
-
 # Returns 1 if the binary has cffi (needed to call the DWM functions)
 proc MirrorInit {} {
     global env mirrorNoSupport
@@ -4890,6 +4889,8 @@ proc MirrorDetach {i} {
 
 proc MirrorHide {i} {
     MirrorDetach $i
+    # not activating when shown again (MirrorRefresh)
+    catch {MirrorClickThrough .mirror$i 1}
     wm withdraw .mirror$i
 }
 
@@ -4908,8 +4909,40 @@ proc MirrorAlpha {i} {
     expr {min(0.99, [MirrorOpacity $i]/100.)}
 }
 
-# Clicks go through the mirror unless in edit mode; never takes focus nor shows in the taskbar
-proc MirrorClickThrough {t on} {
+# Whether mirror i gives the focus to its source window when clicked, or entered with focus
+# follows mouse (see MirrorStyle). On by default in WOB: the way to give the keys to that window
+proc MirrorFocuses {i} {
+    global settings
+    set m [lindex $settings(mirrors) $i]
+    if {[dict exists $m focus]} {
+        return [expr {[dict get $m focus] ? 1 : 0}]
+    }
+    return 1
+}
+
+# Shown mirror under the mouse ("" if none), the last one (created last, on top) if they overlap
+proc MirrorUnderMouse {} {
+    global settings
+    if {!$settings(mirrorsShown) || [catch {twapi::get_mouse_location} coords]} {
+        return ""
+    }
+    lassign $coords x y
+    for {set i [expr {[llength $settings(mirrors)]-1}]} {$i >= 0} {incr i -1} {
+        set t .mirror$i
+        if {[winfo exists $t] && [winfo ismapped $t]} {
+            set l [winfo rootx $t]
+            set tp [winfo rooty $t]
+            if {$x >= $l && $x < $l+[winfo width $t] && $y >= $tp && $y < $tp+[winfo height $t]} {
+                return $i
+            }
+        }
+    }
+    return ""
+}
+
+# Clicks go through the mirror when on; never shows in the taskbar, never takes the focus unless
+# activates (it then gives it to its source window, see MirrorActivated)
+proc MirrorClickThrough {t on {activates 0}} {
     set wh [list [expr {[wm frame $t]}] HWND]
     lassign [twapi::get_window_style $wh] style exstyle
     # WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT (needs WS_EX_LAYERED, from -alpha)
@@ -4917,7 +4950,52 @@ proc MirrorClickThrough {t on} {
     if {$on} {
         set ex [expr {$ex | 0x20}]
     }
+    if {$activates} {
+        set ex [expr {$ex & ~0x08000000}]
+    }
     twapi::set_window_style $wh $style $ex
+}
+
+# Outside edit mode, a mirror with the focus option catches the mouse and can be activated: Windows
+# only lets us give the focus to another window when we got the last input (a hotkey...), not when
+# the mouse just enters the mirror, but the mirror being activated (a click, or Windows' focus follows
+# mouse, which would otherwise activate the window under it) makes us the foreground window. Others
+# let the mouse through
+proc MirrorStyle {i} {
+    global mirrorEdit
+    set t .mirror$i
+    $t configure -cursor [expr {$mirrorEdit ? "fleur" : "arrow"}]
+    MirrorClickThrough $t [MirrorPassThrough $i] [MirrorActivates $i]
+}
+
+proc MirrorPassThrough {i} {
+    global mirrorEdit
+    expr {!$mirrorEdit && ![MirrorFocuses $i]}
+}
+
+proc MirrorActivates {i} {
+    global mirrorEdit
+    expr {!$mirrorEdit && [MirrorFocuses $i]}
+}
+
+# Mirror i got activated: gives the focus to its source window (only with the mouse in it, e.g.
+# not when it's shown)
+proc MirrorActivated {i} {
+    global settings
+    if {![MirrorActivates $i] || [MirrorUnderMouse] ne $i} {
+        return
+    }
+    set n [MirrorSourceSlot [dict get [lindex $settings(mirrors) $i] source]]
+    Debug "Mirror $i activated, focusing WoW $n"
+    CheckWindow [list FocusN $n true] $n
+}
+
+# Edit mode mouse actions on mirror i (outside of it, only mirrors with the focus option get them)
+proc MirrorEditOnly {args} {
+    global mirrorEdit
+    if {$mirrorEdit} {
+        {*}$args
+    }
 }
 
 proc MirrorCreate {i} {
@@ -4931,16 +5009,18 @@ proc MirrorCreate {i} {
         # hidden until MirrorClickThrough made it non activating (MirrorRefresh shows it)
         wm withdraw $t
         wm overrideredirect $t 1
-        bind $t <ButtonPress-1> [list MirrorDragStart $i %X %Y]
-        bind $t <B1-Motion> [list MirrorDrag $i %X %Y]
-        bind $t <Motion> [list MirrorCursor $i %x %y]
-        bind $t <ButtonRelease-1> [list MirrorDragEnd $i]
-        bind $t <MouseWheel> [list MirrorZoom $i %D]
-        bind $t <ButtonPress-3> [list MirrorMenu $i %X %Y]
+        bind $t <ButtonPress-1> [list MirrorEditOnly MirrorDragStart $i %X %Y]
+        bind $t <B1-Motion> [list MirrorEditOnly MirrorDrag $i %X %Y]
+        bind $t <Motion> [list MirrorEditOnly MirrorCursor $i %x %y]
+        bind $t <ButtonRelease-1> [list MirrorEditOnly MirrorDragEnd $i]
+        bind $t <MouseWheel> [list MirrorEditOnly MirrorZoom $i %D]
+        bind $t <ButtonPress-3> [list MirrorEditOnly MirrorMenu $i %X %Y]
+        bind $t <FocusIn> [list MirrorActivated $i]
     }
     wm attributes $t -topmost [dict get $m top] -alpha [MirrorAlpha $i]
     wm geometry $t ${w}x$h+$x+$y
     update idletasks
+    # not activating until shown (MirrorRefresh)
     MirrorClickThrough $t [expr {!$mirrorEdit}]
 }
 
@@ -4968,7 +5048,7 @@ proc MirrorRefresh {i} {
     if {[wm state $t] ne "normal"} {
         wm deiconify $t
         update idletasks
-        MirrorClickThrough $t [expr {!$mirrorEdit}]
+        MirrorStyle $i
     }
     lassign [dict get $m geom] x y w h
     lassign [MirrorSourceRect [dict get $m area] $cw $ch] l tp r bt
@@ -5151,7 +5231,7 @@ proc MirrorsEdit {on} {
     set mirrorEdit $on
     for {set i 0} {[winfo exists .mirror$i]} {incr i} {
         if {[wm state .mirror$i] eq "normal"} {
-            MirrorClickThrough .mirror$i [expr {!$on}]
+            MirrorStyle $i
         }
     }
     MirrorsRefreshAll
@@ -5350,7 +5430,7 @@ proc MirrorZoom {i delta} {
 }
 
 proc MirrorMenu {i x y} {
-    global settings mirrorMenuSource mirrorMenuTop mirrorMenuOpacity
+    global settings mirrorMenuSource mirrorMenuTop mirrorMenuOpacity mirrorMenuFocus
     set mn .mirrorMenu
     destroy $mn
     menu $mn -tearoff 0
@@ -5376,6 +5456,8 @@ proc MirrorMenu {i x y} {
     $mn add cascade -label "Opacity (now $mirrorMenuOpacity%)" -menu $mn.opacity
     $mn add checkbutton -label "Stay on top" -variable mirrorMenuTop -command [list MirrorChangeTop $i]
     $mn add separator
+    set mirrorMenuFocus [MirrorFocuses $i]
+    $mn add checkbutton -label "Click or focus follows mouse focuses the source window" -variable mirrorMenuFocus -command [list MirrorChangeFocus $i]
     $mn add radiobutton -label "Source: main window" -value main -variable mirrorMenuSource -command [list MirrorChangeSource $i]
     for {set n 1} {$n <= $settings(numWindows)} {incr n} {
         $mn add radiobutton -label "Source: WoW $n" -value $n -variable mirrorMenuSource -command [list MirrorChangeSource $i]
@@ -5397,6 +5479,12 @@ proc MirrorChangeTop {i} {
     global mirrorMenuTop
     MirrorSet $i top $mirrorMenuTop
     wm attributes .mirror$i -topmost $mirrorMenuTop
+    MirrorSaveSoon
+}
+
+proc MirrorChangeFocus {i} {
+    global mirrorMenuFocus
+    MirrorSet $i focus $mirrorMenuFocus
     MirrorSaveSoon
 }
 
@@ -5585,7 +5673,9 @@ proc MirrorsDialog {} {
         append help "While this window is open (edit mode), drag mirrors to move them,\n"
         append help "drag their sides to extend or shrink the mirrored area,\n"
         append help "use the mouse wheel to zoom and right click for options.\n"
-        append help "Otherwise mirrors let mouse clicks through."
+        append help "Otherwise clicking a mirror, or just moving the mouse into it with\n"
+        append help "focus follows mouse, focuses its source window (right click option;\n"
+        append help "when off, the mirror lets mouse clicks through)."
         grid [ttk::label $tw.l -justify left -text $help] -padx 8 -pady 6 -sticky w
         grid [ttk::button $tw.add -text "Add a mirror: click a window, then drag the area to mirror..." -command MirrorPick] -padx 8 -pady 4 -sticky we
         grid [ttk::checkbutton $tw.edit -text "Edit mode" -variable mirrorEdit -command {MirrorsEdit $mirrorEdit}] -padx 8 -sticky w
