@@ -785,6 +785,7 @@ proc SaveSettings {args} {
         if {![WriteSettingsFile $pf $content]} {
             return
         }
+        return
     }
     Debug "SaveSettings base $SETTINGS_FILE (from cb $args)"
     set content "array set settings \{\n"
