@@ -16,9 +16,12 @@ Extract all the files into any same normal folder (not Program Files or system f
 The RR feature has been completely removed in fear of non compliance with
 Blizzard's multiboxing policy (without being able to confirm it despite years of asking).
 
-Right click edit and configure launchwow.bat to match your desires, if you prefer
-that to using Battle.net launcher (see links above for tradeoffs). Make multiple copies
+Right click edit and configure launchwow.bat (launchwowc.bat for classic,
+launchwowf.bat for _forever_) to match your desires, if you prefer that to using
+Battle.net launcher (see links above for tradeoffs). Make multiple copies
 for different sets of teams and change the TEAM variable value to make it unique.
+Read LaunchWoW.txt first: what they do and why to set up your basic WoW settings
+before the first use.
 
 Watch setup video on youtube:
 https://youtube.com/playlist?list=PLlutLO8wozeLm5zh4Fzk_bHRuf_3zqhA_
