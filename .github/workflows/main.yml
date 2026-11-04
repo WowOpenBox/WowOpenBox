@@ -51,7 +51,7 @@ jobs:
           cd buildkit
           cp ..\WowOpenBox.tkapp OpenMultiBoxing.vfs\app
           .\build.ps1 -Out WOB2027-${{ steps.get_version.outputs.VERSION }}.exe -Version ${{ steps.get_version.outputs.VERSION }} -Assets ..\msix\Assets -Inf wob.inf
-          Compress-Archive -Path WOB2027-${{ steps.get_version.outputs.VERSION }}.exe,..\README.txt,..\launchwow.bat,..\launchwowc.bat -DestinationPath WOB2027-${{ steps.get_version.outputs.VERSION }}.zip
+          Compress-Archive -Path WOB2027-${{ steps.get_version.outputs.VERSION }}.exe,..\README.txt,..\LaunchWoW.txt,..\launchwow.bat,..\launchwowc.bat,..\launchwowf.bat -DestinationPath WOB2027-${{ steps.get_version.outputs.VERSION }}.zip
       # before any release is made: the tests with the new exe
       - name: Tests
         run: OMB_EXE=buildkit/WOB2027-${{ steps.get_version.outputs.VERSION }}.exe bash tests/run.sh
