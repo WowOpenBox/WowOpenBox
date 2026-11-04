@@ -1510,12 +1510,14 @@ proc MenuSetup {} {
     .mbar add cascade -label File -menu $m1
     $m1 add command -label "New Profile..." -command NewProfile
     $m1 add command -label "Hotkeys..." -command HotkeysDialog
+    $m1 add command -label "Mirrors..." -command MirrorsDialog
+    $m1 add separator
+    $m1 add command -label "Open settings folder" -command OpenSettingsFolder
     $m1 add command -label "Edit raw settings..." -command EditSettings
     $m1 add command -label "Save settings" -command SaveSettings
     $m1 add command -label "Reload settings" -command LoadSettings
     $m1 add separator
     $m1 add command -label "Clipboard copy/paster..." -command ClipboardManager
-    $m1 add command -label "Mirrors..." -command MirrorsDialog
     $m1 add separator
     $m1 add command -label "Reset all windows ([HK resetAll])" -command ResetAll
     $m1 add separator
@@ -2130,6 +2132,19 @@ proc EditSettings {} {
     SaveSettings
     twapi::shell_execute -path notepad.exe -params [ProfileFileName $settings(profile)]
     .b1 configure -text "Reload Settings" -command LoadSettings
+}
+
+# The folder with the settings files (Documents\WowOpenBox for the Store version, with the launch .bat files)
+proc OpenSettingsFolder {} {
+    global app_dir
+    set dir [file nativename $app_dir]
+    if {[catch {twapi::shell_execute -path $dir} err]} {
+        Debug "Opening $dir failed: $err"
+        clipboard clear
+        clipboard append $dir
+        WobError "WOB2027 folder error" \
+            "Unable to open ($err)\n\n$dir\n\nThat path is now in the clipboard: paste it in the address bar of File Explorer."
+    }
 }
 
 # Hotkeys
