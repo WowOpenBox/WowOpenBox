@@ -1122,8 +1122,11 @@ proc AfterSettings {} {
     }
     RegisterAllHotkeys
     # Set mouse control to current values
-    global mouseFollow mouseRaise mouseDelay
-    set mouseFollow [GetFocusFollowMouse]
+    global mouseFollow mouseRaise mouseDelay isPaused
+    # While paused (mouse outside the game windows) Windows' setting is off whatever the user's choice is
+    if {![info exists mouseFollow] || ![info exists isPaused] || !$isPaused} {
+        set mouseFollow [GetFocusFollowMouse]
+    }
     # Delay to restore when turning focus follow mouse off: don't capture our own
     # settings(mouseDelay) as the user's (on reload or when left on by a previous run)
     set curDelay [GetMouseDelay]
@@ -1137,8 +1140,6 @@ proc AfterSettings {} {
     Debug "Settings (re)Loaded."
 }
 
-set prevMF 0
-
 proc MouseFollowToggle {} {
     global mouseFollow
     set mouseFollow [expr {1-$mouseFollow}]
@@ -1146,12 +1147,11 @@ proc MouseFollowToggle {} {
 }
 
 proc RevertMouseFollow {} {
-    global mouseDelay settings prevMF mouseFollow
+    global mouseDelay settings mouseFollow
     if {!$settings(mouseFocusOffAtExit)} {
-        if {$prevMF} {
+        if {$mouseFollow} {
             Debug "Keeping mouse focus mode on on exit"
-            set mouseFollow 1
-            UpdateMouseFollow
+            ApplyMouseFollow 1
         }
         return
     }
@@ -1707,7 +1707,7 @@ set isPaused 0
 set pauseSchedule {}
 
 proc PeriodicChecks {} {
-    global settings isPaused prevRR prevMF prevOL prevRRMouse hasRR rrOn rrMouse mouseFollow maxNumW pauseSchedule lastFocusWindow slot2handle
+    global settings isPaused prevRR prevOL prevRRMouse hasRR rrOn rrMouse mouseFollow maxNumW pauseSchedule lastFocusWindow slot2handle
     after cancel $pauseSchedule
     set pauseSchedule {}
     set freeSlot [FirstFreeSlot]
@@ -1729,13 +1729,11 @@ proc PeriodicChecks {} {
         Debug "Change of window from $isPaused to $shouldPause"
         if {$shouldPause} {
             set prevRR 0
-            set prevMF 0
             set prevOL 0
             set prevRRMouse 0
+            # Windows' setting only: the checkbox keeps showing the user's choice
             if {$mouseFollow} {
-                set mouseFollow 0
-                UpdateMouseFollow
-                set prevMF 1
+                ApplyMouseFollow 0
             }
             if {[info exists rrMouse] && $rrMouse} {
                 set prevRRMouse 1
@@ -1751,17 +1749,15 @@ proc PeriodicChecks {} {
             }
             # can't seem to raise our own window...
         } else {
-            Debug "Restoring $prevRR $prevMF $prevOL $prevRRMouse"
+            Debug "Restoring $prevRR $mouseFollow $prevOL $prevRRMouse"
             if {$prevRR && !$rrOn} {
                 RRToggle
             }
             if {$prevRRMouse} {
                 set rrMouse 1
             }
-            if {$prevMF} {
-                set mouseFollow 1
-                UpdateMouseFollow
-                set prevMF 0
+            if {$mouseFollow} {
+                ApplyMouseFollow 1
             }
             if {$prevOL} {
                 set settings(showOverlay) 1
@@ -4895,16 +4891,25 @@ proc AddMouseToRRLabel {} {
     }
 }
 
+# Checkbox/hotkey/broadcast changes of mouseFollow: while paused, Windows' setting stays off until the
+# mouse is back in a game window (PeriodicChecks then applies mouseFollow)
 proc UpdateMouseFollow {} {
-    global mouseFollow settings mouseDelay
-    Debug "UpdateMouseFollow $mouseFollow $settings(mouseDelay)"
-    SetFocusFollowMouse $mouseFollow
-    if {$mouseFollow} {
+    global mouseFollow isPaused settings
+    set paused [expr {[info exists isPaused] && $isPaused && $settings(mouseOutsideWindowsPauses)}]
+    ApplyMouseFollow [expr {$mouseFollow && !$paused}]
+    AddMouseToRRLabel
+}
+
+# Sets Windows' focus follows mouse (and its delay) on or off
+proc ApplyMouseFollow {on} {
+    global settings mouseDelay
+    Debug "ApplyMouseFollow $on $settings(mouseDelay)"
+    SetFocusFollowMouse $on
+    if {$on} {
         SetMouseDelay $settings(mouseDelay)
     } elseif {[info exists mouseDelay]} {
         SetMouseDelay $mouseDelay
     }
-    AddMouseToRRLabel
 }
 
 proc UpdateMouseRaise {} {
