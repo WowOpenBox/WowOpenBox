@@ -16,7 +16,7 @@ Web homes: https://WowOpenBox.org (for World of Warcraft) and https://OpenMultiB
 Github home: https://github.com/WowOpenBox/WowOpenBox#wowopenbox
 
 <!--
-The source for the [binary distribution](https://github.com/WowOpenBox/WowOpenBox/releases) (and the round robin wrapper) is built from https://github.com/OpenMultiBoxing/BuildKit (shared with OpenMultiBoxing; just mentioning that if you're curious, you don't need to look there to **use** WowOpenBox / OpenMultiBoxing)
+The source for the [binary distribution](https://github.com/WowOpenBox/WowOpenBox/releases) is built from https://github.com/OpenMultiBoxing/BuildKit (shared with OpenMultiBoxing; just mentioning that if you're curious, you don't need to look there to **use** WowOpenBox / OpenMultiBoxing)
 -->
 
 See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMultiBoxing.org for other games or if you want to use Broadcasting.
@@ -33,9 +33,6 @@ See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMult
 - Many additional options to switch which window your keys are going to:
   - Focus follow mouse: turns on/off the Windows&trade; accessibility feature so you just hover a window to make it receive keys (instantly: WOB sets the hover delay to 0 ms, below the 100 ms minimum of the Windows slider)
   - Focus next/previous/specific windows with hotkeys.
-<!--
-  - Optional Round robin: after you press configurable keys, focus switches to the next window automatically.
--->
 - Free, OpenSource and the [Safest](https://github.com/WowOpenBox/WowOpenBox/wiki/FAQ#i-heard-wob-is-safer-than-jmb-how-so) option available: WOB respects Blizzard's new directive to not do any software input broadcasting. Multiboxing legitimately with peace of mind.
 - Online [help](https://wowopenbox.org/help), menus and tooltips on most UI element to help discovering features.
 
@@ -53,8 +50,6 @@ Easiest: get it from the Microsoft Store, which installs and updates it for you 
 The Store version keeps its settings and profiles in `Documents\WowOpenBox` (copy your `wowopenboxSettings*.tcl` files there to bring yours).
 
 Or the zip: new since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest binary Zip file (e.g `WOB2027-vX.Y.Z.zip`, not the source zip) and extract all to your desktop for instance. The binaries are built automatically by the Github CI and can be found on the [releases page](https://github.com/WowOpenBox/WowOpenBox/releases).
-
-<!-- If you want to use the optional Round Robin feature, run the `OpenMultiBoxing_RR` exe wrapper to get RR (it will launch/need the other bigger exe too, in the same folder). -->
 
 Go through the Window Layout Wizard to pick how many game windows you plan on playing with and their layout, save and apply.
 

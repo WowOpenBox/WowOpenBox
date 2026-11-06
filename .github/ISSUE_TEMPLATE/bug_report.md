@@ -26,9 +26,6 @@ If applicable, add screenshots to help explain your problem.
 _Important_:
 If your issue is about rendering problems; you must include an example and a screen shot of both your Game main graphic settinsg and advanced Graphic settings
 
-**Round Robin:**
-Are you using the _RR exe?
-
 **Game:**
 Which Game are you playing? (Classic? Shadowlands?...)
 

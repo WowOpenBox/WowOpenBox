@@ -500,12 +500,6 @@ set SETTINGS_PREFIX "wowopenboxSettings"
 set SETTINGS_SUFFIX ".tcl"
 set SETTINGS_BASE "$SETTINGS_PREFIX$SETTINGS_SUFFIX"
 
-# RR init upgrade aware
-set rrOn 0
-if {![info exists hasRR]} {
-    set hasRR 0
-}
-
 proc HasArg {argName} {
     global argv
     expr {[lsearch $argv $argName]!=-1}
@@ -569,9 +563,6 @@ if {![info exists wobInitDone]} {
         set forceDebug 1
         catch {console show}
         Debug "WOB $vers called with -debug"
-    }
-    if {[HasArg "-rr"]} {
-        set hasRR 1
     }
     if {[HasArg "-profile"]} {
         set initProfile [lindex $argv end]
@@ -1101,14 +1092,10 @@ proc AfterSettings {} {
     if {$settings(hk,swapNextWindow)=="Binding for next window swap is set on 'hk1,swap'"} {
         set settings(hk,swapNextWindow) "Ctrl-0xC0"
     }
-    if {$settings(rrInterval) == 50} {
-        set settings(rrInterval) 5
-    }
-    if {[info exists settings(rrKeyList)]} {
-        # convert to space separated from tcl list
-        set settings(rrKeyListAll) [join $settings(rrKeyList) " "]
-        set settings(rrModExcludeList) [join $settings(rrModExcludeList) " "]
-        unset settings(rrKeyList)
+    # Removed round robin settings
+    foreach k {rrKeyList rrKeyListAll rrKeyListCustom rrKeyListDirect rrCustomExcludeList rrModExcludeList
+               rrInterval rrIndicator,label hk,rrToggle autoResetDirect} {
+        unset -nocomplain settings($k)
     }
     set toAdd "SndVol.exe"
     if {[lsearch -exact $settings(dontCaptureList) $toAdd]==-1} {
@@ -1136,7 +1123,6 @@ proc AfterSettings {} {
     set mouseRaise [GetMouseRaise]
     LoadLayout
     Overlay
-    RRCustomMenu
     Debug "Settings (re)Loaded."
 }
 
@@ -1277,8 +1263,7 @@ set ourTitle "WOB2027"
 
 proc UISetup {} {
     global imgObj70 vers stayOnTop pos windowSize settings \
-         mouseFollow mouseRaise mouseDelay ourTitle skin bottomText \
-         rrOn hasRR
+         mouseFollow mouseRaise mouseDelay ourTitle skin bottomText
     wm title . $ourTitle
     # Get logo
     set err1 [GetLogo]
@@ -1323,35 +1308,6 @@ proc UISetup {} {
     grid [ttk::checkbutton .cboverlay -text "Show overlay" -variable settings(showOverlay) -command "OverlayUpdate; SaveSettings"] [ttk::button .cbocfg -text "Overlay config" -command OverlayConfig]
     tooltip .cbocfg "Opens the overlay config which let's you configure\nborder, color, positions, etc... for the overlay"
 
-    if {$hasRR} {
-        grid [frame .sepRR -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
-        grid [ttk::label .lRR -text "⟳ Round robin settings:" -font WOBBold -anchor sw] -padx 4 -columnspan 2 -sticky w
-        grid [ttk::checkbutton .cbRR -variable rrOn -command RRUpdate] -padx 4 -columnspan 2 -sticky w
-        grid [ttk::label .lrrK -text "Round Robin to all windows keys:"] -padx 4 -columnspan 2 -sticky w
-        grid [entry .eRR -textvariable settings(rrKeyListAll) -width $width] -columnspan 2 -padx 4 -sticky ew
-        bind .eRR <Return> RRKeysListChange
-        tooltip .eRR "Which keys trigger round robin for all windows\nHit <Return> after change to take effect.\nSee help/FAQ for list."
-        grid [ttk::label .lrrK2 -text "No Round Robin when:"] -padx 4 -columnspan 2 -sticky w
-        grid [entry .eRR2 -textvariable settings(rrModExcludeList) -width $width] -columnspan 2 -padx 4 -sticky ew
-        tooltip .eRR2 "Which modifiers pause round robin while held\nHit <Return> after change to take effect.\nSee help/FAQ for list."
-        bind .eRR2 <Return> RRKeysListChange
-        set rrC .rrC
-        frame $rrC
-        ttk::menubutton $rrC.rrMenuB -text "Skips" -menu $rrC.rrMenuB.menu
-        menu $rrC.rrMenuB.menu -tearoff 0
-        RRCustomMenu
-        tooltip $rrC.rrMenuB "Select which window(s) are excluded from custom rotation"
-        pack [ttk::label $rrC.lrrK3 -text "Custom rotation keys:" -anchor w] $rrC.rrMenuB -anchor w -side left -expand 1
-        grid $rrC -padx 4 -columnspan 2 -sticky ew
-        grid [entry .eRR3 -textvariable settings(rrKeyListCustom) -width $width] -columnspan 2 -padx 4 -sticky ew
-        tooltip .eRR3 "Which keys trigger custom rotation round robin\nHit <Return> after change to take effect.\nSee help/FAQ for list."
-        bind .eRR3 <Return> RRKeysListChange
-        grid [ttk::label .lrrD -text "Direct focus keys (Main, WOB1...N):"] -padx 4 -columnspan 2 -sticky w
-        grid [entry .eRR4 -textvariable settings(rrKeyListDirect) -width $width] -columnspan 2 -padx 4 -sticky ew
-        tooltip .eRR4 "Which key will switch focus asap directly to Main, WOB1, WOB2,...\nFirst key will focus main, 2nd key will focus WOB1, 3rd key will focus WOB2,...\nTo skip a slot position use .*\nRemember this is in addition to the focus hotkeys.\nHit <Return> after change to take effect.\nSee help/FAQ for list."
-        bind .eRR4 <Return> RRKeysListChange
-    }
-
     grid [frame .sep2 -relief groove -borderwidth 2 -width 2 -height 2] -sticky ew -padx 4 -pady 4 -columnspan 2
     grid [ttk::label .l6 -text "🖰 Mouse settings:" -font WOBBold -anchor sw] -padx 4 -columnspan 2 -sticky w
     grid [ttk::checkbutton .mf -text "Focus follows mouse" -variable mouseFollow -command UpdateMouseFollow] -padx 4 -columnspan 2 -sticky w
@@ -1381,10 +1337,6 @@ proc UpdateHotkeyTexts {} {
     tooltip .b2 "Capture or update window\nHotkey: [HK capture]"
     tooltip .cbCaptureFG "Instead of capturing the game window by name\n($settings(game))\nif checked, capture the current foreground window\nFor this to work you must use the hotkey:\n[HK capture]\n\nUse the Game menu to turn this on"
     tooltip .cboverlay "Show/Hide the overlay info\nHotkey: [HK overlayToggle]"
-    if {[winfo exists .cbRR]} {
-        .cbRR configure -text "Round Robin ([HK rrToggle])"
-        tooltip .cbRR "Toggle round robin mode\nAlso turns off mouse focus and restore as needed while on\nHotkey: [HK rrToggle]"
-    }
     tooltip .mf "Toggle focus follow mouse mode\nHotkey: [HK focusFollowMouse]"
     if {[winfo exists .mbar.file]} {
         .mbar.file entryconfigure "Reset all windows*" -label "Reset all windows ([HK resetAll])"
@@ -1406,12 +1358,8 @@ proc UpdateForegroundMode {} {
 }
 
 proc About {} {
-    global vers hasRR inExe oldVersion
-    if {$hasRR} {
-        set extra "(with RoundRobin enabled) - DO NOT USE WITH World of Warcraft"
-    } else {
-        set extra "(safe, without RoundRobin or any streamlining)."
-    }
+    global vers inExe oldVersion
+    set extra "(safe: one key press = one action in one game window, WOB can't send keys or clicks)"
     if {$inExe && [info exists oldVersion] && $oldVersion !=$vers} {
         set extra "Binary version $oldVersion\n$extra"
     }
@@ -1441,7 +1389,7 @@ proc SetClipboard {} {
 }
 
 proc ClipboardManager {} {
-    global clipboardValue rrOn hasRR settings
+    global clipboardValue settings
     set tw .clip
     if {[winfo exists $tw]} {
         wm state $tw normal
@@ -1509,7 +1457,7 @@ proc UpdateProfilesMenu {} {
 }
 
 proc MenuSetup {} {
-    global vers settings hasRR mouseRaise
+    global vers settings mouseRaise
     if {[winfo exists .mbar]} {
         return
     }
@@ -1557,9 +1505,7 @@ proc MenuSetup {} {
     menu $m3 -tearoff 0
     .mbar add cascade -label Option -menu $m3
     $m3 add checkbutton -label "Swap hotkey also focuses" -variable settings(swapAlsoFocus)
-    if {!$hasRR} {
-        $m3 add checkbutton -label "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)
-    }
+    $m3 add checkbutton -label "Focus hotkey also foregrounds" -variable settings(focusAlsoFG)
     $m3 add checkbutton -label "Auto Capture Game windows" -variable settings(autoCapture)
     $m3 add checkbutton -label "Capture makes windows borderless" -variable settings(borderless)
     $m3 add checkbutton -label "Auto Kill \"$settings(autoKillName)\"" -variable settings(autoKillOn)
@@ -1573,10 +1519,6 @@ proc MenuSetup {} {
     $m3 add radiobutton -label "Auto reset focus to main: after 1 sec" -value 1 -variable settings(autoResetFocusToMain)
     $m3 add radiobutton -label "Auto reset focus to main: after 2 sec" -value 2 -variable settings(autoResetFocusToMain)
     $m3 add radiobutton -label "Auto reset focus to main: after 3 sec" -value 3 -variable settings(autoResetFocusToMain)
-    if {$hasRR} {
-        $m3 add checkbutton -label "Auto reset after direct RR keys" -variable settings(autoResetDirect)
-        $m3 add checkbutton -label "Always focus (if mixing click and RR)" -variable settings(rrAlwaysFocus)
-    }
     $m3 add separator
     $m3 add checkbutton -label "Pause when mouse is outside windows" -variable settings(mouseOutsideWindowsPauses)
     $m3 add checkbutton -label "Focus back when mouse in game window" -variable settings(mouseInsideGameWindowFocuses)
@@ -1707,7 +1649,7 @@ set isPaused 0
 set pauseSchedule {}
 
 proc PeriodicChecks {} {
-    global settings isPaused prevRR prevOL prevRRMouse hasRR rrOn rrMouse mouseFollow maxNumW pauseSchedule lastFocusWindow slot2handle
+    global settings isPaused prevOL mouseFollow maxNumW pauseSchedule lastFocusWindow slot2handle
     after cancel $pauseSchedule
     set pauseSchedule {}
     set freeSlot [FirstFreeSlot]
@@ -1728,20 +1670,10 @@ proc PeriodicChecks {} {
     if {$shouldPause != $isPaused} {
         Debug "Change of window from $isPaused to $shouldPause"
         if {$shouldPause} {
-            set prevRR 0
             set prevOL 0
-            set prevRRMouse 0
             # Windows' setting only: the checkbox keeps showing the user's choice
             if {$mouseFollow} {
                 ApplyMouseFollow 0
-            }
-            if {[info exists rrMouse] && $rrMouse} {
-                set prevRRMouse 1
-                set rrMouse 0
-            }
-            if {$hasRR && $rrOn} {
-                RRToggle
-                set prevRR 1
             }
             if {$settings(showOverlay)} {
                 OverlayToggle
@@ -1749,13 +1681,7 @@ proc PeriodicChecks {} {
             }
             # can't seem to raise our own window...
         } else {
-            Debug "Restoring $prevRR $mouseFollow $prevOL $prevRRMouse"
-            if {$prevRR && !$rrOn} {
-                RRToggle
-            }
-            if {$prevRRMouse} {
-                set rrMouse 1
-            }
+            Debug "Restoring $mouseFollow $prevOL"
             if {$mouseFollow} {
                 ApplyMouseFollow 1
             }
@@ -2195,7 +2121,6 @@ set hotkeyList {
     hk,swapNextWindow "Swap next window" SwapNextWindow
     hk,swapPreviousWindow "Swap previous window" SwapPreviousWindow
     hk,focusMain "Focus main window" FocusMain
-    hk,rrToggle "RoundRobin toggle" RRToggle
     hk,focusFollowMouse "Focus follow mouse toggle" FocusFollowMouseToggle
     hk,stayOnTopToggle "Always on top toggle" StayOnTopToggle
     hk,overlayToggle "Overlay toggle" OverlayToggle
@@ -2636,7 +2561,7 @@ array set slot2handle {}
 array set slot2position {}
 
 proc FocusN {n fg {update 1}} {
-    global slot2handle slot2position focusWindow lastFocusWindow settings hasRR
+    global slot2handle slot2position focusWindow lastFocusWindow settings
     if {[info exists slot2handle($n)]} {
         FocusNinternal $n $fg
     } else {
@@ -2649,18 +2574,16 @@ proc FocusN {n fg {update 1}} {
 }
 
 proc FocusNinternal {n fg} {
-    global slot2handle slot2position lastFocusWindow settings hasRR mouseFollow
+    global slot2handle slot2position lastFocusWindow settings mouseFollow
     set wh $slot2handle($n)
     set p $slot2position($n)
     Debug "FocusN $n called, at position $p - fg is $fg"
     set alsoFG [expr {$fg && $settings(focusAlsoFG)}]
-    if {$hasRR} {
-        Foreground $wh
-    } elseif {$alsoFG && !$mouseFollow} {
+    if {$alsoFG && !$mouseFollow} {
         # activating it also gives it the keys, while set_focus waits for both games to handle
         # the focus change (100s of ms for one stacked under main in the mirrored layout).
         # Not with focus follows mouse: Windows would then move the cursor to the middle of
-        # the newly activated window (same reason RR turned it off)
+        # the newly activated window
         Debug "Making $n foreground"
         if {![Foreground $wh]} {
             Debug "Foreground of $n refused, setting focus"
@@ -2728,45 +2651,8 @@ proc SwapPreviousWindow {} {
     SetAsMain $n
 }
 
-proc NextCustomWindow {} {
-    global customWindow maxNumW rrCustom slot2position
-    if {![info exists rrCustom(0)]} {
-        # updgrade without menu setup
-        WobError "Restart needed" "You just upgraded but need to restart WOB! No state will be lost if you do! Thanks!"
-    }
-    set mainSlot $slot2position(1)
-    set mainCheck $mainSlot
-    if {!$rrCustom(0)} {
-        set mainCheck 0
-    }
-    set n $customWindow
-    # Avoid infinite loop trying to find impossible next custom window
-    set excl 0
-    for {set i 1} {$i<$maxNumW} {incr i} {
-        set n [expr {$n % ($maxNumW-1) + 1}]
-        incr excl $rrCustom($n)
-        # check for main
-        if {$n==$mainCheck} {
-            continue
-        }
-        # Ok to use if Main isn't skipped and this is Main currently
-        if {!$rrCustom($n) || (!$mainCheck && $mainSlot==$n)} {
-            Debug "Next custom window is $n because $rrCustom($n) $mainCheck $mainSlot"
-            set customWindow $n
-            return $n
-        }
-    }
-    # only complain if it would never work; not if say main is excluded; only Wob2 is allowed yet
-    # wob2 is the one in main
-    Debug "Nothing found $excl $maxNumW staying on $customWindow"
-    if {$excl==$maxNumW-1} {
-        WobError "Custom RR Error" "Invalid Custom Rotation, All windows are disabled!"
-    }
-    return $customWindow
-}
-
-proc FocusNextWindow {{custom 0}} {
-    global focusWindow customWindow maxNumW settings resetTaskId lastFocusWindow
+proc FocusNextWindow {} {
+    global focusWindow maxNumW settings resetTaskId lastFocusWindow
     if {[info exists resetTaskId]} {
         after cancel $resetTaskId
         unset resetTaskId
@@ -2774,21 +2660,14 @@ proc FocusNextWindow {{custom 0}} {
     if {$maxNumW<3} {
         return
     }
-    if {$custom} {
-        set n [NextCustomWindow]
-    } else {
-        # maxNumW is one more than number of windows
-        set n [expr {$focusWindow % ($maxNumW-1) + 1}]
-    }
-    Debug "FocusNextWindow: custom $custom, focusWindow $focusWindow maxNumW $maxNumW -> $n"
+    # maxNumW is one more than number of windows
+    set n [expr {$focusWindow % ($maxNumW-1) + 1}]
+    Debug "FocusNextWindow: focusWindow $focusWindow maxNumW $maxNumW -> $n"
     if {$settings(rrAlwaysFocus) || $n!=$lastFocusWindow} {
-        # Don't update here as it could be custom
         CheckWindow [list FocusN $n true 0] $n
     }
-    if {!$custom} {
-        # always update even if we were already on the spot (so we move out of it next)
-        set focusWindow $n
-    }
+    # always update even if we were already on the spot (so we move out of it next)
+    set focusWindow $n
     if {$settings(autoResetFocusToMain)>0} {
         set resetTaskId [after [expr {round(1000.*$settings(autoResetFocusToMain))}] FocusMain]
     }
@@ -2946,9 +2825,9 @@ proc Defer {time cmd} {
 array set ourWindowHandles {}
 # value is 3 for game window
 # 2 for UI like overlay and wizard and overlay config
-# 1 for main UI (no RR/overlay)
+# 1 for main UI (no overlay)
 # non existant/0 is other windows
-# so anything <= 1 should not show overlay, do RR,...
+# so anything <= 1 should not show overlay,...
 
 proc UpdateHandles {} {
     after idle UpdateOurWindowHandles
@@ -3174,7 +3053,6 @@ proc updateListBox {n w wname} {
         set settings(numWindows) $n
         Overlay
     }
-    RRCustomMenu
     set nextWindow [expr {$n+1}]
     if {$nextWindow>=10} {
         set nextWindow 9
@@ -3737,225 +3615,6 @@ proc SizeOfWindow {tag} {
     return [list $x1 $y1 $w $h]
 }
 
-# --- start of RR ---
-
-proc RRToggle {} {
-    global rrOn hasRR vers
-    if {!$hasRR} {
-        WobError "Round Robin not enabled" "No more Round Robin (RR) in this version."
-    }
-    set rrOn [expr {!$rrOn}]
-    RRUpdate
-}
-
-# Read/reset all keys so we don't pile up keydown when RR is off
-proc RRreadAllKeys {} {
-    global rrCodes rrExcludes rrCodesCustom rrCodesDirect
-    foreach code $rrExcludes {
-        twapi::GetAsyncKeyState $code
-    }
-    foreach code $rrCodes {
-        twapi::GetAsyncKeyState $code
-    }
-    foreach code $rrCodesCustom {
-        twapi::GetAsyncKeyState $code
-    }
-    foreach code $rrCodesDirect {
-        twapi::GetAsyncKeyState $code
-    }
-}
-
-proc RRUpdate {} {
-    global rrOn rrOnLabel settings hasRR mouseFollow rrMouse rrLastCode rrTaskId
-    Debug "RRupdate $rrOn"
-    if {[info exists rrTaskId]} {
-        after cancel $rrTaskId
-        unset rrTaskId
-    }
-    set rrLastCode {}
-    if {$rrOn && $hasRR} {
-        set rrOnLabel $settings(rrIndicator,label)
-        RRKeysListChange
-        RRreadAllKeys
-        set rrMouse $mouseFollow
-        if {$mouseFollow} {
-            set mouseFollow 0
-            UpdateMouseFollow
-            .mf configure -state disabled
-        }
-        set rrTaskId [after $settings(rrInterval) RRCheck]
-    } else {
-        set rrOnLabel ""
-        .mf configure -state enabled
-        if {[info exists rrMouse] && $rrMouse} {
-            set mouseFollow 1
-            UpdateMouseFollow
-        }
-    }
-    AddMouseToRRLabel
-    Debug "Reset all RR key states"
-}
-
-proc RRkeyListToCodes {keyList {noneKeyPattern ""}} {
-    twapi::_init_vk_map
-    set res {}
-    set fixedList {}
-    foreach k [split $keyList " "] {
-        set len [string length $k]
-        if {$len == 0} {
-            # skip extra spaces
-            continue
-        }
-        if {$len == 1} {
-            lassign [twapi::VkKeyScan $k] x code
-        } else {
-            if {$noneKeyPattern!="" && [string match $noneKeyPattern $k]} {
-                # only for direct we need to skip some positions
-                set code 0
-            } elseif {![info exists twapi::vk_map($k)]} {
-                WobError "Invalid RR key" "$k isn't a valid key"
-                continue
-            } else {
-                set code [expr [lindex $twapi::vk_map($k) 0]]
-            }
-        }
-        Debug "RRkey $k -> 0x[format %x $code]"
-        lappend res $code
-        lappend fixedList $k
-    }
-    return [list $res [join $fixedList " "]]
-}
-
-set rrCodes {}
-set rrExcludes {}
-set rrExcludes {}
-set rrCodesCustom {}
-set rrCodesDirect {}
-proc RRKeysListChange {} {
-    global settings rrCodes rrExcludes rrCodesCustom rrCodesDirect
-    lassign [RRkeyListToCodes $settings(rrKeyListAll)] rrCodes settings(rrKeyListAll)
-    lassign [RRkeyListToCodes $settings(rrKeyListCustom)] rrCodesCustom settings(rrKeyListCustom)
-    lassign [RRkeyListToCodes $settings(rrKeyListDirect) ".*"] rrCodesDirect settings(rrKeyListDirect)
-    lassign [RRkeyListToCodes $settings(rrModExcludeList)] rrExcludes settings(rrModExcludeList)
-}
-
-set rrLastCode {}
-set rrLastCustom 0
-
-proc RRCheck {} {
-    global rrCodes rrCodesCustom rrCodesDirect rrExcludes rrLastCode rrLastCustom rrTaskId settings maxNumW
-    set rrTaskId [after $settings(rrInterval) RRCheck]
-    #Debug "RR Check..."
-    foreach code $rrExcludes {
-        set state [twapi::GetAsyncKeyState $code]
-        if {$state != 0} {
-            # modifier held; return
-            return
-        }
-    }
-    # Watch for reset of last key
-    if {$rrLastCode != ""} {
-        if {[twapi::GetAsyncKeyState $rrLastCode]==0} {
-            Debug "Key $rrLastCode now reset... Next window - custom $rrLastCustom"
-            set rrLastCode {}
-            FocusNextWindow $rrLastCustom
-        }
-        return
-    }
-    # direct on key down
-    set i 0
-    foreach code $rrCodesDirect {
-        # Allow "NONE"
-        if {$code != 0} {
-            set state [twapi::GetAsyncKeyState $code]
-            if {$state != 0} {
-                FocusDirect [expr {$i%($settings(numWindows)+1)}]
-                break
-            }
-        }
-        incr i
-    }
-    # custom rotation, keyUp normal mode
-    foreach code $rrCodesCustom {
-        set state [twapi::GetAsyncKeyState $code]
-        if {$state != 0} {
-            set rrLastCode $code
-            set rrLastCustom 1
-            return
-        }
-    }
-    foreach code $rrCodes {
-        set state [twapi::GetAsyncKeyState $code]
-        #Debug "Checking $k -> $code -> [format %x $state]"
-        if {$state != 0} {
-            set rrLastCode $code
-            set rrLastCustom 0
-            #Debug "RR for $code [format %x $state]"
-            return
-        }
-    }
-}
-
-proc FocusDirect {n} {
-    global lastFocusWindow slot2position resetTaskId settings
-    # Like in FocusNextWindow - cancel auto reset
-    if {[info exists resetTaskId]} {
-        after cancel $resetTaskId
-        unset resetTaskId
-    }
-    # Like FocusMain
-    if {$n==0} {
-        if {![info exists slot2position(1)]} {
-            return
-        }
-        set n $slot2position(1)
-    }
-    if {$settings(rrAlwaysFocus) || $n!=$lastFocusWindow} {
-        CheckWindow [list FocusN $n true 0] $n
-    }
-    if {$settings(autoResetFocusToMain)>0 && $settings(autoResetDirect)} {
-        set resetTaskId [after [expr {round(1000.*$settings(autoResetFocusToMain))}] FocusMain]
-    }
-}
-
-proc RRCustomToArray {} {
-    global settings rrCustom
-    catch {unset rrCustom}
-    array set rrCustom {}
-    foreach w $settings(rrCustomExcludeList) {
-        set rrCustom($w) 1
-    }
-}
-
-proc RRCustomUpdateSettings {} {
-    global settings rrCustom
-    set settings(rrCustomExcludeList) {}
-    foreach {k v} [array get rrCustom] {
-        if {$v} {
-            lappend settings(rrCustomExcludeList) $k
-        }
-    }
-}
-
-proc RRCustomMenu {} {
-    global settings rrCustom hasRR
-    if {!$hasRR} {
-        return
-    }
-    RRCustomToArray
-    set m .rrC.rrMenuB.menu
-    if {![winfo exists $m]} {
-        return
-    }
-    $m delete 0 99
-    $m add checkbutton -label "Main" -variable rrCustom(0) -command RRCustomUpdateSettings
-    for {set i 1} {$i<=$settings(numWindows)} {incr i} {
-        $m add checkbutton -label "WoW $i" -variable rrCustom($i) -command RRCustomUpdateSettings
-    }
-}
-
-# --- end of RR ---
-
 proc OverlayToggle {} {
     global settings
     set settings(showOverlay) [expr {!$settings(showOverlay)}]
@@ -3996,7 +3655,7 @@ proc OverlayUpdate {} {
 }
 
 proc OverlayConfig {} {
-    global settings hasRR
+    global settings
     set tw .overlayConfig
     set settings(showOverlay) 1
     OverlayUpdate
@@ -4029,19 +3688,10 @@ proc OverlayConfig {} {
     grid [ttk::checkbutton $tw.bigAll -text "Click to swap all area on windows 2+" -variable settings(overlayAllClickable) -command "Overlay; SaveSettings"] -padx 8 -pady 2 -columnspan 3
     tooltip $tw.clickable "Click a window's number to make it the main one\n(window 1's number swaps to the next window)"
     tooltip $tw.bigAll "With Clickable overlay: a click anywhere in windows 2+ swaps\nit to main, but you can't click inside them anymore.\nThe Mirrored layout (Window Layout) does it better:\nclicking a mirror swaps without covering anything."
-    if {$hasRR} {
-        grid [ttk::label $tw.lr1 -text "Round Robin indicator:" -font WOBBold -anchor w] -columnspan 3 -sticky ew -padx 6
-        grid [ttk::label $tw.lr2 -text "Label:" -anchor e] [entry $tw.re1 -width 5 -textvariable settings(rrIndicator,label)] -sticky ew -padx 6
-        bind $tw.re1 <Return> "RRUpdate; SaveSettings"
-        tooltip $tw.re1 "What is shown when RR is on"
-    }
     grid [ttk::label $tw.lm1 -text "Mouse Focus indicator:" -font WOBBold -anchor w] -columnspan 3 -sticky ew -padx 6
     grid [ttk::label $tw.lm2 -text "Label:" -anchor e] [entry $tw.me1 -width 5 -textvariable settings(mfIndicator,label)] -sticky ew -padx 6
     tooltip $tw.me1 "What is shown when Focus Follow Mouse is on"
     bind $tw.me1 <Return> "AddMouseToRRLabel; SaveSettings"
-    if {$hasRR} {
-        grid [ttk::label $tw.lp1 -text "⟳ and 🖰 indicators position:" -font WOBBold -anchor w] -columnspan 3 -sticky ew -padx 6
-    }
     grid [ttk::label $tw.lr3 -text "X:" -anchor e] [entry $tw.re2 -width 5 -textvariable settings(rrIndicator,x)] -sticky ew -padx 6
     bind $tw.re2 <Return> OverlayIndicatorPlace
     tooltip $tw.re2 "Relative horizontal position: 0 is left 1 is right, 0.5 is center"
@@ -4135,7 +3785,7 @@ proc NoActivate {t} {
 }
 
 proc Overlay {} {
-    global settings rrOnLabel hasRR
+    global settings rrOnLabel
     set transparentcolor [OverlayFontSizes]
     set on $settings(showOverlay)
     set lastOverlay $settings(numWindows)
@@ -4175,11 +3825,7 @@ proc Overlay {} {
         if {$settings(overlayClickable)} {
             if {$i==1} {
                 bind $t.l <ButtonPress> SwapNextWindow
-                if {$hasRR} {
-                    bind $t.rr <ButtonPress> RRToggle
-                } else {
-                    bind $t.rr <ButtonPress> MouseFollowToggle
-                }
+                bind $t.rr <ButtonPress> MouseFollowToggle
             } else {
                 bind $t.l <ButtonPress> [list SetAsMain $i]
             }
@@ -4294,7 +3940,6 @@ proc ChangeLayout {args} {
     set layoutOneSize $settings(layoutOneSize)
     set n [expr round($settings(numWindows))]
     set settings(numWindows) $n
-    RRCustomMenu
     UpdateLayoutNumWindows
     set c .layout.c
     if {![winfo exists $c]} {
@@ -5967,21 +5612,12 @@ array set settings {
     hk,nextProfile "Ctrl-Shift-L"
     hk,previousProfile "Ctrl-Shift-Alt-L"
     borderless 1
-    rrKeyListAll "SPACE 1 2 3 4 5 6 7 8 9 0 - ="
-    rrKeyListCustom ". [ ] F11"
-    rrKeyListDirect ".m .1 .2 .3 ..."
-    rrCustomExcludeList 0
-    rrModExcludeList "RCONTROL RSHIFT"
-    rrInterval 5
     rrAlwaysFocus 1
     autoResetFocusToMain 1
-    autoResetDirect 0
-    hk,rrToggle "Ctrl-Shift-R"
     hk,focusMain "Ctrl-Shift-W"
     hk,resetAll "Ctrl-Shift-Alt-R"
     rrIndicator,x 0.5
     rrIndicator,y 0.7
-    rrIndicator,label ⟳
     mfIndicator,label 🐭
     autoKillName "WowVoiceProxy.exe"
     autoKillOn 1
@@ -5998,7 +5634,7 @@ array set settings {
     hk,mirrorsToggle ""
     hk,mirrorsEdit ""
 }
-set settings(mouseInsideGameWindowFocuses) $hasRR
+set settings(mouseInsideGameWindowFocuses) 0
 array set hotkeyDefaults [array get settings hk*,*]
 
 
@@ -6020,8 +5656,6 @@ if {![info exists pos]} {
     set maxNumW 1
     # currently focused windows for normal rotation
     set focusWindow 1
-    # custom rotation focused window
-    set customWindow 1
     # Actual last focused window (at least as far as WOB is concerned)
     set lastFocusWindow 1
     # last swapped window
@@ -6095,13 +5729,6 @@ proc FitMenuBar {} {
 }
 
 # --- main ---
-proc rrWarning {} {
-    global hasRR
-    if {$hasRR} {
-        WobError "Do Not Use!" "You must delete this _RR.exe and discontinue using it for World of Wacraft. Download the 4.8.x zip instead"
-    }
-}
-
 puts "WOB2027 $vers started..."
 Defer 100 FindExisting
 set bottomText "WOB2027 $vers"
@@ -6146,4 +5773,3 @@ if {$settings(clipboardAtStart)} {
 # Mouse tracking/auto pause and auto capture
 Defer 350 PeriodicChecks
 Defer 400 MirrorsRebuild
-Defer 300 rrWarning
