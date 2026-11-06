@@ -1713,6 +1713,7 @@ proc CheckWindowsExist {} {
             WindowLost $n
         }
     }
+    DesktopCheck
 }
 
 proc mouseTrack {} {
@@ -3646,7 +3647,7 @@ proc OverlayUpdate {} {
             } else {
                 $t.l configure -foreground white
             }
-            wm state $t normal
+            wm state $t [expr {[OverlayShown $i] ? "normal" : "withdrawn"}]
         } else {
             wm state $t withdrawn
             $t.l configure -foreground white
@@ -3787,7 +3788,6 @@ proc NoActivate {t} {
 proc Overlay {} {
     global settings rrOnLabel
     set transparentcolor [OverlayFontSizes]
-    set on $settings(showOverlay)
     set lastOverlay $settings(numWindows)
     if {$settings(layoutStacked)} {
         set lastOverlay 1
@@ -3846,7 +3846,7 @@ proc Overlay {} {
         }
         lassign $settings($i,posXY) x y
         lassign $settings($i,size) w h
-        if {$on} {
+        if {[OverlayShown $i]} {
             wm state $t normal
         } else {
             wm state $t withdrawn
@@ -4600,6 +4600,7 @@ proc MirrorInit {} {
         }
         # HWND/HTHUMBNAIL as 64 bit ints (win64 binary)
         ::wobUser32 stdcall ClientToScreen int {hwnd ulonglong pt {struct.WobPOINT inout}}
+        ::wobDwmapi stdcall DwmGetWindowAttribute long {hwnd ulonglong attr ulong value {ulong out} size ulong}
         ::wobDwmapi stdcall DwmUpdateThumbnailProperties long {thumb ulonglong props {struct.WobDWM_THUMBNAIL_PROPERTIES byref}}
         ::wobDwmapi stdcall DwmUnregisterThumbnail long {thumb ulonglong}
         # last as it's the one checked above
@@ -4610,6 +4611,59 @@ proc MirrorInit {} {
         return 0
     }
     return 1
+}
+
+# 1 if window wh is on another virtual desktop (Windows cloaks those, DWMWA_CLOAKED)
+proc OnOtherDesktop {wh} {
+    if {[info commands ::DwmGetWindowAttribute] eq "" && ![MirrorInit]} {
+        return 0
+    }
+    if {[catch {DwmGetWindowAttribute [HwndInt $wh] 14 cloaked 4} hr] || $hr != 0} {
+        return 0
+    }
+    expr {$cloaked != 0}
+}
+
+# Our mirrors and overlays are tool windows, which Windows shows on every virtual desktop: they follow the
+# desktop of their game window instead (our main window's for overlays without one). desktopAway: the window
+# numbers (and "main" for ours) on another desktop
+set desktopAway {}
+proc DesktopCheck {} {
+    global slot2handle desktopAway
+    set away {}
+    foreach n [lsort -integer [array names slot2handle]] {
+        if {[OnOtherDesktop $slot2handle($n)]} {
+            lappend away $n
+        }
+    }
+    if {[OnOtherDesktop [list [wm frame .] HWND]]} {
+        lappend away main
+    }
+    if {$away eq $desktopAway} {
+        return
+    }
+    Debug "On another virtual desktop: $away"
+    set desktopAway $away
+    MirrorsRefreshAll
+    OverlayUpdate
+}
+
+proc OnOtherDesktopN {n} {
+    global desktopAway
+    expr {$n in $desktopAway}
+}
+
+# Overlay i shown: on and its game window (else our main window) on this desktop
+proc OverlayShown {i} {
+    global settings slot2handle
+    if {!$settings(showOverlay)} {
+        return 0
+    }
+    set n [SlotAtPosition $i]
+    if {$n eq "" || ![info exists slot2handle($n)]} {
+        set n main
+    }
+    expr {![OnOtherDesktopN $n]}
 }
 
 # Old binaries (before v4.11) can run this script after an update but lack cffi
@@ -4899,7 +4953,7 @@ proc MirrorRefresh {i} {
     }
     set m [lindex $settings(mirrors) $i]
     set n [MirrorSourceSlot [dict get $m source]]
-    if {!$settings(mirrorsShown) || ![info exists slot2handle($n)]} {
+    if {!$settings(mirrorsShown) || ![info exists slot2handle($n)] || [OnOtherDesktopN $n]} {
         MirrorHide $i
         return
     }
@@ -5003,7 +5057,7 @@ proc LayoutMirrorsRefresh {} {
         }
         set n [SlotAtPosition $p]
         if {$n eq "" || ![info exists slot2handle($n)] || ![twapi::window_exists $slot2handle($n)]
-                || [catch {MirrorSourceSize $n} csize]} {
+                || [OnOtherDesktopN $n] || [catch {MirrorSourceSize $n} csize]} {
             MirrorDetach L$p
             wm withdraw $t
             continue
