@@ -1110,17 +1110,8 @@ proc AfterSettings {} {
     }
     RegisterAllHotkeys
     # Set mouse control to current values
-    global mouseFollow mouseRaise mouseDelay isPaused
-    # While paused (mouse outside the game windows) Windows' setting is off whatever the user's choice is
-    if {![info exists mouseFollow] || ![info exists isPaused] || !$isPaused} {
-        set mouseFollow [GetFocusFollowMouse]
-    }
-    # Delay to restore when turning focus follow mouse off: don't capture our own
-    # settings(mouseDelay) as the user's (on reload or when left on by a previous run)
-    set curDelay [GetMouseDelay]
-    if {!$mouseFollow || (![info exists mouseDelay] && $curDelay != $settings(mouseDelay))} {
-        set mouseDelay $curDelay
-    }
+    InitMouseFollow
+    global mouseRaise
     set mouseRaise [GetMouseRaise]
     LoadLayout
     Overlay
@@ -1134,20 +1125,13 @@ proc MouseFollowToggle {} {
 }
 
 proc RevertMouseFollow {} {
-    global mouseDelay settings mouseFollow
-    if {!$settings(mouseFocusOffAtExit)} {
-        if {$mouseFollow} {
-            Debug "Keeping mouse focus mode on on exit"
-            ApplyMouseFollow 1
-        }
+    global settings mouseFollow
+    if {!$settings(mouseFocusOffAtExit) && $mouseFollow} {
+        Debug "Keeping mouse focus mode on on exit"
+        ApplyMouseFollow 1
         return
     }
-    if {![info exists mouseDelay]} {
-        set mouseDelay 200
-    }
-    Debug "restoring mouse delay $mouseDelay"
-    SetMouseDelay $mouseDelay
-    SetFocusFollowMouse 0
+    ApplyMouseFollow 0
 }
 
 catch {rename exit _real_exit}
@@ -1264,7 +1248,7 @@ set ourTitle "WOB2027"
 
 proc UISetup {} {
     global imgObj70 vers stayOnTop pos windowSize settings \
-         mouseFollow mouseRaise mouseDelay ourTitle skin bottomText
+         mouseFollow mouseRaise ourTitle skin bottomText
     wm title . $ourTitle
     # Get logo
     set err1 [GetLogo]
@@ -1511,7 +1495,7 @@ proc MenuSetup {} {
     $m3 add checkbutton -label "Capture makes windows borderless" -variable settings(borderless)
     $m3 add checkbutton -label "Auto Kill \"$settings(autoKillName)\"" -variable settings(autoKillOn)
     $m3 add checkbutton -label "Mouse auto foreground window" -variable mouseRaise -command UpdateMouseRaise
-    $m3 add checkbutton -label "Turn off focus follow mouse on exit" -variable settings(mouseFocusOffAtExit)
+    $m3 add checkbutton -label "Restore focus follow mouse on exit" -variable settings(mouseFocusOffAtExit)
     $m3 add checkbutton -label "Turn on focus follow mouse at startup" -variable settings(mouseFocusOnAtStart)
     $m3 add checkbutton -label "Auto open clipboard at startup" -variable settings(clipboardAtStart) -command {if {$settings(clipboardAtStart)} ClipboardManager}
     $m3 add separator
@@ -4578,7 +4562,39 @@ proc AddMouseToRRLabel {} {
     }
 }
 
-# Checkbox/hotkey/broadcast changes of mouseFollow: while paused, Windows' setting stays off until the
+# Windows' focus follows mouse setting from before we first turned it on (mouseOrig: {on delay}) is
+# restored when ours is off. Untouched until we turn it on (mouseTouched). Already on with our delay at
+# startup means it was kept on at exit by a previous run: then the checkbox shows on and restoring turns it
+# off (with Windows' default delay).
+proc InitMouseFollow {} {
+    global mouseFollow mouseOrig mouseTouched mouseDelay settings
+    if {[info exists mouseOrig]} {
+        return
+    }
+    if {[info exists mouseFollow]} {
+        # reload from an older version, which always turned it off with the saved mouseDelay
+        if {![info exists mouseDelay]} {
+            set mouseDelay 500
+        }
+        set mouseOrig [list 0 $mouseDelay]
+        set mouseTouched $mouseFollow
+        return
+    }
+    set on [GetFocusFollowMouse]
+    set delay [GetMouseDelay]
+    if {$on && $delay == $settings(mouseDelay)} {
+        set mouseFollow 1
+        set mouseOrig {0 500}
+        set mouseTouched 1
+    } else {
+        set mouseFollow 0
+        set mouseOrig [list $on $delay]
+        set mouseTouched 0
+    }
+    Debug "Focus follows mouse at start: $on $delay -> $mouseFollow, restores $mouseOrig"
+}
+
+# Checkbox/hotkey changes of mouseFollow: while paused, Windows' setting stays as the user had it until the
 # mouse is back in a game window (PeriodicChecks then applies mouseFollow)
 proc UpdateMouseFollow {} {
     global mouseFollow isPaused settings
@@ -4587,26 +4603,28 @@ proc UpdateMouseFollow {} {
     AddMouseToRRLabel
 }
 
-# Sets Windows' focus follows mouse (and its delay) on or off
+# Sets Windows' focus follows mouse on with our delay, or back to the user's own setting, unless we never
+# turned it on
 proc ApplyMouseFollow {on} {
-    global settings mouseDelay
-    Debug "ApplyMouseFollow $on $settings(mouseDelay)"
-    SetFocusFollowMouse $on
+    global settings mouseOrig mouseTouched
+    Debug "ApplyMouseFollow $on $settings(mouseDelay) $mouseTouched $mouseOrig"
     if {$on} {
+        set mouseTouched 1
         SetMouseDelay $settings(mouseDelay)
-    } elseif {[info exists mouseDelay]} {
-        SetMouseDelay $mouseDelay
+        SetFocusFollowMouse 1
+        return
     }
+    if {!$mouseTouched} {
+        return
+    }
+    lassign $mouseOrig origOn origDelay
+    SetMouseDelay $origDelay
+    SetFocusFollowMouse $origOn
 }
 
 proc UpdateMouseRaise {} {
     global mouseRaise
     SetMouseRaise $mouseRaise
-}
-
-proc UpdateMouseDelay {} {
-    global mouseDelay
-    SetMouseDelay $mouseDelay
 }
 
 #---- Mirrors: live, scaled copies of an area of a game window (DWM thumbnails)
