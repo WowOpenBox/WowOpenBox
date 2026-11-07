@@ -352,6 +352,7 @@ proc WobStyles {} {
         OverlayFontSizes
     }
     ttk::style configure WobHotkeyFailed.TButton -foreground red
+    ttk::style configure WobHotkeyWarn.TButton -foreground #E07000
     if {"WOBBold" in [font names]} {
         ttk::style configure WobHotkeyCapture.TButton -font WOBBold
         ttk::style configure WobBoldButton.TButton -font WOBBold
@@ -2240,7 +2241,8 @@ proc HotkeyName {mods vk} {
 
 # Hotkey as shown to users: Ctrl-0xC0 is Ctrl-~ (twapi only takes the code for punctuation keys)
 proc HotkeyDisplay {hk} {
-    if {![regexp {^(.*?)(0[xX][0-9a-fA-F]+)$} $hk all mods vk]} {
+    # (192 too: multi digit numbers are key codes, as typed in the settings file)
+    if {![regexp {^((?:[^-]+-)*)(0[xX][0-9a-fA-F]+|[0-9]{2,})$} $hk all mods vk]} {
         return $hk
     }
     # character of that key in the current keyboard layout (MAPVK_VK_TO_CHAR), high bit is dead keys
@@ -2254,6 +2256,22 @@ proc HotkeyDisplay {hk} {
         set c "~"
     }
     return $mods$c
+}
+
+# Problem with a hotkey, if any: "modifierOnly" (Shift alone never triggers) or "noModifier" (~ alone
+# triggers from every program, and can't be typed in them while WOB runs; except keys nobody types)
+proc HotkeyProblem {hk} {
+    lassign [HotkeyToModsVk $hk] mods vk
+    if {$vk eq ""} {
+        return
+    }
+    if {$vk in {16 17 18 91 92 160 161 162 163 164 165}} {
+        return modifierOnly
+    }
+    # F13-F24, Pause, Scroll Lock, browser and media keys
+    if {$mods == 0 && !(($vk >= 0x7C && $vk <= 0x87) || $vk in {19 145} || ($vk >= 0xA6 && $vk <= 0xB7))} {
+        return noModifier
+    }
 }
 
 proc HotkeyLabel {var} {
@@ -2298,6 +2316,8 @@ proc HotkeysDialog {} {
         RememberGeometry $tw hotkeysGeometry
         wm protocol $tw WM_DELETE_WINDOW {HotkeysDialogClose 1}
         ttk::style configure WobHotkeyFailed.TButton -foreground red
+        # (orange: works, but maybe not what the user wants)
+        ttk::style configure WobHotkeyWarn.TButton -foreground #E07000
         ttk::style configure WobHotkeyCapture.TButton -font WOBBold
         array unset hotkeyButtons
         set hotkeyUndo {}
@@ -2320,9 +2340,13 @@ proc HotkeysDialog {} {
                 -padx 4 -pady 1 -sticky w
         }
         grid [ttk::label $tw.status -foreground red -wraplength 700] -columnspan 2 -padx 8 -pady {4 0} -sticky ew
+        grid [ttk::label $tw.warn -foreground #E07000 -wraplength 700] -columnspan 2 -padx 8 -pady {4 0} -sticky ew
         # wrap at the window width (set by the hotkeys frames)
         bind $tw.status <Configure> {%W configure -wraplength %w}
+        bind $tw.warn <Configure> {%W configure -wraplength %w}
         grid [ttk::frame $tw.b] -columnspan 2 -pady 6
+        # (only now: its row would be reused, see HotkeysDialogRefresh)
+        grid remove $tw.warn
         pack [ttk::button $tw.b.undo -text "Undo" -command HotkeysUndo] \
             [ttk::button $tw.b.def -text "Restore defaults" -command HotkeysDefaults] \
             [ttk::button $tw.b.close -text Close -command HotkeysDialogClose] -side left -padx 4
@@ -2351,13 +2375,21 @@ proc HotkeysDialogRefresh {} {
     if {![winfo exists .hotkeys]} {
         return
     }
-    foreach var [array names hotkeyButtons] {
+    array set problems {modifierOnly {} noModifier {}}
+    foreach var [lsort -dictionary [array names hotkeyButtons]] {
         set b $hotkeyButtons($var)
-        set hk [HotkeyDisplay [expr {[info exists settings($var)] ? $settings($var) : ""}]]
+        set hk [expr {[info exists settings($var)] ? $settings($var) : ""}]
+        set p [expr {$hk eq "" ? "" : [HotkeyProblem $hk]}]
+        set hk [HotkeyDisplay $hk]
+        if {$p ne ""} {
+            lappend problems($p) "[HotkeyLabel $var] ($hk)"
+        }
         if {$var eq $hotkeyCapture} {
             $b configure -text "Press keys..." -style WobHotkeyCapture.TButton
-        } elseif {[info exists hotkeyFailed($var)]} {
+        } elseif {[info exists hotkeyFailed($var)] || $p eq "modifierOnly"} {
             $b configure -text $hk -style WobHotkeyFailed.TButton
+        } elseif {$p eq "noModifier"} {
+            $b configure -text $hk -style WobHotkeyWarn.TButton
         } else {
             $b configure -text $hk -style TButton
         }
@@ -2371,8 +2403,18 @@ proc HotkeysDialogRefresh {} {
         lappend status "Hotkeys in red are already used by another application: [join $failed {, }]." \
             "Click them to pick different keys."
     }
+    if {[llength $problems(modifierOnly)]} {
+        lappend status "Hotkeys in red with only Ctrl, Alt, Shift or Win never work, add a key: [join $problems(modifierOnly) {, }]."
+    }
     # (space: keeps the one line height when empty)
     .hotkeys.status configure -text [expr {[llength $status] ? [join $status "\n"] : " "}]
+    if {[llength $problems(noModifier)]} {
+        .hotkeys.warn configure -text "Hotkeys in orange have no Ctrl, Alt, Shift or Win: they also trigger while typing in\
+            other programs, and that key can't be typed anywhere else while WOB runs: [join $problems(noModifier) {, }]."
+        grid .hotkeys.warn
+    } else {
+        grid remove .hotkeys.warn
+    }
     .hotkeys.b.undo state [expr {[llength $hotkeyUndo] ? "!disabled" : "disabled"}]
 }
 
