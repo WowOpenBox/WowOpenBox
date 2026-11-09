@@ -1125,7 +1125,11 @@ proc MouseFollowToggle {} {
 }
 
 proc RevertMouseFollow {} {
-    global settings mouseFollow
+    global settings mouseFollow mouseTouched
+    if {![info exists mouseTouched]} {
+        # exiting before the startup read Windows' setting (e.g. another copy running): never changed it
+        return
+    }
     if {!$settings(mouseFocusOffAtExit) && $mouseFollow} {
         Debug "Keeping mouse focus mode on on exit"
         ApplyMouseFollow 1
