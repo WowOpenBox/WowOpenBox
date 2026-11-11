@@ -25,6 +25,8 @@ See also https://github.com/OpenMultiBoxing/OpenMultiBoxing and https://OpenMult
 
 - **Dark mode** (WOB2027 v4.14.0+, needs its new .exe): Option menu > Appearance: same as Windows (the default, follows it when you change it), light or dark. See the [help](https://wowopenbox.org/help#appearance-dark-mode).
 - Window Layout wizard and manual tweaking; get your game windows exactly how you want them to be to play.
+   - **"2 big" (windows)** (v4.16.0+): two big windows side by side (e.g. tank and healer), the others smaller below them; on several monitors, the first 2 windows are the same size. The auto layouts also use the space a fixed aspect ratio leaves free (e.g. at 4:3 on a 16:9 monitor, 9 windows at the sizes 6 had).
+   - **Fixed spots** (v4.17.0+): each window keeps its own spot and the main window gets an extra area: a swap sends the previous main window back to its spot. With the Mirrored layout, each spot always shows its own window, dimmed while it's the main one. See the [help](https://wowopenbox.org/help#window-layout-options).
    - Save different layouts as profiles (File > New Profile...) and cycle through them with the Ctrl-Shift-L (next) and Ctrl-Shift-Alt-L (previous) hotkeys. Pick which profiles are in the rotation with Profile > "Profiles in rotation..." (all but Default by default). Default is a profile too, with its own settings: saving another profile doesn't change it.
 - Instant swapping of windows; with keyboard hotkeys for fast switching to the next or any specific window.
    - Change any hotkey in File > "Hotkeys...": click it and press the new key combination (right click clears it, Undo goes back).
