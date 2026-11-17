@@ -50,8 +50,10 @@ Easiest: get it from the Microsoft Store, which installs and updates it for you 
 <a href="https://apps.microsoft.com/detail/9P57VRK9036Q"><img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200" alt="Get it from Microsoft"/></a>
 
 The Store version keeps its settings and profiles in `Documents\WowOpenBox` (copy your `wowopenboxSettings*.tcl` files there to bring yours).
+If it shows a "Bad Image" error about `tcl9twapi520.dll` when starting (Windows with Smart App Control turned on), update it to v4.17.2 or newer.
 
 Or the zip: new since version 2.2 we made a compact all in one .exe binary distribution. Just grab the latest binary Zip file (e.g `WOB2027-vX.Y.Z.zip`, not the source zip) and extract all to your desktop for instance. The binaries are built automatically by the Github CI and can be found on the [releases page](https://github.com/WowOpenBox/WowOpenBox/releases).
+Binaries older than v4.17.2 left empty `TCL...` folders (some with `.dll` files) in your temporary files folder (type `%TEMP%` in the File Explorer address bar): you can delete them once WowOpenBox is closed.
 
 Go through the Window Layout Wizard to pick how many game windows you plan on playing with and their layout, save and apply.
 
