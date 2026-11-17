@@ -5198,6 +5198,10 @@ proc HwndInt {wh} {
 
 proc MirrorSet {i key value} {
     global settings
+    # not for a deleted mirror (lset would append a broken one)
+    if {$i >= [llength $settings(mirrors)]} {
+        return
+    }
     set m [lindex $settings(mirrors) $i]
     dict set m $key $value
     lset settings(mirrors) $i $m
@@ -5549,6 +5553,14 @@ proc MirrorsRebuild {} {
         MirrorDetach $i
         destroy .mirror$i
     }
+    # drop broken mirrors (saved by older versions after a deletion)
+    set settings(mirrors) [lmap m $settings(mirrors) {
+        if {[catch {dict get $m source; dict get $m area; dict get $m geom; dict get $m top}]} {
+            Debug "Ignoring broken mirror $m"
+            continue
+        }
+        set m
+    }]
     LayoutShowMirrors
     if {[llength $settings(mirrors)] == 0} {
         return
@@ -5834,7 +5846,10 @@ proc MirrorChangeOpacity {i} {
 }
 
 proc MirrorDelete {i} {
-    global settings
+    global settings mirrorDrag
+    # a pending "Select area again" or drag would change the next mirror or a deleted one
+    destroy .mirrorSel
+    set mirrorDrag ""
     set settings(mirrors) [lreplace $settings(mirrors) $i $i]
     MirrorsRebuild
     SaveSettings
